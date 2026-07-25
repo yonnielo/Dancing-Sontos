@@ -216,7 +216,6 @@
           <div class="flex" style="gap:5px;">
             <input type="text" id="admin-new-name" placeholder="新增暱稱" style="margin:0;">
             <input type="text" id="admin-new-email" placeholder="新增 Email/帳號" style="margin:0;">
-            <input type="text" id="admin-new-pwd" placeholder="密碼" style="margin:0;">
             <button id="admin-add-user-btn" class="btn-success" style="width:140px; margin:0; font-size:12px;">➕ 手動新增用戶</button>
           </div>
           <table class="edit-table" style="margin-top:10px;">
@@ -224,7 +223,8 @@
               <tr>
                 <th>暱稱</th>
                 <th>Email / 帳號</th>
-                <th>操作 (修改 / 重置密碼 / 刪除)</th>
+                <th>角色 (Role)</th>
+                <th>操作</th>
               </tr>
             </thead>
             <tbody id="admin-user-tbody">
@@ -353,7 +353,6 @@
     toggleAuthModeBtn.innerText = isRegisterMode ? "已有帳號？登入" : "沒有帳號？註冊";
   });
 
-  // 標準 Firebase 登入/註冊處理
   authMainBtn.addEventListener('click', async () => {
     const email = document.getElementById('auth-email').value.trim();
     const password = document.getElementById('auth-password').value.trim();
@@ -364,7 +363,6 @@
       if(isRegisterMode) {
         const name = document.getElementById('auth-name').value || "舞者";
         const res = await createUserWithEmailAndPassword(auth, email, password);
-        // 新增用戶時，預設 role 為 user
         await setDoc(doc(db, "users", res.user.uid), { name, email, role: "user" });
         alert("註冊成功！");
       } else {
@@ -379,15 +377,14 @@
     signOut(auth);
   });
 
-  // 監聽登入狀態變更
   onAuthStateChanged(auth, async (user) => {
     if (user) {
       currentUser = user;
       const userDoc = await getDoc(doc(db, "users", user.uid));
       currentUserProfile = userDoc.data() || { name: '舞者', role: 'user' };
       
-      // 判斷是否為 Admin（依據資料庫設定的 role 或特定的 Admin Email）
-      isAdmin = currentUserProfile.role === 'admin' || user.email === 'yonnielo@admin.com';
+      // 比對 role 為 admin，或者特定 Email 為 admin
+      isAdmin = currentUserProfile.role === 'admin' || user.email === 'yonnielo@yahoo.com';
 
       if (isAdmin) {
         userStatus.innerHTML = `<span class="badge-admin">👑 Admin</span> ${currentUserProfile.name || '管理員'}`;
@@ -418,42 +415,49 @@
   // ---------------- ADMIN 功能函數 ----------------
 
   async function loadAdminUsers() {
-    const querySnapshot = await getDocs(collection(db, "users"));
-    allUsersList = [];
-    querySnapshot.forEach(docSnap => {
-      allUsersList.push({ uid: docSnap.id, ...docSnap.data() });
-    });
+    try {
+      const querySnapshot = await getDocs(collection(db, "users"));
+      allUsersList = [];
+      querySnapshot.forEach(docSnap => {
+        allUsersList.push({ uid: docSnap.id, ...docSnap.data() });
+      });
 
-    const tbody = document.getElementById('admin-user-tbody');
-    tbody.innerHTML = allUsersList.map(u => `
-      <tr>
-        <td><input type="text" value="${u.name || ''}" id="admin-name-${u.uid}"></td>
-        <td><input type="text" value="${u.email || ''}" id="admin-email-${u.uid}"></td>
-        <td>
-          <div class="flex" style="gap:4px; margin:0;">
-            <input type="text" placeholder="新密碼" id="admin-pwd-${u.uid}" style="width:80px; margin:0; padding:2px;">
-            <button onclick="adminSaveUser('${u.uid}')" style="width:auto; margin:0; padding:2px 6px; font-size:10px;" class="btn-success">儲存</button>
-            <button onclick="adminDeleteUser('${u.uid}')" style="width:auto; margin:0; padding:2px 6px; font-size:10px;" class="btn-danger">刪除</button>
-          </div>
-        </td>
-      </tr>
-    `).join('');
+      const tbody = document.getElementById('admin-user-tbody');
+      tbody.innerHTML = allUsersList.map(u => `
+        <tr>
+          <td><input type="text" value="${u.name || ''}" id="admin-name-${u.uid}"></td>
+          <td><input type="text" value="${u.email || ''}" id="admin-email-${u.uid}"></td>
+          <td>
+            <select id="admin-role-${u.uid}" style="margin:0; padding:2px; font-size:12px;">
+              <option value="user" ${u.role !== 'admin' ? 'selected' : ''}>一般用戶</option>
+              <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>Admin</option>
+            </select>
+          </td>
+          <td>
+            <div class="flex" style="gap:4px; margin:0;">
+              <button onclick="adminSaveUser('${u.uid}')" style="width:auto; margin:0; padding:2px 6px; font-size:10px;" class="btn-success">儲存變更</button>
+              <button onclick="adminDeleteUser('${u.uid}')" style="width:auto; margin:0; padding:2px 6px; font-size:10px;" class="btn-danger">刪除</button>
+            </div>
+          </td>
+        </tr>
+      `).join('');
+    } catch(e) {
+      console.error("載入用戶清單失敗:", e);
+    }
   }
 
   document.getElementById('admin-add-user-btn').addEventListener('click', async () => {
     const name = document.getElementById('admin-new-name').value;
     const email = document.getElementById('admin-new-email').value;
-    const password = document.getElementById('admin-new-pwd').value;
 
     if(!name || !email) return alert("請輸入暱稱與 Email");
 
     try {
       const customUid = "user_" + Date.now();
       await setDoc(doc(db, "users", customUid), { name, email, role: "user" });
-      alert("新增用戶資料成功！");
+      alert("新增用戶成功！");
       document.getElementById('admin-new-name').value = '';
       document.getElementById('admin-new-email').value = '';
-      document.getElementById('admin-new-pwd').value = '';
       loadAdminUsers();
     } catch(e) {
       alert("新增失敗: " + e.message);
@@ -463,20 +467,26 @@
   window.adminSaveUser = async (uid) => {
     const name = document.getElementById(`admin-name-${uid}`).value;
     const email = document.getElementById(`admin-email-${uid}`).value;
+    const role = document.getElementById(`admin-role-${uid}`).value;
 
     try {
-      await updateDoc(doc(db, "users", uid), { name, email });
-      alert("用戶資料更新成功！");
+      await updateDoc(doc(db, "users", uid), { name, email, role });
+      alert("用戶資料更新並已成功寫入資料庫！");
       loadAdminUsers();
     } catch(e) {
-      alert("更新失敗: " + e.message);
+      alert("更新寫入資料庫失敗（請檢查 Firebase 權限規則）: " + e.message);
     }
   };
 
   window.adminDeleteUser = async (uid) => {
     if(confirm("確定要刪除此用戶嗎？")) {
-      await deleteDoc(doc(db, "users", uid));
-      loadAdminUsers();
+      try {
+        await deleteDoc(doc(db, "users", uid));
+        alert("用戶已成功從資料庫刪除！");
+        loadAdminUsers();
+      } catch(e) {
+        alert("刪除失敗: " + e.message);
+      }
     }
   };
 
@@ -800,7 +810,7 @@
 
     try {
       await updateDoc(doc(db, "classes", classId), { sessions: newSessions });
-      alert("課堂變更已成功更新！");
+      alert("課堂變更已成功更新寫入資料庫！");
       loadClasses();
     } catch(e) {
       alert("儲存失敗: " + e.message);
@@ -834,8 +844,13 @@
 
   window.deleteClass = async (id) => {
     if(confirm("確定要刪除/解散此課程嗎？")) {
-      await deleteDoc(doc(db, "classes", id));
-      loadClasses();
+      try {
+        await deleteDoc(doc(doc(db, "classes", id)));
+        alert("課程已成功從資料庫刪除！");
+        loadClasses();
+      } catch(e) {
+        alert("刪除失敗: " + e.message);
+      }
     }
   }
 </script>
