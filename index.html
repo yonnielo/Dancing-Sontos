@@ -115,12 +115,14 @@
       font-weight: bold; 
       padding: 6px 0; 
       font-size: 13px;
-      background: #e2e8f0;
+      background: #fce7f3; /* 淺粉紅標頭背景 */
+      color: #9d174d;
       border-radius: 4px;
       margin-bottom: 4px;
     }
+    /* 月曆格子：改為淺粉紅邊框 */
     .day-cell {
-      border: 1px solid var(--border);
+      border: 1px solid #fbcfe8; /* 淺粉紅邊框 */
       min-height: 70px;
       border-radius: 6px;
       padding: 2px;
@@ -193,7 +195,7 @@
       font-size: 12px;
     }
 
-    /* 課程卡片設計 (已改為粉紅色調) */
+    /* 課程卡片設計 (粉紅色調) */
     .course-card {
       background: #ffffff;
       border: 2px solid #f472b6;
@@ -460,9 +462,9 @@
       </div>
     </div>
 
-    <!-- 所有課程區塊 -->
+    <!-- 所有課程區塊 (已修改標題) -->
     <div class="card">
-      <h3 style="margin-top:0; font-size:16px; margin-bottom:12px;">📚 所有課程與獨立報名</h3>
+      <h3 style="margin-top:0; font-size:16px; margin-bottom:12px;">📚 所有課程</h3>
       <div id="class-list">載入中...</div>
     </div>
 
@@ -855,7 +857,6 @@
           const tag = document.createElement('div');
           tag.className = `class-tag ${isJoined ? 'joined-tag' : ''}`;
           
-          /* 已移除 ⏰ 符號 */
           tag.innerHTML = `
             <span class="tag-time">${showTime}</span>
             <span class="tag-name">${c.name}</span>
@@ -908,6 +909,7 @@
             `<button onclick="toggleSessionJoin('${c.id}', '${dateStr}', true)" class="btn-success" style="width:auto; margin:0; padding:4px 8px; font-size:11px;">報名</button>`;
         }
 
+        /* 修改學費與場租顯示格式 (加 /人 並且分開行) */
         return `
           <div class="session-box">
             <div class="flex between" style="align-items: flex-start;">
@@ -922,7 +924,11 @@
                 </div>
 
                 <div class="session-line" style="color:#0369a1;">
-                  💵 學費: $${feeVal} (付款人: ${sess.feePayerName || c.leaderName}) | 🏷️ 場租: $${sess.rent || 0} (付款人: ${sess.rentPayerName || c.leaderName})
+                  💵 學費: $${feeVal}/人 (付款人: ${sess.feePayerName || c.leaderName})
+                </div>
+
+                <div class="session-line" style="color:#0369a1;">
+                  🏷️ 場租: $${sess.rent || 0} (付款人: ${sess.rentPayerName || c.leaderName})
                 </div>
 
                 <div class="session-line" style="color:#64748b; margin-bottom:0;">
@@ -951,17 +957,17 @@
         </div>
       ` : '';
 
+      /* 修改課程 Header：移除單堂收費、班長與公開/私人班換行 */
       return `
         <div class="course-card">
           
           <div class="course-card-header">
-            <div class="flex between">
-              <div>
-                <strong style="font-size: 17px; color:#1e1b4b;">${c.name}</strong> 
-                <span class="badge-leader" style="margin-left:4px;">👑 班長: ${c.leaderName}</span>
-                ${classTypeBadge}
-              </div>
-              <span style="color:#ec4899; font-weight:bold; font-size: 7px;">單堂收費 $${c.price}</span>
+            <div>
+              <strong style="font-size: 17px; color:#1e1b4b;">${c.name}</strong> 
+            </div>
+            <div style="margin-top: 6px; display: flex; gap: 6px; align-items: center;">
+              <span class="badge-leader">👑 班長: ${c.leaderName}</span>
+              ${classTypeBadge}
             </div>
             ${leaderNoteHtml}
           </div>
