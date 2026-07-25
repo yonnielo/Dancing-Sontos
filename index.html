@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="zh-HK">
+<html lang="zh-Hant">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dance Class Manager</title>
+  <title>Dancing-Sontos 舞蹈班管理系統</title>
   <style>
     :root {
       --primary: #6366f1;
@@ -11,7 +11,6 @@
       --bg: #f8fafc;
       --card-bg: #ffffff;
       --text: #0f172a;
-      --text-muted: #64748b;
       --border: #e2e8f0;
     }
     body {
@@ -19,236 +18,382 @@
       background-color: var(--bg);
       color: var(--text);
       margin: 0;
-      padding: 16px;
-      display: flex;
-      justify-content: center;
+      padding: 15px;
     }
     .container {
-      width: 100%;
-      max-width: 500px;
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
-    .role-switcher {
-      display: flex;
-      background: #e0e7ff;
-      padding: 4px;
-      border-radius: 12px;
-    }
-    .role-btn {
-      flex: 1;
-      padding: 10px;
-      border: none;
-      background: transparent;
-      font-weight: bold;
-      color: #4338ca;
-      border-radius: 8px;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-    .role-btn.active {
-      background: white;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      max-width: 800px;
+      margin: 0 auto;
     }
     .card {
       background: var(--card-bg);
       padding: 20px;
-      border-radius: 16px;
-      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
-      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
     }
-    h2 { margin-top: 0; font-size: 1.25rem; }
-    label { display: block; font-size: 0.875rem; color: var(--text-muted); margin-top: 10px; }
-    input, select {
+    h1, h2, h3 { margin-top: 0; }
+    .flex { display: flex; gap: 10px; }
+    .between { justify-content: space-between; align-items: center; }
+    input, select, button {
       width: 100%;
       padding: 10px;
-      margin-top: 4px;
+      margin-top: 8px;
+      margin-bottom: 12px;
       border: 1px solid var(--border);
       border-radius: 8px;
       box-sizing: border-box;
-      font-size: 1rem;
     }
-    button.primary-btn {
-      width: 100%;
+    button {
       background: var(--primary);
       color: white;
       border: none;
-      padding: 12px;
-      border-radius: 8px;
       font-weight: bold;
-      font-size: 1rem;
-      margin-top: 16px;
       cursor: pointer;
     }
-    button.primary-btn:hover { background: var(--primary-hover); }
-    .event-item {
+    button:hover { background: var(--primary-hover); }
+    .btn-danger { background: #ef4444; }
+    .btn-danger:hover { background: #dc2626; }
+    .hidden { display: none !important; }
+    
+    /* Calendar UI */
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 5px;
+      text-align: center;
+    }
+    .day-header { font-weight: bold; padding: 5px 0; }
+    .day-cell {
       border: 1px solid var(--border);
-      padding: 12px;
-      border-radius: 8px;
-      margin-top: 8px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .tag {
-      padding: 4px 8px;
+      min-height: 60px;
       border-radius: 6px;
-      font-size: 0.8rem;
-      font-weight: bold;
+      padding: 4px;
+      font-size: 12px;
+      background: #fff;
     }
-    .tag-going { background: #dcfce7; color: #15803d; }
-    .tag-not { background: #fee2e2; color: #b91c1c; }
-    .badge-admin { background: #fee2e2; color: #991b1b; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; }
-    .badge-member { background: #dbeafe; color: #1e40af; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; }
+    .class-tag {
+      background: #e0e7ff;
+      color: #3730a3;
+      padding: 2px 4px;
+      border-radius: 4px;
+      margin-top: 2px;
+      font-size: 10px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
   </style>
 </head>
 <body>
 
 <div class="container">
-  <!-- 角色切換器 -->
-  <div class="role-switcher">
-    <button class="role-btn active" id="btn-admin" onclick="switchRole('admin')">👑 Admin 模式</button>
-    <button class="role-btn" id="btn-member" onclick="switchRole('member')">🕺 成員模式</button>
-  </div>
-
-  <!-- Admin 專用區：發佈新課堂 -->
-  <div class="card" id="admin-section">
-    <h2>發佈新 Dance Class <span class="badge-admin">Admin 權限</span></h2>
-    <label>課堂/舞種名稱</label>
-    <input type="text" id="class-name" placeholder="例：Choreo / HipHop Base">
-    
-    <label>日期與時間</label>
-    <input type="datetime-local" id="class-time">
-    
-    <label>預計場租/雜費 (HKD)</label>
-    <input type="number" id="class-cost" placeholder="300">
-    
-    <button class="primary-btn" onclick="addEvent()">發佈課堂活動</button>
-  </div>
-
-  <!-- 成員專用區：夾時間/報名 -->
-  <div class="card">
-    <h2>目前課堂與夾時間列表 <span id="role-badge" class="badge-admin">Admin 檢視</span></h2>
-    <div id="event-list">
-      <p style="color: var(--text-muted); font-size: 0.9rem;">暫時未有課堂活動，請由 Admin 建立。</p>
+  
+  <!-- 頂部 User Bar -->
+  <div class="card flex between">
+    <div>
+      <h2 style="margin:0">💃 Dancing-Sontos</h2>
+      <span id="user-status" style="font-size: 12px; color: #64748b;">未登入</span>
     </div>
+    <button id="logout-btn" class="hidden" style="width: auto; margin:0;">登出</button>
   </div>
 
-  <!-- 舊有邏輯：結算計算器 -->
-  <div class="card">
-    <h2>🧮 費用自動平分與最少轉帳</h2>
-    <label>參與人數（平分場租）</label>
-    <input type="number" id="calc-people" value="4">
-    <label>場租總額 (HKD)</label>
-    <input type="number" id="calc-rent" value="400">
-    <button class="primary-btn" style="background:#10b981;" onclick="calculateSplit()">計算每人應付</button>
-    <div id="calc-result" style="margin-top:12px; font-weight:bold; color:#047857;"></div>
+  <!-- Auth 登入/註冊區 -->
+  <div id="auth-section" class="card">
+    <h3 id="auth-title">會員登入</h3>
+    <input type="email" id="auth-email" placeholder="電子郵件">
+    <input type="password" id="auth-password" placeholder="密碼">
+    
+    <div id="register-extra" class="hidden">
+      <input type="text" id="auth-name" placeholder="名字/暱稱">
+      <select id="auth-role">
+        <option value="member">學員 (Member)</option>
+        <option value="admin">管理員 (Admin)</option>
+      </select>
+    </div>
+
+    <button id="auth-main-btn">登入</button>
+    <p style="text-align: center; font-size: 14px; margin: 0;">
+      <a href="#" id="toggle-auth-mode">沒有帳號？點此註冊</a>
+    </p>
   </div>
+
+  <!-- 主功能區 (登入後顯示) -->
+  <div id="app-section" class="hidden">
+    
+    <!-- Admin 專用：新增班別 (支援多日開班) -->
+    <div id="admin-panel" class="card hidden">
+      <h3>➕ [管理員] 新增課程班別</h3>
+      <input type="text" id="class-name" placeholder="課程名稱 (例如: HipHop 初級)">
+      
+      <div class="flex">
+        <div style="flex:1">
+          <label style="font-size: 12px;">開始日期</label>
+          <input type="date" id="class-start-date">
+        </div>
+        <div style="flex:1">
+          <label style="font-size: 12px;">結束日期 (單日班選同一天)</label>
+          <input type="date" id="class-end-date">
+        </div>
+      </div>
+
+      <div class="flex">
+        <input type="time" id="class-time" value="19:00">
+        <input type="number" id="class-price" placeholder="學費 ($)">
+      </div>
+
+      <button id="add-class-btn">發布課程</button>
+    </div>
+
+    <!-- 月曆檢視 -->
+    <div class="card">
+      <div class="flex between" style="margin-bottom: 10px;">
+        <h3>📅 課程月曆</h3>
+        <div>
+          <button id="prev-month" style="width:auto; padding: 4px 8px; margin:0;">&lt;</button>
+          <span id="current-month-display" style="font-weight:bold;"></span>
+          <button id="next-month" style="width:auto; padding: 4px 8px; margin:0;">&gt;</button>
+        </div>
+      </div>
+      <div class="calendar-grid" id="calendar-header">
+        <div class="day-header">日</div><div class="day-header">一</div><div class="day-header">二</div>
+        <div class="day-header">三</div><div class="day-header">四</div><div class="day-header">五</div><div class="day-header">六</div>
+      </div>
+      <div class="calendar-grid" id="calendar-days"></div>
+    </div>
+
+    <!-- 課程列表 -->
+    <div class="card">
+      <h3>📚 班別列表與報名</h3>
+      <div id="class-list">載入中...</div>
+    </div>
+
+  </div>
+
 </div>
 
-<script>
-  let currentRole = 'admin';
-  let events = JSON.parse(localStorage.getItem('dance_events')) || [];
+<!-- Firebase SDKs -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+  import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+  import { getFirestore, collection, addDoc, getDocs, doc, setDoc, getDoc, query, where, orderBy, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-  function switchRole(role) {
-    currentRole = role;
-    document.getElementById('btn-admin').classList.toggle('active', role === 'admin');
-    document.getElementById('btn-member').classList.toggle('active', role === 'member');
-    document.getElementById('admin-section').style.display = role === 'admin' ? 'block' : 'none';
-    
-    const badge = document.getElementById('role-badge');
-    if (role === 'admin') {
-      badge.className = 'badge-admin';
-      badge.innerText = 'Admin 檢視';
+  // 帶入你的 Firebase 專屬 Config
+  const firebaseConfig = {
+    apiKey: "AIzaSyB2ky_jGsp4Me5XNXVpvow5oUAV-ME6oG8",
+    authDomain: "dancing-sontos.firebaseapp.com",
+    projectId: "dancing-sontos",
+    storageBucket: "dancing-sontos.firebasestorage.app",
+    messagingSenderId: "522879566788",
+    appId: "1:522879566788:web:e37c283d86a07d0ce79a91",
+    measurementId: "G-8DPXJJGF9B"
+  };
+
+  // 初始化 Firebase
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+
+  let currentUser = null;
+  let currentUserProfile = null;
+  let isRegisterMode = false;
+  let currentDate = new Date();
+  let classesData = [];
+
+  // DOM 元素
+  const authSection = document.getElementById('auth-section');
+  const appSection = document.getElementById('app-section');
+  const adminPanel = document.getElementById('admin-panel');
+  const toggleAuthModeBtn = document.getElementById('toggle-auth-mode');
+  const registerExtra = document.getElementById('register-extra');
+  const authMainBtn = document.getElementById('auth-main-btn');
+  const logoutBtn = document.getElementById('logout-btn');
+  const userStatus = document.getElementById('user-status');
+
+  // 切換登入 / 註冊 模式
+  toggleAuthModeBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    isRegisterMode = !isRegisterMode;
+    document.getElementById('auth-title').innerText = isRegisterMode ? "註冊新帳號" : "會員登入";
+    authMainBtn.innerText = isRegisterMode ? "立即註冊" : "登入";
+    registerExtra.classList.toggle('hidden', !isRegisterMode);
+    toggleAuthModeBtn.innerText = isRegisterMode ? "已有帳號？點此登入" : "沒有帳號？點此註冊";
+  });
+
+  // Auth 執行 (登入/註冊)
+  authMainBtn.addEventListener('click', async () => {
+    const email = document.getElementById('auth-email').value;
+    const password = document.getElementById('auth-password').value;
+
+    if(!email || !password) return alert("請輸入 Email 與密碼");
+
+    try {
+      if(isRegisterMode) {
+        const name = document.getElementById('auth-name').value || "學員";
+        const role = document.getElementById('auth-role').value;
+        const res = await createUserWithEmailAndPassword(auth, email, password);
+        
+        // 建立 User Profile 到 Firestore
+        await setDoc(doc(db, "users", res.user.uid), {
+          name: name,
+          email: email,
+          role: role
+        });
+        alert("註冊成功！");
+      } else {
+        await signInWithEmailAndPassword(auth, email, password);
+      }
+    } catch (err) {
+      alert("失敗: " + err.message);
+    }
+  });
+
+  // 登出
+  logoutBtn.addEventListener('click', () => signOut(auth));
+
+  // 監聽登入狀態
+  onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      currentUser = user;
+      const userDoc = await getDoc(doc(db, "users", user.uid));
+      currentUserProfile = userDoc.data() || { name: '會員', role: 'member' };
+      
+      userStatus.innerText = `👤 ${currentUserProfile.name} (${currentUserProfile.role === 'admin' ? '管理員' : '學員'})`;
+      authSection.classList.add('hidden');
+      appSection.classList.remove('hidden');
+      logoutBtn.classList.remove('hidden');
+
+      if(currentUserProfile.role === 'admin') {
+        adminPanel.classList.remove('hidden');
+      }
+
+      loadClasses();
     } else {
-      badge.className = 'badge-member';
-      badge.innerText = '成員操作';
+      currentUser = null;
+      currentUserProfile = null;
+      userStatus.innerText = "未登入";
+      authSection.classList.remove('hidden');
+      appSection.classList.add('hidden');
+      logoutBtn.classList.add('hidden');
+      adminPanel.classList.add('hidden');
     }
-    renderEvents();
-  }
+  });
 
-  function addEvent() {
+  // 管理員：發布課程 (支援跨日/多日開班)
+  document.getElementById('add-class-btn').addEventListener('click', async () => {
     const name = document.getElementById('class-name').value;
+    const startDate = document.getElementById('class-start-date').value;
+    const endDate = document.getElementById('class-end-date').value || startDate;
     const time = document.getElementById('class-time').value;
-    const cost = document.getElementById('class-cost').value;
+    const price = document.getElementById('class-price').value;
 
-    if (!name || !time) {
-      alert('請填寫完整名稱及時間！');
+    if(!name || !startDate) return alert("請填寫班別名稱與日期");
+
+    try {
+      await addDoc(collection(db, "classes"), {
+        name,
+        startDate,
+        endDate,
+        time,
+        price: Number(price) || 0,
+        createdAt: new Date()
+      });
+      alert("課程發布成功！");
+      loadClasses();
+    } catch(e) {
+      alert("新增失敗: " + e.message);
+    }
+  });
+
+  // 載入班別資料
+  async function loadClasses() {
+    const querySnapshot = await getDocs(collection(db, "classes"));
+    classesData = [];
+    querySnapshot.forEach((doc) => {
+      classesData.push({ id: doc.id, ...doc.data() });
+    });
+    renderCalendar();
+    renderClassList();
+  }
+
+  // 渲染月曆
+  function renderCalendar() {
+    const calendarDays = document.getElementById('calendar-days');
+    calendarDays.innerHTML = '';
+
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+
+    document.getElementById('current-month-display').innerText = `${year}年 ${month + 1}月`;
+
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    // 補空白格
+    for (let i = 0; i < firstDay; i++) {
+      const emptyCell = document.createElement('div');
+      emptyCell.className = 'day-cell';
+      calendarDays.appendChild(emptyCell);
+    }
+
+    // 渲染日期
+    for (let day = 1; day <= daysInMonth; day++) {
+      const cell = document.createElement('div');
+      cell.className = 'day-cell';
+      cell.innerHTML = `<strong>${day}</strong>`;
+
+      // 格式化日期字串 YYYY-MM-DD
+      const monthStr = String(month + 1).padStart(2, '0');
+      const dayStr = String(day).padStart(2, '0');
+      const dateStr = `${year}-${monthStr}-${dayStr}`;
+
+      // 檢查當日是否有課 (包含多日連班)
+      classesData.forEach(c => {
+        if(dateStr >= c.startDate && dateStr <= c.endDate) {
+          const tag = document.createElement('div');
+          tag.className = 'class-tag';
+          tag.innerText = `${c.time || ''} ${c.name}`;
+          cell.appendChild(tag);
+        }
+      });
+
+      calendarDays.appendChild(cell);
+    }
+  }
+
+  // 月曆切換按鈕
+  document.getElementById('prev-month').addEventListener('click', () => {
+    currentDate.setMonth(currentDate.getMonth() - 1);
+    renderCalendar();
+  });
+  document.getElementById('next-month').addEventListener('click', () => {
+    currentDate.setMonth(currentDate.getMonth() + 1);
+    renderCalendar();
+  });
+
+  // 渲染班別列表
+  function renderClassList() {
+    const listEl = document.getElementById('class-list');
+    if(classesData.length === 0) {
+      listEl.innerHTML = "<p style='color:#64748b;'>目前沒有開設任何班別。</p>";
       return;
     }
 
-    const newEvent = {
-      id: Date.now(),
-      name: name,
-      time: time.replace('T', ' '),
-      cost: cost || 0,
-      responses: {}
-    };
-
-    events.push(newEvent);
-    saveAndRender();
-    document.getElementById('class-name').value = '';
-    document.getElementById('class-time').value = '';
-    document.getElementById('class-cost').value = '';
+    listEl.innerHTML = classesData.map(c => `
+      <div style="border-bottom: 1px solid var(--border); padding: 10px 0;">
+        <strong>${c.name}</strong> <span style="color:#6366f1;">($${c.price})</span><br>
+        <small>📅 日期: ${c.startDate} ${c.startDate !== c.endDate ? ' 至 ' + c.endDate : ''} | ⏰ 時間: ${c.time}</small>
+        ${currentUserProfile.role === 'admin' ? `<button onclick="deleteClass('${c.id}')" class="btn-danger" style="width:auto; padding:2px 8px; font-size:12px; margin-left:10px;">刪除</button>` : ''}
+      </div>
+    `).join('');
   }
 
-  function toggleAttendance(eventId) {
-    const name = prompt("請輸入你的名字：");
-    if (!name) return;
-
-    const ev = events.find(e => e.id === eventId);
-    if (ev) {
-      const current = ev.responses[name];
-      ev.responses[name] = current === '出席' ? '缺席' : '出席';
-      saveAndRender();
+  // 刪除班別
+  window.deleteClass = async (id) => {
+    if(confirm("確定要刪除這個班別嗎？")) {
+      await deleteDoc(doc(db, "classes", id));
+      loadClasses();
     }
   }
-
-  function saveAndRender() {
-    localStorage.setItem('dance_events', JSON.stringify(events));
-    renderEvents();
-  }
-
-  function renderEvents() {
-    const listDiv = document.getElementById('event-list');
-    if (events.length === 0) {
-      listDiv.innerHTML = '<p style="color: var(--text-muted); font-size: 0.9rem;">暫時未有課堂活動，請由 Admin 建立。</p>';
-      return;
-    }
-
-    listDiv.innerHTML = events.map(e => {
-      const attendees = Object.entries(e.responses)
-        .filter(([_, status]) => status === '出席')
-        .map(([name]) => name);
-
-      return `
-        <div class="event-item">
-          <div>
-            <strong>${e.name}</strong><br>
-            <small style="color:var(--text-muted)">⏰ ${e.time} | 💰 HK$${e.cost}</small><br>
-            <small style="color:#4f46e5">出席名單 (${attendees.length}人): ${attendees.join(', ') || '暫無'}</small>
-          </div>
-          <div>
-            ${currentRole === 'member' ? 
-              `<button style="padding: 6px 12px; border-radius:6px; border:1px solid var(--primary); background:white; color:var(--primary); cursor:pointer;" onclick="toggleAttendance(${e.id})">報名/改狀態</button>` : 
-              `<span class="tag tag-going">${attendees.length} 人報名</span>`
-            }
-          </div>
-        </div>
-      `;
-    }).join('');
-  }
-
-  function calculateSplit() {
-    const people = parseInt(document.getElementById('calc-people').value) || 1;
-    const rent = parseFloat(document.getElementById('calc-rent').value) || 0;
-    const perPerson = (rent / people).toFixed(1);
-    document.getElementById('calc-result').innerText = `每人需付：HK$ ${perPerson}`;
-  }
-
-  // 初次載入
-  renderEvents();
 </script>
 
 </body>
