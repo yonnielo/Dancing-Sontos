@@ -143,7 +143,7 @@
       margin-top: 8px;
     }
 
-    /* 管理表格 */
+    /* 管理表格與用戶選單修正 */
     .edit-table {
       width: 100%;
       border-collapse: collapse;
@@ -165,20 +165,26 @@
       flex-wrap: wrap;
       gap: 8px;
       border: 1px solid var(--border);
-      padding: 8px;
+      padding: 10px;
       border-radius: 8px;
-      max-height: 120px;
+      max-height: 160px;
       overflow-y: auto;
       background: #fff;
     }
     .user-select-item {
-      font-size: 12px;
+      font-size: 13px;
       background: #f1f5f9;
-      padding: 4px 8px;
+      padding: 6px 10px;
       border-radius: 6px;
       display: inline-flex;
       align-items: center;
-      gap: 4px;
+      gap: 6px;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+    .user-select-item input {
+      margin: 0;
+      width: auto;
     }
   </style>
 </head>
@@ -525,13 +531,16 @@
       });
 
       const container = document.getElementById('all-users-checkboxes');
-      container.innerHTML = allUsersList.map(u => `
-        <label class="user-select-item">
-          <input type="checkbox" value="${u.uid}" class="access-user-checkbox"> ${u.name}
-        </label>
-      `).join('');
+      container.innerHTML = allUsersList.map(u => {
+        const userName = u.name || u.email || '未命名用戶';
+        return `
+          <label class="user-select-item">
+            <input type="checkbox" value="${u.uid}" class="access-user-checkbox"> ${userName}
+          </label>
+        `;
+      }).join('');
     } catch(e) {
-      console.error(e);
+      console.error("載入用戶名單失敗:", e);
     }
   }
 
@@ -810,20 +819,20 @@
     const classObj = classesData.find(c => c.id === classId);
     const allowed = classObj.allowedUsers || [];
 
-    if(allUsersList.length === 0) {
-      const querySnapshot = await getDocs(collection(db, "users"));
-      allUsersList = [];
-      querySnapshot.forEach(docSnap => {
-        allUsersList.push({ uid: docSnap.id, ...docSnap.data() });
-      });
-    }
+    // 每次打開管理都重新讀取最新用戶名單
+    const querySnapshot = await getDocs(collection(db, "users"));
+    allUsersList = [];
+    querySnapshot.forEach(docSnap => {
+      allUsersList.push({ uid: docSnap.id, ...docSnap.data() });
+    });
 
     const container = document.getElementById(`edit-users-list-${classId}`);
     container.innerHTML = allUsersList.map(u => {
       const isChecked = allowed.includes(u.uid);
+      const userName = u.name || u.email || '未命名用戶';
       return `
         <label class="user-select-item">
-          <input type="checkbox" value="${u.uid}" class="edit-user-cb-${classId}" ${isChecked ? 'checked' : ''}> ${u.name}
+          <input type="checkbox" value="${u.uid}" class="edit-user-cb-${classId}" ${isChecked ? 'checked' : ''}> ${userName}
         </label>
       `;
     }).join('');
