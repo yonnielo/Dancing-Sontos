@@ -3,141 +3,253 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>跳舞班結數助手</title>
+  <title>Dance Class Manager</title>
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f4f6f8; padding: 15px; margin: 0; }
-    .card { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 15px; }
-    h2 { font-size: 18px; margin-top: 0; color: #333; }
-    label { display: block; margin: 8px 0 4px; font-size: 14px; color: #666; }
-    input, select, button { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ccc; box-sizing: border-box; font-size: 15px; margin-bottom: 10px; }
-    button { background: #007aff; color: white; border: none; font-weight: bold; cursor: pointer; }
-    button:active { background: #0056b3; }
-    .result-item { background: #eef6ff; border-left: 4px solid #007aff; padding: 10px; margin-bottom: 8px; border-radius: 4px; font-size: 15px; }
-    .tag { display: inline-block; background: #e0e0e0; padding: 3px 8px; border-radius: 12px; font-size: 12px; margin-right: 5px; }
+    :root {
+      --primary: #6366f1;
+      --primary-hover: #4f46e5;
+      --bg: #f8fafc;
+      --card-bg: #ffffff;
+      --text: #0f172a;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 16px;
+      display: flex;
+      justify-content: center;
+    }
+    .container {
+      width: 100%;
+      max-width: 500px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .role-switcher {
+      display: flex;
+      background: #e0e7ff;
+      padding: 4px;
+      border-radius: 12px;
+    }
+    .role-btn {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      background: transparent;
+      font-weight: bold;
+      color: #4338ca;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .role-btn.active {
+      background: white;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .card {
+      background: var(--card-bg);
+      padding: 20px;
+      border-radius: 16px;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+      border: 1px solid var(--border);
+    }
+    h2 { margin-top: 0; font-size: 1.25rem; }
+    label { display: block; font-size: 0.875rem; color: var(--text-muted); margin-top: 10px; }
+    input, select {
+      width: 100%;
+      padding: 10px;
+      margin-top: 4px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      box-sizing: border-box;
+      font-size: 1rem;
+    }
+    button.primary-btn {
+      width: 100%;
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 12px;
+      border-radius: 8px;
+      font-weight: bold;
+      font-size: 1rem;
+      margin-top: 16px;
+      cursor: pointer;
+    }
+    button.primary-btn:hover { background: var(--primary-hover); }
+    .event-item {
+      border: 1px solid var(--border);
+      padding: 12px;
+      border-radius: 8px;
+      margin-top: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .tag {
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-weight: bold;
+    }
+    .tag-going { background: #dcfce7; color: #15803d; }
+    .tag-not { background: #fee2e2; color: #b91c1c; }
+    .badge-admin { background: #fee2e2; color: #991b1b; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; }
+    .badge-member { background: #dbeafe; color: #1e40af; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; }
   </style>
 </head>
 <body>
 
-  <h2>🕺 跳舞班結數與最少交易器</h2>
-
-  <div class="card">
-    <h2>1. 輸入費用項目</h2>
-    <label>項目名稱</label>
-    <input type="text" id="itemTitle" placeholder="例如：觀塘 Studio 場租 / 表演衫">
-    
-    <label>總金額 ($)</label>
-    <input type="number" id="itemAmount" placeholder="300">
-    
-    <label>先墊付的人 (Payer)</label>
-    <input type="text" id="payer" placeholder="例如：Admin (Mandy)">
-    
-    <label>參與分攤成員 (用逗號分開)</label>
-    <input type="text" id="members" placeholder="Mandy, Alex, Chris, Ben">
-
-    <button onclick="addExpense()">加入費用</button>
+<div class="container">
+  <!-- 角色切換器 -->
+  <div class="role-switcher">
+    <button class="role-btn active" id="btn-admin" onclick="switchRole('admin')">👑 Admin 模式</button>
+    <button class="role-btn" id="btn-member" onclick="switchRole('member')">🕺 成員模式</button>
   </div>
 
-  <div class="card">
-    <h2>2. 已輸入項目</h2>
-    <div id="expenseList" style="font-size: 14px; color: #555;">暫無項目</div>
+  <!-- Admin 專用區：發佈新課堂 -->
+  <div class="card" id="admin-section">
+    <h2>發佈新 Dance Class <span class="badge-admin">Admin 權限</span></h2>
+    <label>課堂/舞種名稱</label>
+    <input type="text" id="class-name" placeholder="例：Choreo / HipHop Base">
+    
+    <label>日期與時間</label>
+    <input type="datetime-local" id="class-time">
+    
+    <label>預計場租/雜費 (HKD)</label>
+    <input type="number" id="class-cost" placeholder="300">
+    
+    <button class="primary-btn" onclick="addEvent()">發佈課堂活動</button>
   </div>
 
+  <!-- 成員專用區：夾時間/報名 -->
   <div class="card">
-    <h2>3. 最佳化清算結果</h2>
-    <button onclick="calculateSettlement()" style="background: #34c759;">計算最少轉帳次數</button>
-    <div id="settlementResult" style="margin-top: 10px;"></div>
+    <h2>目前課堂與夾時間列表 <span id="role-badge" class="badge-admin">Admin 檢視</span></h2>
+    <div id="event-list">
+      <p style="color: var(--text-muted); font-size: 0.9rem;">暫時未有課堂活動，請由 Admin 建立。</p>
+    </div>
   </div>
 
-  <script>
-    let expenses = [];
+  <!-- 舊有邏輯：結算計算器 -->
+  <div class="card">
+    <h2>🧮 費用自動平分與最少轉帳</h2>
+    <label>參與人數（平分場租）</label>
+    <input type="number" id="calc-people" value="4">
+    <label>場租總額 (HKD)</label>
+    <input type="number" id="calc-rent" value="400">
+    <button class="primary-btn" style="background:#10b981;" onclick="calculateSplit()">計算每人應付</button>
+    <div id="calc-result" style="margin-top:12px; font-weight:bold; color:#047857;"></div>
+  </div>
+</div>
 
-    function addExpense() {
-      const title = document.getElementById('itemTitle').value.trim();
-      const amount = parseFloat(document.getElementById('itemAmount').value);
-      const payer = document.getElementById('payer').value.trim();
-      const membersStr = document.getElementById('members').value.trim();
+<script>
+  let currentRole = 'admin';
+  let events = JSON.parse(localStorage.getItem('dance_events')) || [];
 
-      if (!title || isNaN(amount) || !payer || !membersStr) {
-        alert("請填寫所有欄位！");
-        return;
-      }
+  function switchRole(role) {
+    currentRole = role;
+    document.getElementById('btn-admin').classList.toggle('active', role === 'admin');
+    document.getElementById('btn-member').classList.toggle('active', role === 'member');
+    document.getElementById('admin-section').style.display = role === 'admin' ? 'block' : 'none';
+    
+    const badge = document.getElementById('role-badge');
+    if (role === 'admin') {
+      badge.className = 'badge-admin';
+      badge.innerText = 'Admin 檢視';
+    } else {
+      badge.className = 'badge-member';
+      badge.innerText = '成員操作';
+    }
+    renderEvents();
+  }
 
-      const membersList = membersStr.split(',').map(m => m.trim()).filter(m => m !== '');
+  function addEvent() {
+    const name = document.getElementById('class-name').value;
+    const time = document.getElementById('class-time').value;
+    const cost = document.getElementById('class-cost').value;
 
-      expenses.push({ title, amount, payer, members: membersList });
-      updateExpenseList();
-
-      // 清空 input
-      document.getElementById('itemTitle').value = '';
-      document.getElementById('itemAmount').value = '';
+    if (!name || !time) {
+      alert('請填寫完整名稱及時間！');
+      return;
     }
 
-    function updateExpenseList() {
-      const listDiv = document.getElementById('expenseList');
-      if (expenses.length === 0) {
-        listDiv.innerHTML = "暫無項目";
-        return;
-      }
-      listDiv.innerHTML = expenses.map((e, idx) => `
-        <div style="border-bottom: 1px solid #eee; padding: 6px 0;">
-          <strong>${e.title}</strong> - $${e.amount}<br>
-          <span style="font-size:12px; color:#888;">由 ${e.payer} 墊付 | 分攤: ${e.members.join(', ')}</span>
+    const newEvent = {
+      id: Date.now(),
+      name: name,
+      time: time.replace('T', ' '),
+      cost: cost || 0,
+      responses: {}
+    };
+
+    events.push(newEvent);
+    saveAndRender();
+    document.getElementById('class-name').value = '';
+    document.getElementById('class-time').value = '';
+    document.getElementById('class-cost').value = '';
+  }
+
+  function toggleAttendance(eventId) {
+    const name = prompt("請輸入你的名字：");
+    if (!name) return;
+
+    const ev = events.find(e => e.id === eventId);
+    if (ev) {
+      const current = ev.responses[name];
+      ev.responses[name] = current === '出席' ? '缺席' : '出席';
+      saveAndRender();
+    }
+  }
+
+  function saveAndRender() {
+    localStorage.setItem('dance_events', JSON.stringify(events));
+    renderEvents();
+  }
+
+  function renderEvents() {
+    const listDiv = document.getElementById('event-list');
+    if (events.length === 0) {
+      listDiv.innerHTML = '<p style="color: var(--text-muted); font-size: 0.9rem;">暫時未有課堂活動，請由 Admin 建立。</p>';
+      return;
+    }
+
+    listDiv.innerHTML = events.map(e => {
+      const attendees = Object.entries(e.responses)
+        .filter(([_, status]) => status === '出席')
+        .map(([name]) => name);
+
+      return `
+        <div class="event-item">
+          <div>
+            <strong>${e.name}</strong><br>
+            <small style="color:var(--text-muted)">⏰ ${e.time} | 💰 HK$${e.cost}</small><br>
+            <small style="color:#4f46e5">出席名單 (${attendees.length}人): ${attendees.join(', ') || '暫無'}</small>
+          </div>
+          <div>
+            ${currentRole === 'member' ? 
+              `<button style="padding: 6px 12px; border-radius:6px; border:1px solid var(--primary); background:white; color:var(--primary); cursor:pointer;" onclick="toggleAttendance(${e.id})">報名/改狀態</button>` : 
+              `<span class="tag tag-going">${attendees.length} 人報名</span>`
+            }
+          </div>
         </div>
-      `).join('');
-    }
+      `;
+    }).join('');
+  }
 
-    // 最少交易次數演算法
-    function calculateSettlement() {
-      let balances = {};
+  function calculateSplit() {
+    const people = parseInt(document.getElementById('calc-people').value) || 1;
+    const rent = parseFloat(document.getElementById('calc-rent').value) || 0;
+    const perPerson = (rent / people).toFixed(1);
+    document.getElementById('calc-result').innerText = `每人需付：HK$ ${perPerson}`;
+  }
 
-      // 算每人淨資產 (Net Balance)
-      expenses.forEach(exp => {
-        const splitAmount = exp.amount / exp.members.length;
-        
-        // 付款人增加應收金額
-        balances[exp.payer] = (balances[exp.payer] || 0) + exp.amount;
+  // 初次載入
+  renderEvents();
+</script>
 
-        // 參與者扣除應付金額
-        exp.members.forEach(m => {
-          balances[m] = (balances[m] || 0) - splitAmount;
-        });
-      });
-
-      // 將成員分為 欠錢者 (Debtors) 與 應收錢者 (Creditors)
-      let debtors = [];
-      let creditors = [];
-
-      for (let person in balances) {
-        let amount = Math.round(balances[person] * 100) / 100; // 捨入至小數點後兩位
-        if (amount < -0.01) debtors.push({ person, amount: -amount });
-        else if (amount > 0.01) creditors.push({ person, amount });
-      }
-
-      // 雙指標比對，生成最少次數交易
-      let transactions = [];
-      let i = 0, j = 0;
-
-      while (i < debtors.length && j < creditors.length) {
-        let debt = debtors[i].amount;
-        let credit = creditors[j].amount;
-        let minAmount = Math.min(debt, credit);
-
-        transactions.push(`${debtors[i].person} 轉賬 <strong>$${minAmount.toFixed(1)}</strong> 給 ${creditors[j].person}`);
-
-        debtors[i].amount -= minAmount;
-        creditors[j].amount -= minAmount;
-
-        if (debtors[i].amount < 0.01) i++;
-        if (creditors[j].amount < 0.01) j++;
-      }
-
-      const resDiv = document.getElementById('settlementResult');
-      if (transactions.length === 0) {
-        resDiv.innerHTML = "<div class='result-item'>已全部清算，無需轉賬！</div>";
-      } else {
-        resDiv.innerHTML = transactions.map(t => `<div class='result-item'>👉 ${t}</div>`).join('');
-      }
-    }
-  </script>
 </body>
 </html>
