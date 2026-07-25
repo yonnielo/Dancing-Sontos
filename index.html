@@ -26,7 +26,7 @@
       margin: 0;
       padding: 15px;
     }
-    .container { max-width: 900px; margin: 0 auto; }
+    .container { max-width: 950px; margin: 0 auto; }
     .card {
       background: var(--card-bg);
       padding: 20px;
@@ -288,16 +288,23 @@
           <span style="font-size:12px; color:#94a3b8;">尚未選擇日期</span>
         </div>
 
-        <div class="flex">
-          <input type="time" id="class-time" value="19:00">
-          <input type="number" id="class-price" placeholder="單堂學費 ($)">
+        <input type="time" id="class-time" value="19:00">
+
+        <div style="background:#f1f5f9; padding:10px; border-radius:8px; margin-bottom:12px;">
+          <label style="font-size: 12px; font-weight: bold;">💵 每節學費與收款人：</label>
+          <div class="flex" style="margin-top:5px;">
+            <input type="number" id="class-price" placeholder="單堂學費 ($)" style="margin:0;">
+            <select id="class-default-fee-payer" style="margin:0;">
+              <!-- 動態載入成員選單 -->
+            </select>
+          </div>
         </div>
 
         <div style="background:#f1f5f9; padding:10px; border-radius:8px; margin-bottom:12px;">
-          <label style="font-size: 12px; font-weight: bold;">💰 每節課預設場租與付款人：</label>
+          <label style="font-size: 12px; font-weight: bold;">💰 每節場租與付款人：</label>
           <div class="flex" style="margin-top:5px;">
             <input type="number" id="class-default-rent" placeholder="每節場租 ($)" style="margin:0;" value="0">
-            <select id="class-default-payer" style="margin:0;">
+            <select id="class-default-rent-payer" style="margin:0;">
               <!-- 動態載入成員選單 -->
             </select>
           </div>
@@ -565,13 +572,15 @@
         `;
       }).join('');
 
-      // 2) 填充預設付款人下拉選單（預設選中當前登入者）
-      const payerSelect = document.getElementById('class-default-payer');
-      payerSelect.innerHTML = allUsersList.map(u => {
+      // 2) 填充預設學費與場租付款人選單
+      const optionsHtml = allUsersList.map(u => {
         const userName = u.name || u.email || '未命名用戶';
         const isSelf = u.uid === currentUser.uid;
         return `<option value="${u.uid}" ${isSelf ? 'selected' : ''}>${userName} ${isSelf ? '(班長/預設)' : ''}</option>`;
       }).join('');
+
+      document.getElementById('class-default-fee-payer').innerHTML = optionsHtml;
+      document.getElementById('class-default-rent-payer').innerHTML = optionsHtml;
 
     } catch(e) {
       console.error("載入用戶名單失敗:", e);
@@ -611,13 +620,18 @@
     const name = document.getElementById('class-name').value;
     const defaultLocation = document.getElementById('class-default-location').value || '未定地點';
     const time = document.getElementById('class-time').value;
-    const price = document.getElementById('class-price').value;
     
-    // 場租與付款人
+    // 學費與學費付款人
+    const defaultFee = Number(document.getElementById('class-price').value) || 0;
+    const defaultFeePayerUid = document.getElementById('class-default-fee-payer').value || currentUser.uid;
+    const feePayerObj = allUsersList.find(u => u.uid === defaultFeePayerUid);
+    const defaultFeePayerName = feePayerObj ? (feePayerObj.name || feePayerObj.email) : (currentUserProfile.name || '班長');
+
+    // 場租與場租付款人
     const defaultRent = Number(document.getElementById('class-default-rent').value) || 0;
-    const defaultPayerUid = document.getElementById('class-default-payer').value || currentUser.uid;
-    const payerObj = allUsersList.find(u => u.uid === defaultPayerUid);
-    const defaultPayerName = payerObj ? (payerObj.name || payerObj.email) : (currentUserProfile.name || '班長');
+    const defaultRentPayerUid = document.getElementById('class-default-rent-payer').value || currentUser.uid;
+    const rentPayerObj = allUsersList.find(u => u.uid === defaultRentPayerUid);
+    const defaultRentPayerName = rentPayerObj ? (rentPayerObj.name || rentPayerObj.email) : (currentUserProfile.name || '班長');
 
     const accessType = document.getElementById('access-type').value;
     let allowedUsers = [];
@@ -636,9 +650,12 @@
       sessions[d] = { 
         time, 
         location: defaultLocation, 
+        fee: defaultFee,
+        feePayerUid: defaultFeePayerUid,
+        feePayerName: defaultFeePayerName,
         rent: defaultRent,
-        payerUid: defaultPayerUid,
-        payerName: defaultPayerName,
+        rentPayerUid: defaultRentPayerUid,
+        rentPayerName: defaultRentPayerName,
         students: [] 
       };
     });
@@ -647,7 +664,7 @@
       await addDoc(collection(db, "classes"), {
         name,
         sessions,
-        price: Number(price) || 0,
+        price: defaultFee,
         leaderId: currentUser.uid,
         leaderName: currentUserProfile.name || '班長',
         accessType,
@@ -754,14 +771,19 @@
         const sess = sessions[dateStr];
         const students = sess.students || [];
         const isJoined = students.some(s => s.uid === currentUser.uid);
-        const rentText = sess.rent ? ` | 🏷️ 場租: $${sess.rent} (付款人: ${sess.payerName || '班長'})` : '';
+        const feeVal = sess.fee !== undefined ? sess.fee : c.price;
+        const feeText = `💵 學費: $${feeVal} (收款: ${sess.feePayerName || c.leaderName})`;
+        const rentText = ` | 🏷️ 場租: $${sess.rent || 0} (付款: ${sess.rentPayerName || sess.payerName || c.leaderName})`;
 
         return `
           <div class="session-box">
             <div class="flex between">
               <div>
                 <strong>📅 ${dateStr}</strong> 
-                <span style="font-size:12px; color:#475569;">⏰ ${sess.time} | 📍 ${sess.location}${rentText}</span>
+                <span style="font-size:12px; color:#475569;">⏰ ${sess.time} | 📍 ${sess.location}</span>
+                <div style="font-size:11px; color:#0369a1; margin-top:2px;">
+                  ${feeText} ${rentText}
+                </div>
               </div>
               <div>
                 ${isJoined ? 
@@ -785,7 +807,7 @@
               <span class="badge-leader">👑 班長: ${c.leaderName}</span>
               ${c.accessType === 'specific' ? `<span style="font-size:10px; background:#f3e8ff; color:#6b21a8; padding:2px 4px; border-radius:4px;">🔒 私人班</span>` : ''}
             </div>
-            <span style="color:#6366f1; font-weight:bold;">單堂 $${c.price}</span>
+            <span style="color:#6366f1; font-weight:bold;">參考單堂 $${c.price}</span>
           </div>
 
           <div style="margin-top: 10px;">
@@ -796,7 +818,7 @@
             <div style="margin-top: 12px; padding: 10px; background: #fffbe0; border-radius: 8px; border: 1px solid #fde047;">
               <div class="flex between">
                 <small style="font-weight:bold; color:#854d0e;">🛠️ ${isAdmin ? 'Admin' : '班長'} 管理功能：</small>
-                <button onclick="toggleTableEdit('${c.id}')" style="width:auto; margin:0; padding:4px 8px; font-size:12px; background:#d97706;">✏️ 管理堂數、場租與學員</button>
+                <button onclick="toggleTableEdit('${c.id}')" style="width:auto; margin:0; padding:4px 8px; font-size:12px; background:#d97706;">✏️ 管理堂數、學費/場租與學員</button>
               </div>
 
               <div id="table-editor-${c.id}" class="hidden" style="margin-top: 10px;">
@@ -815,7 +837,7 @@
                   </div>
                 </div>
 
-                <label style="font-size:12px; font-weight:bold;">📅 編輯堂數、地點、場租與學員名單：</label>
+                <label style="font-size:12px; font-weight:bold;">📅 編輯堂數、地點、學費/場租與學員名單：</label>
                 <div style="overflow-x:auto;">
                   <table class="edit-table">
                     <thead>
@@ -823,6 +845,8 @@
                         <th>日期</th>
                         <th>時間</th>
                         <th>地點</th>
+                        <th>學費($)</th>
+                        <th>學費收款人</th>
                         <th>場租($)</th>
                         <th>場租付款人</th>
                         <th>已報名學員 (點擊可刪除) / 手動加人</th>
@@ -892,34 +916,51 @@
       const sess = sessions[d];
       const students = sess.students || [];
 
-      // 生成學員標籤 HTML
+      // 學員標籤 HTML
       const studentChipsHtml = students.map(s => `
-        <span class="student-chip">
+        <span class="student-chip" data-uid="${s.uid}" data-name="${s.name}">
           ${s.name}
-          <button type="button" onclick="removeStudentFromSessionRow(this, '${s.uid}')">✕</button>
+          <button type="button" onclick="removeStudentFromSessionRow(this)">✕</button>
         </span>
       `).join('');
 
-      // 生成手動新增學員下拉選單
+      // 手動加人下拉
       const addStudentOptions = allUsersList.map(u => `<option value="${u.uid}">${u.name || u.email}</option>`).join('');
 
-      // 生成付款人選單
-      const payerOptions = allUsersList.map(u => {
-        const isSelected = u.uid === (sess.payerUid || classObj.leaderId);
+      // 學費收款人選單
+      const feePayerOptions = allUsersList.map(u => {
+        const isSelected = u.uid === (sess.feePayerUid || classObj.leaderId);
         return `<option value="${u.uid}" ${isSelected ? 'selected' : ''}>${u.name || u.email}</option>`;
       }).join('');
+
+      // 場租付款人選單
+      const rentPayerOptions = allUsersList.map(u => {
+        const isSelected = u.uid === (sess.rentPayerUid || sess.payerUid || classObj.leaderId);
+        return `<option value="${u.uid}" ${isSelected ? 'selected' : ''}>${u.name || u.email}</option>`;
+      }).join('');
+
+      const feeVal = sess.fee !== undefined ? sess.fee : classObj.price;
 
       return `
         <tr data-date="${d}" class="edit-session-row">
           <td><input type="date" value="${d}" class="edit-date-input" style="width:115px;"></td>
-          <td><input type="text" value="${sess.time || '19:00'}" class="edit-time-input" style="width:65px;"></td>
-          <td><input type="text" value="${sess.location || ''}" class="edit-loc-input" style="width:100px;"></td>
-          <td><input type="number" value="${sess.rent || 0}" class="edit-rent-input" style="width:60px;"></td>
+          <td><input type="text" value="${sess.time || '19:00'}" class="edit-time-input" style="width:60px;"></td>
+          <td><input type="text" value="${sess.location || ''}" class="edit-loc-input" style="width:90px;"></td>
+          
+          <td><input type="number" value="${feeVal}" class="edit-fee-input" style="width:55px;"></td>
           <td>
-            <select class="edit-payer-select" style="width:90px;">
-              ${payerOptions}
+            <select class="edit-fee-payer-select" style="width:85px;">
+              ${feePayerOptions}
             </select>
           </td>
+
+          <td><input type="number" value="${sess.rent || 0}" class="edit-rent-input" style="width:55px;"></td>
+          <td>
+            <select class="edit-rent-payer-select" style="width:85px;">
+              ${rentPayerOptions}
+            </select>
+          </td>
+
           <td>
             <div class="students-container" style="margin-bottom:4px;">${studentChipsHtml}</div>
             <div class="flex" style="gap:2px; margin:0;">
@@ -935,7 +976,6 @@
     }).join('');
   }
 
-  // Row 內的動態加/減學員邏輯 (前端暫存，按下「儲存所有變更」才寫入 DB)
   window.addStudentToSessionRow = (btn) => {
     const tr = btn.closest('tr');
     const select = tr.querySelector('.add-student-select');
@@ -944,18 +984,17 @@
     if (!userObj) return;
 
     const container = tr.querySelector('.students-container');
-    // 檢查是否已在清單中
     if (container.querySelector(`[data-uid="${selectedUid}"]`)) return alert("該學員已在名單中");
 
     const chip = document.createElement('span');
     chip.className = 'student-chip';
     chip.setAttribute('data-uid', selectedUid);
     chip.setAttribute('data-name', userObj.name || userObj.email);
-    chip.innerHTML = `${userObj.name || userObj.email} <button type="button" onclick="removeStudentFromSessionRow(this, '${selectedUid}')">✕</button>`;
+    chip.innerHTML = `${userObj.name || userObj.email} <button type="button" onclick="removeStudentFromSessionRow(this)">✕</button>`;
     container.appendChild(chip);
   };
 
-  window.removeStudentFromSessionRow = (btn, uid) => {
+  window.removeStudentFromSessionRow = (btn) => {
     btn.closest('.student-chip').remove();
   };
 
@@ -974,11 +1013,17 @@
     tr.className = 'edit-session-row';
     tr.innerHTML = `
       <td><input type="date" value="${todayStr}" class="edit-date-input" style="width:115px;"></td>
-      <td><input type="text" value="19:00" class="edit-time-input" style="width:65px;"></td>
-      <td><input type="text" value="Studio A" class="edit-loc-input" style="width:100px;"></td>
-      <td><input type="number" value="0" class="edit-rent-input" style="width:60px;"></td>
+      <td><input type="text" value="19:00" class="edit-time-input" style="width:60px;"></td>
+      <td><input type="text" value="Studio A" class="edit-loc-input" style="width:90px;"></td>
+      <td><input type="number" value="${classObj.price || 0}" class="edit-fee-input" style="width:55px;"></td>
       <td>
-        <select class="edit-payer-select" style="width:90px;">
+        <select class="edit-fee-payer-select" style="width:85px;">
+          ${payerOptions}
+        </select>
+      </td>
+      <td><input type="number" value="0" class="edit-rent-input" style="width:55px;"></td>
+      <td>
+        <select class="edit-rent-payer-select" style="width:85px;">
           ${payerOptions}
         </select>
       </td>
@@ -1015,17 +1060,25 @@
       const dateVal = tr.querySelector('.edit-date-input').value;
       const timeVal = tr.querySelector('.edit-time-input').value;
       const locVal = tr.querySelector('.edit-loc-input').value;
+
+      // 學費與收款人
+      const feeVal = Number(tr.querySelector('.edit-fee-input').value) || 0;
+      const feePayerUid = tr.querySelector('.edit-fee-payer-select').value;
+      const feePayerObj = allUsersList.find(u => u.uid === feePayerUid);
+      const feePayerName = feePayerObj ? (feePayerObj.name || feePayerObj.email) : '班長';
+
+      // 場租與付款人
       const rentVal = Number(tr.querySelector('.edit-rent-input').value) || 0;
-      const payerUid = tr.querySelector('.edit-payer-select').value;
-      const payerObj = allUsersList.find(u => u.uid === payerUid);
-      const payerName = payerObj ? (payerObj.name || payerObj.email) : '班長';
+      const rentPayerUid = tr.querySelector('.edit-rent-payer-select').value;
+      const rentPayerObj = allUsersList.find(u => u.uid === rentPayerUid);
+      const rentPayerName = rentPayerObj ? (rentPayerObj.name || rentPayerObj.email) : '班長';
 
       // 提取學員名單
       const studentChips = tr.querySelectorAll('.student-chip');
       const updatedStudents = [];
       studentChips.forEach(chip => {
-        const uid = chip.getAttribute('data-uid') || chip.querySelector('button')?.getAttribute('onclick')?.match(/'([^']+)'/)?.[1];
-        const nameText = chip.innerText.replace('✕', '').trim();
+        const uid = chip.getAttribute('data-uid');
+        const nameText = chip.getAttribute('data-name') || chip.innerText.replace('✕', '').trim();
         if (uid) {
           updatedStudents.push({ uid, name: nameText });
         }
@@ -1035,9 +1088,12 @@
         newSessions[dateVal] = {
           time: timeVal,
           location: locVal,
+          fee: feeVal,
+          feePayerUid,
+          feePayerName,
           rent: rentVal,
-          payerUid,
-          payerName,
+          rentPayerUid,
+          rentPayerName,
           students: updatedStudents
         };
       }
@@ -1049,7 +1105,7 @@
         allowedUsers,
         sessions: newSessions
       });
-      alert("【成功】堂數、場租與學員名單已順利更新！");
+      alert("【成功】堂數、學費/場租及學員名單已順利更新！");
       loadClasses();
     } catch(e) {
       alert("儲存失敗: " + e.message);
