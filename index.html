@@ -182,7 +182,6 @@
 
 <div class="container">
   
-  <!-- 頂部 User Bar -->
   <div class="card flex between">
     <div>
       <h2 style="margin:0">💃 Dancing-Sontos</h2>
@@ -191,10 +190,9 @@
     <button id="logout-btn" class="hidden" style="width: auto; margin:0;">登出</button>
   </div>
 
-  <!-- Auth 登入/註冊區 -->
   <div id="auth-section" class="card">
     <h3 id="auth-title">會員登入</h3>
-    <input type="text" id="auth-email" placeholder="電子郵件或 Admin 帳號">
+    <input type="text" id="auth-email" placeholder="電子郵件">
     <input type="password" id="auth-password" placeholder="密碼">
     
     <div id="register-extra" class="hidden">
@@ -204,18 +202,14 @@
     <button id="auth-main-btn">登入</button>
     <div style="display:flex; justify-content:space-between; margin-top: 10px;">
       <a href="#" id="toggle-auth-mode" style="font-size:13px;">沒有帳號？點此註冊</a>
-      <a href="#" id="toggle-admin-mode" style="font-size:13px; color:#dc2626; font-weight:bold;">👑 Admin 登入</a>
     </div>
   </div>
 
-  <!-- 主功能區 (登入後顯示) -->
   <div id="app-section" class="hidden">
     
-    <!-- 👑 Admin 專屬控制面板 -->
     <div id="admin-panel" class="card card-admin hidden">
       <h3 style="color:#9f1239; margin-top:0;">👑 Admin 全系統最高管理面板</h3>
       
-      <!-- 1. 全用戶管理 -->
       <div style="margin-bottom: 20px;">
         <h4 style="margin-bottom:5px;">👥 全站用戶列表與管理</h4>
         <div style="background:#fff; padding:10px; border-radius:8px; border:1px solid var(--border);">
@@ -234,14 +228,12 @@
               </tr>
             </thead>
             <tbody id="admin-user-tbody">
-              <!-- 動態載入用戶列表 -->
-            </tbody>
+              </tbody>
           </table>
         </div>
       </div>
     </div>
 
-    <!-- 開班功能 (一般學員與 Admin 皆可用) -->
     <div class="card">
       <div class="flex between">
         <h3>➕ 我要開班 (發起課程)</h3>
@@ -269,7 +261,6 @@
           <input type="number" id="class-price" placeholder="單堂學費 ($)">
         </div>
 
-        <!-- 誰能報讀設定 -->
         <label style="font-size: 12px; font-weight: bold;">誰能報讀 / 查看此課程：</label>
         <select id="access-type" onchange="toggleAccessUserList()">
           <option value="all">全部人 (公開班)</option>
@@ -279,15 +270,13 @@
         <div id="access-user-container" class="hidden" style="margin-bottom: 12px;">
           <small style="color:#64748b;">勾選可以查看與報名的成員：</small>
           <div id="all-users-checkboxes" class="user-select-list">
-            <!-- 動態載入使用者列表 -->
-          </div>
+            </div>
         </div>
 
         <button id="add-class-btn" class="btn-success">正式發布課程</button>
       </div>
     </div>
 
-    <!-- 月曆檢視 -->
     <div class="card">
       <div class="flex between" style="margin-bottom: 10px;">
         <h3>📅 課程月曆 <small style="font-size:11px; font-weight:normal; color:#166534;">(🟩 綠底表示已報名堂數)</small></h3>
@@ -304,7 +293,6 @@
       <div class="calendar-grid" id="calendar-days"></div>
     </div>
 
-    <!-- 課程列表與獨立報名區 -->
     <div class="card">
       <h3>📚 所有課程與獨立報名</h3>
       <div id="class-list">載入中...</div>
@@ -314,7 +302,6 @@
 
 </div>
 
-<!-- Firebase SDKs -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
   import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
@@ -346,7 +333,6 @@
   const authSection = document.getElementById('auth-section');
   const appSection = document.getElementById('app-section');
   const toggleAuthModeBtn = document.getElementById('toggle-auth-mode');
-  const toggleAdminModeBtn = document.getElementById('toggle-admin-mode');
   const registerExtra = document.getElementById('register-extra');
   const authMainBtn = document.getElementById('auth-main-btn');
   const logoutBtn = document.getElementById('logout-btn');
@@ -367,44 +353,22 @@
     toggleAuthModeBtn.innerText = isRegisterMode ? "已有帳號？登入" : "沒有帳號？註冊";
   });
 
-  toggleAdminModeBtn.addEventListener('click', (e) => {
-    e.preventDefault();
-    document.getElementById('auth-title').innerText = "👑 管理員 (Admin) 登入";
-    authMainBtn.innerText = "Admin 登入";
-    registerExtra.classList.add('hidden');
-  });
-
+  // 標準 Firebase 登入/註冊處理
   authMainBtn.addEventListener('click', async () => {
-    const inputVal = document.getElementById('auth-email').value.trim();
+    const email = document.getElementById('auth-email').value.trim();
     const password = document.getElementById('auth-password').value.trim();
 
-    if(!inputVal || !password) return alert("請填寫完整資訊");
-
-    // Admin 特殊登入判斷
-    if (inputVal === "yonnielo" && password === "1234567") {
-      isAdmin = true;
-      currentUser = { uid: "admin-yonnielo", email: "yonnielo@admin.com" };
-      currentUserProfile = { name: "System Admin (yonnielo)" };
-      
-      userStatus.innerHTML = `<span class="badge-admin">👑 Admin</span> ${currentUserProfile.name}`;
-      authSection.classList.add('hidden');
-      appSection.classList.remove('hidden');
-      adminPanel.classList.remove('hidden');
-      logoutBtn.classList.remove('hidden');
-
-      loadAdminUsers();
-      loadClasses();
-      return;
-    }
+    if(!email || !password) return alert("請填寫完整資訊");
 
     try {
       if(isRegisterMode) {
         const name = document.getElementById('auth-name').value || "舞者";
-        const res = await createUserWithEmailAndPassword(auth, inputVal, password);
-        await setDoc(doc(db, "users", res.user.uid), { name, email: inputVal, password });
+        const res = await createUserWithEmailAndPassword(auth, email, password);
+        // 新增用戶時，預設 role 為 user
+        await setDoc(doc(db, "users", res.user.uid), { name, email, role: "user" });
         alert("註冊成功！");
       } else {
-        await signInWithEmailAndPassword(auth, inputVal, password);
+        await signInWithEmailAndPassword(auth, email, password);
       }
     } catch (err) {
       alert("登入/註冊失敗: " + err.message);
@@ -412,38 +376,47 @@
   });
 
   logoutBtn.addEventListener('click', () => {
-    if(isAdmin) {
-      isAdmin = false;
-      currentUser = null;
-      currentUserProfile = null;
-      adminPanel.classList.add('hidden');
-      userStatus.innerText = "未登入";
-      authSection.classList.remove('hidden');
-      appSection.classList.add('hidden');
-      logoutBtn.classList.add('hidden');
-    } else {
-      signOut(auth);
-    }
+    signOut(auth);
   });
 
+  // 監聽登入狀態變更
   onAuthStateChanged(auth, async (user) => {
-    if (user && !isAdmin) {
+    if (user) {
       currentUser = user;
       const userDoc = await getDoc(doc(db, "users", user.uid));
-      currentUserProfile = userDoc.data() || { name: '舞者' };
+      currentUserProfile = userDoc.data() || { name: '舞者', role: 'user' };
       
-      userStatus.innerText = `👤 ${currentUserProfile.name}`;
+      // 判斷是否為 Admin（依據資料庫設定的 role 或特定的 Admin Email）
+      isAdmin = currentUserProfile.role === 'admin' || user.email === 'yonnielo@admin.com';
+
+      if (isAdmin) {
+        userStatus.innerHTML = `<span class="badge-admin">👑 Admin</span> ${currentUserProfile.name || '管理員'}`;
+        adminPanel.classList.remove('hidden');
+        loadAdminUsers();
+      } else {
+        userStatus.innerText = `👤 ${currentUserProfile.name}`;
+        adminPanel.classList.add('hidden');
+      }
+
       authSection.classList.add('hidden');
       appSection.classList.remove('hidden');
       logoutBtn.classList.remove('hidden');
 
       loadClasses();
+    } else {
+      currentUser = null;
+      currentUserProfile = null;
+      isAdmin = false;
+      userStatus.innerText = "未登入";
+      authSection.classList.remove('hidden');
+      appSection.classList.add('hidden');
+      adminPanel.classList.add('hidden');
+      logoutBtn.classList.add('hidden');
     }
   });
 
   // ---------------- ADMIN 功能函數 ----------------
 
-  // 1. 載入並渲染 Admin 用戶管理表格
   async function loadAdminUsers() {
     const querySnapshot = await getDocs(collection(db, "users"));
     allUsersList = [];
@@ -467,7 +440,6 @@
     `).join('');
   }
 
-  // Admin 手動新增用戶
   document.getElementById('admin-add-user-btn').addEventListener('click', async () => {
     const name = document.getElementById('admin-new-name').value;
     const email = document.getElementById('admin-new-email').value;
@@ -477,8 +449,8 @@
 
     try {
       const customUid = "user_" + Date.now();
-      await setDoc(doc(db, "users", customUid), { name, email, password: password || "123456" });
-      alert("新增用戶成功！");
+      await setDoc(doc(db, "users", customUid), { name, email, role: "user" });
+      alert("新增用戶資料成功！");
       document.getElementById('admin-new-name').value = '';
       document.getElementById('admin-new-email').value = '';
       document.getElementById('admin-new-pwd').value = '';
@@ -488,25 +460,19 @@
     }
   });
 
-  // Admin 儲存修改/密碼重置
   window.adminSaveUser = async (uid) => {
     const name = document.getElementById(`admin-name-${uid}`).value;
     const email = document.getElementById(`admin-email-${uid}`).value;
-    const newPwd = document.getElementById(`admin-pwd-${uid}`).value;
-
-    const updateObj = { name, email };
-    if(newPwd) updateObj.password = newPwd;
 
     try {
-      await updateDoc(doc(db, "users", uid), updateObj);
-      alert("用戶資料與密碼重置成功！");
+      await updateDoc(doc(db, "users", uid), { name, email });
+      alert("用戶資料更新成功！");
       loadAdminUsers();
     } catch(e) {
       alert("更新失敗: " + e.message);
     }
   };
 
-  // Admin 刪除用戶
   window.adminDeleteUser = async (uid) => {
     if(confirm("確定要刪除此用戶嗎？")) {
       await deleteDoc(doc(db, "users", uid));
@@ -594,7 +560,7 @@
         sessions,
         price: Number(price) || 0,
         leaderId: currentUser.uid,
-        leaderName: currentUserProfile.name,
+        leaderName: currentUserProfile.name || '班長',
         accessType,
         allowedUsers,
         createdAt: new Date()
@@ -617,7 +583,6 @@
     classesData = [];
     querySnapshot.forEach((docSnap) => {
       const data = docSnap.data();
-      // Admin 無視權限可看全部課程；學員則過濾
       if(!isAdmin && data.accessType === 'specific' && !data.allowedUsers.includes(currentUser.uid)) {
         return;
       }
@@ -696,7 +661,7 @@
 
     listEl.innerHTML = classesData.map(c => {
       const isLeader = c.leaderId === currentUser.uid;
-      const canManage = isLeader || isAdmin; // Admin 亦擁有完整管理權限
+      const canManage = isLeader || isAdmin;
       const sessions = c.sessions || {};
       const dateKeys = Object.keys(sessions).sort();
 
@@ -741,7 +706,6 @@
             ${sessionsHtml || '<p style="font-size:12px; color:#94a3b8;">暫無上堂日期</p>'}
           </div>
 
-          <!-- 班長/Admin 專用表格化管理 -->
           ${canManage ? `
             <div style="margin-top: 12px; padding: 10px; background: #fffbe0; border-radius: 8px; border: 1px solid #fde047;">
               <div class="flex between">
@@ -749,7 +713,6 @@
                 <button onclick="toggleTableEdit('${c.id}')" style="width:auto; margin:0; padding:4px 8px; font-size:12px; background:#d97706;">✏️ 批次編輯課堂 (表格模式)</button>
               </div>
 
-              <!-- 表格編輯展開區 -->
               <div id="table-editor-${c.id}" class="hidden" style="margin-top: 10px;">
                 <table class="edit-table">
                   <thead>
@@ -761,7 +724,6 @@
                     </tr>
                   </thead>
                   <tbody id="table-tbody-${c.id}">
-                    <!-- 動態生成行 -->
                   </tbody>
                 </table>
                 <div class="flex" style="margin-top: 8px;">
@@ -854,7 +816,7 @@
 
     if(isJoining) {
       if(!students.some(s => s.uid === currentUser.uid)) {
-        students.push({ uid: currentUser.uid, name: currentUserProfile.name });
+        students.push({ uid: currentUser.uid, name: currentUserProfile.name || '學員' });
       }
     } else {
       students = students.filter(s => s.uid !== currentUser.uid);
