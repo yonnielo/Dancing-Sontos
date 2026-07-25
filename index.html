@@ -15,6 +15,7 @@
       --success: #22c55e;
       --joined-bg: #dcfce7;
       --joined-border: #86efac;
+      --joined-text: #14532d;
       --admin-bg: #fef2f2;
       --admin-border: #fca5a5;
     }
@@ -99,26 +100,32 @@
     .day-header { font-weight: bold; padding: 5px 0; }
     .day-cell {
       border: 1px solid var(--border);
-      min-height: 70px;
+      min-height: 80px;
       border-radius: 6px;
       padding: 4px;
       font-size: 12px;
       background: #fff;
-      transition: background-color 0.2s;
     }
-    .day-cell.joined-day {
-      background-color: var(--joined-bg) !important;
-      border: 1px solid var(--joined-border) !important;
-    }
+    
+    /* 修正：僅已報名的單堂標籤變綠底 */
     .class-tag {
       background: #e0e7ff;
       color: #3730a3;
-      padding: 2px 4px;
+      border: 1px solid #c7d2fe;
+      padding: 4px;
       border-radius: 4px;
-      margin-top: 2px;
+      margin-top: 4px;
       font-size: 10px;
       text-align: left;
+      line-height: 1.2;
     }
+    .class-tag.joined {
+      background-color: var(--joined-bg) !important;
+      border: 1px solid var(--joined-border) !important;
+      color: var(--joined-text) !important;
+      font-weight: bold;
+    }
+
     .badge-leader {
       background: #fef3c7;
       color: #b45309;
@@ -167,7 +174,7 @@
       border: 1px solid var(--border);
       padding: 10px;
       border-radius: 8px;
-      max-height: 160px;
+      max-height: 180px;
       overflow-y: auto;
       background: #fff;
     }
@@ -186,20 +193,46 @@
       margin: 0;
       width: auto;
     }
+    .team-badge {
+      background: #e0f2fe;
+      color: #0369a1;
+      font-size: 10px;
+      padding: 1px 5px;
+      border-radius: 4px;
+      margin-left: 3px;
+    }
+    .team-btn-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin-bottom: 8px;
+    }
+    .team-select-btn {
+      width: auto !important;
+      margin: 0 !important;
+      padding: 3px 8px !important;
+      font-size: 11px !important;
+      background: #0284c7;
+    }
   </style>
 </head>
 <body>
 
 <div class="container">
   
+  <!-- 頂部 User Bar -->
   <div class="card flex between">
     <div>
       <h2 style="margin:0">💃 Dancing-Sontos</h2>
       <span id="user-status" style="font-size: 12px; color: #64748b;">未登入</span>
     </div>
-    <button id="logout-btn" class="hidden" style="width: auto; margin:0;">登出</button>
+    <div class="flex" style="gap:5px; margin:0;">
+      <button id="delete-account-btn" class="btn-danger hidden" style="width: auto; margin:0; font-size:12px;">取消我的帳戶</button>
+      <button id="logout-btn" class="hidden" style="width: auto; margin:0; font-size:12px;">登出</button>
+    </div>
   </div>
 
+  <!-- Auth 登入/註冊區 -->
   <div id="auth-section" class="card">
     <h3 id="auth-title">會員登入</h3>
     <input type="text" id="auth-email" placeholder="電子郵件">
@@ -215,13 +248,28 @@
     </div>
   </div>
 
+  <!-- 主功能區 (登入後顯示) -->
   <div id="app-section" class="hidden">
     
+    <!-- 👑 Admin 專屬控制面板 -->
     <div id="admin-panel" class="card card-admin hidden">
       <h3 style="color:#9f1239; margin-top:0;">👑 Admin 全系統最高管理面板</h3>
       
+      <!-- Team 管理區 -->
+      <div style="margin-bottom: 15px; background:#fff; padding:10px; border-radius:8px; border:1px solid var(--border);">
+        <h4 style="margin:0 0 8px 0;">🚩 建立與管理 Team 團隊分類</h4>
+        <div class="flex" style="gap:5px;">
+          <input type="text" id="admin-new-team-name" placeholder="Team 名稱 (例如: Team A)" style="margin:0;">
+          <button id="admin-add-team-btn" class="btn-success" style="width:120px; margin:0; font-size:12px;">新增 Team</button>
+        </div>
+        <div id="admin-teams-list" style="margin-top:8px; font-size:12px;" class="flex">
+          <!-- 動態載入 Team 清單 -->
+        </div>
+      </div>
+
+      <!-- 全用戶管理 -->
       <div style="margin-bottom: 20px;">
-        <h4 style="margin-bottom:5px;">👥 全站用戶列表與管理</h4>
+        <h4 style="margin-bottom:5px;">👥 全站用戶列表、Team 分組與管理</h4>
         <div style="background:#fff; padding:10px; border-radius:8px; border:1px solid var(--border);">
           <div class="flex" style="gap:5px;">
             <input type="text" id="admin-new-name" placeholder="新增暱稱" style="margin:0;">
@@ -233,17 +281,20 @@
               <tr>
                 <th>暱稱</th>
                 <th>Email / 帳號</th>
+                <th>所屬 Team (可多選)</th>
                 <th>角色 (Role)</th>
                 <th>操作</th>
               </tr>
             </thead>
             <tbody id="admin-user-tbody">
-              </tbody>
+              <!-- 動態載入用戶列表 -->
+            </tbody>
           </table>
         </div>
       </div>
     </div>
 
+    <!-- 開班功能 -->
     <div class="card">
       <div class="flex between">
         <h3>➕ 我要開班 (發起課程)</h3>
@@ -271,25 +322,30 @@
           <input type="number" id="class-price" placeholder="單堂學費 ($)">
         </div>
 
+        <!-- 誰能報讀設定 -->
         <label style="font-size: 12px; font-weight: bold;">誰能報讀 / 查看此課程：</label>
         <select id="access-type">
           <option value="all">全部人 (公開班)</option>
-          <option value="specific">指定成員 (私人小組班)</option>
+          <option value="specific">指定成員 / Team (私人小組班)</option>
         </select>
 
         <div id="access-user-container" class="hidden" style="margin-bottom: 12px;">
-          <small style="color:#64748b;">勾選可以查看與報名的成員：</small>
+          <small style="color:#64748b;">快速選取 Team (全 Team 成員自動勾選，亦可個別加減人)：</small>
+          <div id="create-team-btn-group" class="team-btn-group" style="margin-top:4px;"></div>
+
           <div id="all-users-checkboxes" class="user-select-list">
-            </div>
+            <!-- 動態載入使用者列表 -->
+          </div>
         </div>
 
         <button id="add-class-btn" class="btn-success">正式發布課程</button>
       </div>
     </div>
 
+    <!-- 月曆檢視 -->
     <div class="card">
       <div class="flex between" style="margin-bottom: 10px;">
-        <h3>📅 課程月曆 <small style="font-size:11px; font-weight:normal; color:#166534;">(🟩 綠底表示已報名堂數)</small></h3>
+        <h3>📅 課程月曆 <small style="font-size:11px; font-weight:normal; color:#166534;">(🟩 綠底卡片表示該堂已報名)</small></h3>
         <div>
           <button id="prev-month" style="width:auto; padding: 4px 8px; margin:0;">&lt;</button>
           <span id="current-month-display" style="font-weight:bold;"></span>
@@ -303,6 +359,7 @@
       <div class="calendar-grid" id="calendar-days"></div>
     </div>
 
+    <!-- 課程列表與獨立報名區 -->
     <div class="card">
       <h3>📚 所有課程與獨立報名</h3>
       <div id="class-list">載入中...</div>
@@ -313,7 +370,7 @@
 </div>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-  import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+  import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, signOut, onAuthStateChanged, deleteUser } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
   import { getFirestore, collection, addDoc, getDocs, doc, setDoc, getDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
   const firebaseConfig = {
@@ -337,6 +394,7 @@
   let currentDate = new Date();
   let classesData = [];
   let allUsersList = [];
+  let allTeamsList = [];
   let selectedDates = [];
 
   const authSection = document.getElementById('auth-section');
@@ -345,12 +403,13 @@
   const registerExtra = document.getElementById('register-extra');
   const authMainBtn = document.getElementById('auth-main-btn');
   const logoutBtn = document.getElementById('logout-btn');
+  const deleteAccountBtn = document.getElementById('delete-account-btn');
   const userStatus = document.getElementById('user-status');
   const adminPanel = document.getElementById('admin-panel');
 
   document.getElementById('toggle-create-btn').addEventListener('click', () => {
     document.getElementById('create-class-form').classList.toggle('hidden');
-    loadAllUsers();
+    loadAllUsersAndTeams();
   });
 
   document.getElementById('access-type').addEventListener('change', (e) => {
@@ -376,7 +435,7 @@
       if(isRegisterMode) {
         const name = document.getElementById('auth-name').value || "舞者";
         const res = await createUserWithEmailAndPassword(auth, email, password);
-        await setDoc(doc(db, "users", res.user.uid), { name, email, role: "user" });
+        await setDoc(doc(db, "users", res.user.uid), { name, email, role: "user", teams: [] });
         alert("註冊成功！");
       } else {
         await signInWithEmailAndPassword(auth, email, password);
@@ -390,15 +449,31 @@
     signOut(auth);
   });
 
+  // 1) 取消我的帳戶功能
+  deleteAccountBtn.addEventListener('click', async () => {
+    if(confirm("⚠️ 警告：確定要刪除/取消您的帳戶嗎？此動作不可逆，將會刪除您的用戶資料並登出。")) {
+      try {
+        const uid = currentUser.uid;
+        // 刪除 Firestore 中的 user 資料
+        await deleteDoc(doc(db, "users", uid));
+        // 刪除 Firebase Auth 帳戶
+        await deleteUser(currentUser);
+        alert("您的帳戶已成功取消與刪除。");
+      } catch(e) {
+        alert("取消帳戶失敗: " + e.message + "\n(若是很久以前登入，可能需要先重新登入後再執行此動作)");
+      }
+    }
+  });
+
   onAuthStateChanged(auth, async (user) => {
     if (user) {
       currentUser = user;
       try {
         const userDoc = await getDoc(doc(db, "users", user.uid));
-        currentUserProfile = userDoc.exists() ? userDoc.data() : { name: '舞者', role: 'user' };
+        currentUserProfile = userDoc.exists() ? userDoc.data() : { name: '舞者', role: 'user', teams: [] };
       } catch(e) {
         console.error("無法取得使用者 Profile", e);
-        currentUserProfile = { name: '舞者', role: 'user' };
+        currentUserProfile = { name: '舞者', role: 'user', teams: [] };
       }
       
       isAdmin = (currentUserProfile && currentUserProfile.role === 'admin') || user.email === 'yonnielo@yahoo.com';
@@ -406,6 +481,7 @@
       if (isAdmin) {
         userStatus.innerHTML = `<span class="badge-admin">👑 Admin</span> ${currentUserProfile.name || '管理員'}`;
         adminPanel.classList.remove('hidden');
+        loadAdminTeams();
         loadAdminUsers();
       } else {
         userStatus.innerText = `👤 ${currentUserProfile.name}`;
@@ -415,6 +491,7 @@
       authSection.classList.add('hidden');
       appSection.classList.remove('hidden');
       logoutBtn.classList.remove('hidden');
+      deleteAccountBtn.classList.remove('hidden');
 
       loadClasses();
     } else {
@@ -426,10 +503,59 @@
       appSection.classList.add('hidden');
       adminPanel.classList.add('hidden');
       logoutBtn.classList.add('hidden');
+      deleteAccountBtn.classList.add('hidden');
     }
   });
 
-  // ---------------- ADMIN 功能 ----------------
+  // ---------------- ADMIN & TEAM 功能 ----------------
+
+  async function loadAdminTeams() {
+    try {
+      const snap = await getDocs(collection(db, "teams"));
+      allTeamsList = [];
+      snap.forEach(d => allTeamsList.push({ id: d.id, ...d.data() }));
+
+      const container = document.getElementById('admin-teams-list');
+      if(allTeamsList.length === 0) {
+        container.innerHTML = `<span style="color:#94a3b8;">目前尚未建立任何 Team</span>`;
+        return;
+      }
+      container.innerHTML = allTeamsList.map(t => `
+        <span class="team-badge" style="padding:4px 8px; font-size:12px; display:inline-flex; align-items:center; gap:5px;">
+          🚩 ${t.name}
+          <button onclick="adminDeleteTeam('${t.id}')" style="width:auto; margin:0; padding:0 4px; background:none; color:#ef4444; border:none; cursor:pointer; font-weight:bold;">✕</button>
+        </span>
+      `).join('');
+    } catch(e) {
+      console.error("載入 Team 失敗:", e);
+    }
+  }
+
+  document.getElementById('admin-add-team-btn').addEventListener('click', async () => {
+    const name = document.getElementById('admin-new-team-name').value.trim();
+    if(!name) return alert("請輸入 Team 名稱");
+    try {
+      await addDoc(collection(db, "teams"), { name });
+      document.getElementById('admin-new-team-name').value = '';
+      alert("新增 Team 成功！");
+      loadAdminTeams();
+      loadAdminUsers();
+    } catch(e) {
+      alert("新增 Team 失敗: " + e.message);
+    }
+  });
+
+  window.adminDeleteTeam = async (teamId) => {
+    if(confirm("確定要刪除此 Team 分類嗎？")) {
+      try {
+        await deleteDoc(doc(db, "teams", teamId));
+        loadAdminTeams();
+        loadAdminUsers();
+      } catch(e) {
+        alert("刪除 Team 失敗: " + e.message);
+      }
+    }
+  };
 
   async function loadAdminUsers() {
     try {
@@ -440,37 +566,50 @@
       });
 
       const tbody = document.getElementById('admin-user-tbody');
-      tbody.innerHTML = allUsersList.map(u => `
-        <tr>
-          <td><input type="text" value="${u.name || ''}" id="admin-name-${u.uid}"></td>
-          <td><input type="text" value="${u.email || ''}" id="admin-email-${u.uid}"></td>
-          <td>
-            <select id="admin-role-${u.uid}" style="margin:0; padding:2px; font-size:12px;">
-              <option value="user" ${u.role !== 'admin' ? 'selected' : ''}>一般用戶</option>
-              <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>Admin</option>
-            </select>
-          </td>
-          <td>
-            <div class="flex" style="gap:4px; margin:0;">
-              <button onclick="adminSaveUser('${u.uid}')" style="width:auto; margin:0; padding:2px 6px; font-size:10px;" class="btn-success">儲存</button>
-              <button onclick="adminResetPassword('${u.email}')" style="width:auto; margin:0; padding:2px 6px; font-size:10px;" class="btn-warning">重設密碼信</button>
-              <button onclick="adminDeleteUser('${u.uid}')" style="width:auto; margin:0; padding:2px 6px; font-size:10px;" class="btn-danger">刪除</button>
-            </div>
-          </td>
-        </tr>
-      `).join('');
+      tbody.innerHTML = allUsersList.map(u => {
+        const userTeams = u.teams || [];
+        const teamsCheckboxes = allTeamsList.map(t => `
+          <label style="font-size:11px; margin-right:6px; white-space:nowrap;">
+            <input type="checkbox" class="admin-user-team-cb-${u.uid}" value="${t.id}" ${userTeams.includes(t.id) ? 'checked' : ''}> ${t.name}
+          </label>
+        `).join('');
+
+        return `
+          <tr>
+            <td><input type="text" value="${u.name || ''}" id="admin-name-${u.uid}"></td>
+            <td><input type="text" value="${u.email || ''}" id="admin-email-${u.uid}"></td>
+            <td>
+              <div style="max-height:60px; overflow-y:auto;">
+                ${teamsCheckboxes || '<small style="color:#94a3b8;">請先建立 Team</small>'}
+              </div>
+            </td>
+            <td>
+              <select id="admin-role-${u.uid}" style="margin:0; padding:2px; font-size:12px;">
+                <option value="user" ${u.role !== 'admin' ? 'selected' : ''}>一般用戶</option>
+                <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>Admin</option>
+              </select>
+            </td>
+            <td>
+              <div class="flex" style="gap:4px; margin:0;">
+                <button onclick="adminSaveUser('${u.uid}')" style="width:auto; margin:0; padding:2px 6px; font-size:10px;" class="btn-success">儲存</button>
+                <button onclick="adminResetPassword('${u.email}')" style="width:auto; margin:0; padding:2px 6px; font-size:10px;" class="btn-warning">重設密碼信</button>
+                <button onclick="adminDeleteUser('${u.uid}')" style="width:auto; margin:0; padding:2px 6px; font-size:10px;" class="btn-danger">刪除</button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
     } catch(e) {
       alert("載入用戶列表失敗: " + e.message);
     }
   }
 
-  // 重設密碼郵件發送功能
   window.adminResetPassword = async (email) => {
     if(!email) return alert("該用戶沒有有效的 Email！");
     if(confirm(`確定要向 ${email} 發送密碼重設信嗎？`)) {
       try {
         await sendPasswordResetEmail(auth, email);
-        alert(`【成功】重設密碼信已成功發送到 ${email}！請提示用戶查收 Email 並設定新密碼。`);
+        alert(`【成功】重設密碼信已發送到 ${email}！`);
       } catch(e) {
         alert("【失敗】無法發送重設信: " + e.message);
       }
@@ -485,7 +624,7 @@
 
     try {
       const customUid = "user_" + Date.now();
-      await setDoc(doc(db, "users", customUid), { name, email, role: "user" });
+      await setDoc(doc(db, "users", customUid), { name, email, role: "user", teams: [] });
       alert("新增用戶成功！");
       document.getElementById('admin-new-name').value = '';
       document.getElementById('admin-new-email').value = '';
@@ -500,12 +639,15 @@
     const email = document.getElementById(`admin-email-${uid}`).value.trim();
     const role = document.getElementById(`admin-role-${uid}`).value;
 
+    const teamCbs = document.querySelectorAll(`.admin-user-team-cb-${uid}:checked`);
+    const teams = Array.from(teamCbs).map(cb => cb.value);
+
     try {
-      await setDoc(doc(db, "users", uid), { name, email, role }, { merge: true });
-      alert("【成功】使用者資料已順利更新！");
+      await setDoc(doc(db, "users", uid), { name, email, role, teams }, { merge: true });
+      alert("【成功】使用者資料與 Team 權限已更新！");
       loadAdminUsers();
     } catch(e) {
-      alert("【失敗】資料庫拒絕變更，錯誤原因: " + e.message);
+      alert("【失敗】變更失敗: " + e.message);
     }
   };
 
@@ -513,7 +655,7 @@
     if(confirm("確定要從資料庫刪除此用戶嗎？")) {
       try {
         await deleteDoc(doc(db, "users", uid));
-        alert("【成功】使用者已成功從資料庫移除！");
+        alert("【成功】使用者已從資料庫移除！");
         loadAdminUsers();
       } catch(e) {
         alert("【失敗】刪除失敗: " + e.message);
@@ -522,27 +664,68 @@
   };
   // ---------------- 共通/課堂功能 ----------------
 
-  async function loadAllUsers() {
+  async function loadAllUsersAndTeams() {
     try {
+      // 載入 Teams
+      const teamSnap = await getDocs(collection(db, "teams"));
+      allTeamsList = [];
+      teamSnap.forEach(d => allTeamsList.push({ id: d.id, ...d.data() }));
+
+      // 載入 Users
       const querySnapshot = await getDocs(collection(db, "users"));
       allUsersList = [];
       querySnapshot.forEach(docSnap => {
         allUsersList.push({ uid: docSnap.id, ...docSnap.data() });
       });
 
-      const container = document.getElementById('all-users-checkboxes');
-      container.innerHTML = allUsersList.map(u => {
-        const userName = u.name || u.email || '未命名用戶';
-        return `
-          <label class="user-select-item">
-            <input type="checkbox" value="${u.uid}" class="access-user-checkbox"> ${userName}
-          </label>
-        `;
-      }).join('');
+      // 渲染開班時的 Team 快速按鈕
+      const teamBtnContainer = document.getElementById('create-team-btn-group');
+      if(allTeamsList.length === 0) {
+        teamBtnContainer.innerHTML = `<span style="font-size:11px; color:#94a3b8;">（目前無 Team 分類）</span>`;
+      } else {
+        teamBtnContainer.innerHTML = allTeamsList.map(t => `
+          <button type="button" class="team-select-btn" onclick="selectTeamUsers('${t.id}')">➕ 選擇 ${t.name}</button>
+        `).join('');
+      }
+
+      // 渲染用戶選單
+      renderUserCheckboxes('all-users-checkboxes', 'access-user-checkbox');
     } catch(e) {
-      console.error("載入用戶名單失敗:", e);
+      console.error("載入用戶與 Team 名單失敗:", e);
     }
   }
+
+  function renderUserCheckboxes(containerId, checkboxClass, selectedUids = []) {
+    const container = document.getElementById(containerId);
+    container.innerHTML = allUsersList.map(u => {
+      const isChecked = selectedUids.includes(u.uid);
+      const userName = u.name || u.email || '未命名用戶';
+      const userTeamNames = (u.teams || []).map(tid => {
+        const tObj = allTeamsList.find(t => t.id === tid);
+        return tObj ? tObj.name : null;
+      }).filter(Boolean).join(', ');
+
+      return `
+        <label class="user-select-item">
+          <input type="checkbox" value="${u.uid}" class="${checkboxClass}" ${isChecked ? 'checked' : ''}>
+          ${userName}
+          ${userTeamNames ? `<span class="team-badge">${userTeamNames}</span>` : ''}
+        </label>
+      `;
+    }).join('');
+  }
+
+  // 3) 快速勾選特定 Team 成員
+  window.selectTeamUsers = (teamId, classId = null) => {
+    const cbClass = classId ? `edit-user-cb-${classId}` : 'access-user-checkbox';
+    const memberUids = allUsersList.filter(u => u.teams && u.teams.includes(teamId)).map(u => u.uid);
+
+    document.querySelectorAll(`.${cbClass}`).forEach(cb => {
+      if(memberUids.includes(cb.value)) {
+        cb.checked = true;
+      }
+    });
+  };
 
   document.getElementById('add-date-btn').addEventListener('click', () => {
     const picker = document.getElementById('single-date-picker');
@@ -638,6 +821,7 @@
     }
   }
 
+  // 2) 月曆渲染：只讓使用者有報名的單堂小卡片變綠底
   function renderCalendar() {
     const calendarDays = document.getElementById('calendar-days');
     calendarDays.innerHTML = '';
@@ -665,25 +849,18 @@
       const dayStr = String(day).padStart(2, '0');
       const dateStr = `${year}-${monthStr}-${dayStr}`;
 
-      let userJoinedThisDay = false;
-
       classesData.forEach(c => {
         if(c.sessions && c.sessions[dateStr]) {
           const sess = c.sessions[dateStr];
+          const isJoined = (sess.students || []).some(s => s.uid === currentUser.uid);
+
           const tag = document.createElement('div');
-          tag.className = 'class-tag';
+          // 關鍵修復：僅當用戶報名該堂課程時，加載 joined class (綠底)
+          tag.className = `class-tag ${isJoined ? 'joined' : ''}`;
           tag.innerText = `${sess.time || ''} ${c.name}`;
           cell.appendChild(tag);
-
-          if((sess.students || []).some(s => s.uid === currentUser.uid)) {
-            userJoinedThisDay = true;
-          }
         }
       });
-
-      if(userJoinedThisDay) {
-        cell.classList.add('joined-day');
-      }
 
       calendarDays.appendChild(cell);
     }
@@ -761,20 +938,24 @@
 
               <div id="table-editor-${c.id}" class="hidden" style="margin-top: 10px;">
                 
+                <!-- 隨時修改報名權限 -->
                 <div style="background:#fff; padding:10px; border-radius:8px; border:1px solid #e2e8f0; margin-bottom:10px;">
                   <label style="font-size:12px; font-weight:bold;">🔒 修改「誰能報讀/查看」此課程：</label>
                   <select id="edit-access-type-${c.id}" onchange="toggleEditAccessUserList('${c.id}')" style="margin-top:4px;">
                     <option value="all" ${c.accessType !== 'specific' ? 'selected' : ''}>全部人 (公開班)</option>
-                    <option value="specific" ${c.accessType === 'specific' ? 'selected' : ''}>指定成員 (私人小組班)</option>
+                    <option value="specific" ${c.accessType === 'specific' ? 'selected' : ''}>指定成員 / Team (私人小組班)</option>
                   </select>
 
                   <div id="edit-access-user-container-${c.id}" class="${c.accessType === 'specific' ? '' : 'hidden'}" style="margin-top:6px;">
-                    <small style="color:#64748b;">勾選可查看與報名的成員：</small>
+                    <small style="color:#64748b;">快速勾選 Team 或手動切換勾選成員：</small>
+                    <div id="edit-team-btn-group-${c.id}" class="team-btn-group" style="margin-top:4px;"></div>
                     <div id="edit-users-list-${c.id}" class="user-select-list" style="margin-top:4px;">
-                      </div>
+                      <!-- 動態載入使用者勾選框 -->
+                    </div>
                   </div>
                 </div>
 
+                <!-- 堂數與地點編輯 -->
                 <label style="font-size:12px; font-weight:bold;">📅 編輯堂數地點：</label>
                 <table class="edit-table">
                   <thead>
@@ -819,23 +1000,31 @@
     const classObj = classesData.find(c => c.id === classId);
     const allowed = classObj.allowedUsers || [];
 
-    // 每次打開管理都重新讀取最新用戶名單
+    // 重新載入最新 Users 與 Teams
+    const teamSnap = await getDocs(collection(db, "teams"));
+    allTeamsList = [];
+    teamSnap.forEach(d => allTeamsList.push({ id: d.id, ...d.data() }));
+
     const querySnapshot = await getDocs(collection(db, "users"));
     allUsersList = [];
     querySnapshot.forEach(docSnap => {
       allUsersList.push({ uid: docSnap.id, ...docSnap.data() });
     });
 
-    const container = document.getElementById(`edit-users-list-${classId}`);
-    container.innerHTML = allUsersList.map(u => {
-      const isChecked = allowed.includes(u.uid);
-      const userName = u.name || u.email || '未命名用戶';
-      return `
-        <label class="user-select-item">
-          <input type="checkbox" value="${u.uid}" class="edit-user-cb-${classId}" ${isChecked ? 'checked' : ''}> ${userName}
-        </label>
-      `;
-    }).join('');
+    // 渲染編輯模式的 Team 按鈕
+    const teamBtnContainer = document.getElementById(`edit-team-btn-group-${classId}`);
+    if(teamBtnContainer) {
+      if(allTeamsList.length === 0) {
+        teamBtnContainer.innerHTML = `<span style="font-size:11px; color:#94a3b8;">（目前無 Team 分類）</span>`;
+      } else {
+        teamBtnContainer.innerHTML = allTeamsList.map(t => `
+          <button type="button" class="team-select-btn" onclick="selectTeamUsers('${t.id}', '${classId}')">➕ 選擇 ${t.name}</button>
+        `).join('');
+      }
+    }
+
+    // 渲染勾選框
+    renderUserCheckboxes(`edit-users-list-${classId}`, `edit-user-cb-${classId}`, allowed);
   }
 
   function renderTableRows(classId) {
