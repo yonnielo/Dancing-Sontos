@@ -193,20 +193,20 @@
       font-size: 12px;
     }
 
-    /* 課程卡片設計 */
+    /* 課程卡片設計 (已改為粉紅色調) */
     .course-card {
       background: #ffffff;
-      border: 2px solid #818cf8;
+      border: 2px solid #f472b6;
       border-radius: 12px;
       padding: 12px;
       margin-bottom: 20px;
-      box-shadow: 0 4px 6px -1px rgba(99, 102, 241, 0.1);
+      box-shadow: 0 4px 6px -1px rgba(244, 114, 182, 0.15);
     }
     .course-card-header {
-      background: #f0f3ff;
+      background: #fdf2f8;
       padding: 10px;
       border-radius: 8px;
-      border-left: 5px solid #4f46e5;
+      border-left: 5px solid #ec4899;
       margin-bottom: 10px;
     }
 
@@ -855,8 +855,9 @@
           const tag = document.createElement('div');
           tag.className = `class-tag ${isJoined ? 'joined-tag' : ''}`;
           
+          /* 已移除 ⏰ 符號 */
           tag.innerHTML = `
-            <span class="tag-time">⏰ ${showTime}</span>
+            <span class="tag-time">${showTime}</span>
             <span class="tag-name">${c.name}</span>
           `;
           cell.appendChild(tag);
@@ -960,7 +961,7 @@
                 <span class="badge-leader" style="margin-left:4px;">👑 班長: ${c.leaderName}</span>
                 ${classTypeBadge}
               </div>
-              <span style="color:#4f46e5; font-weight:bold; font-size:14px;">單堂收費 $${c.price}</span>
+              <span style="color:#ec4899; font-weight:bold; font-size: 7px;">單堂收費 $${c.price}</span>
             </div>
             ${leaderNoteHtml}
           </div>
