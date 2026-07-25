@@ -8,39 +8,38 @@
     :root {
       --primary: #f472b6;           /* 柔粉色 */
       --primary-hover: #ec4899;     /* 深粉色 */
-      --bg: #fff5f7;                /* 極淺粉色背景 */
+      --bg: #f9fafb;                /* 回歸上一版的清爽淺灰底 */
       --card-bg: #ffffff;
-      --text: #4a0e17;              /* 深紅棕色文字，比黑色更和諧 */
-      --border: #fbcfe8;            /* 淺粉紅邊框 */
-      --success: #fb7185;           /* 玫瑰紅 (代替刺眼綠色) */
+      --text: #1f2937;              /* 回歸上一版的深灰黑字 */
+      --border: #fbcfe8;            /* 粉色邊框 */
+      --success: #fb7185;           /* 柔和玫瑰粉代替鮮綠 */
       --joined-bg: #fce7f3;         /* 報名成功淺粉紅背景 */
       --joined-border: #f472b6;
       --joined-text: #9d174d;
-      --admin-bg: #fff1f2;          /* 管理員面板淺粉紫背景 */
-      --admin-border: #fda4af;
+      --admin-bg: #fdf2f8;          /* 柔和淺粉紫背景 */
+      --admin-border: #fbcfe8;
     }
     * {
       box-sizing: border-box;
     }
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background-color: #fdf2f8;
+      background-color: var(--bg);
       color: var(--text);
       margin: 0;
       padding: 10px;
     }
     .container { max-width: 950px; margin: 0 auto; width: 100%; }
 
-    /* 基本卡片 */
+    /* 基本卡片 (恢復上一版簡潔風格) */
     .card {
       background: var(--card-bg);
       padding: 15px;
-      border-radius: 12px;
-      box-shadow: 0 2px 8px rgba(244, 114, 182, 0.08);
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
       margin-bottom: 15px;
       width: 100%;
       overflow: hidden;
-      border: 1px solid var(--border);
     }
     .card-admin {
       background: var(--admin-bg);
@@ -54,10 +53,9 @@
       padding: 8px 10px;
       margin-top: 6px;
       margin-bottom: 10px;
-      border: 1px solid var(--border);
-      border-radius: 8px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
       font-family: inherit;
-      color: #4a0e17;
     }
     button {
       background: var(--primary);
@@ -68,12 +66,12 @@
       transition: background 0.2s ease;
     }
     button:hover { background: var(--primary-hover); }
-    .btn-success { background: #f43f5e; } /* 柔和玫瑰紅 */
+    .btn-success { background: #f43f5e; } /* 柔和玫瑰粉代替綠色 */
     .btn-success:hover { background: #e11d48; }
-    .btn-danger { background: #e11d48; }  /* 警示紅 */
-    .btn-secondary { background: #f472b6; } /* 柔粉色 */
+    .btn-danger { background: #fb7185; }  /* 溫和粉紅代替鮮紅 */
+    .btn-secondary { background: #f472b6; } /* 粉色 */
     .btn-admin { background: #be123c; }
-    .btn-warning { background: #fb923c; color: white; } /* 柔和橘粉 */
+    .btn-warning { background: #f472b6; color: white; } /* 柔粉色代替鮮黃 */
     .hidden { display: none !important; }
 
     .date-picker-grid {
@@ -83,20 +81,19 @@
       margin-bottom: 10px;
       max-height: 140px;
       overflow-y: auto;
-      border: 1px solid var(--border);
+      border: 1px solid #e5e7eb;
       padding: 8px;
-      border-radius: 8px;
+      border-radius: 6px;
       background: #fff;
     }
     .date-chip {
       padding: 5px;
-      border: 1px solid var(--border);
-      border-radius: 6px;
+      border: 1px solid #d1d5db;
+      border-radius: 4px;
       text-align: center;
       font-size: 11px;
       cursor: pointer;
       background: #fff;
-      color: #9d174d;
     }
     .date-chip.selected {
       background: var(--primary);
@@ -120,23 +117,22 @@
       font-weight: bold; 
       padding: 6px 0; 
       font-size: 13px;
-      background: #fce7f3; /* 淺粉紅標頭背景 */
-      color: #9d174d;
+      background: #f3f4f6;
       border-radius: 4px;
       margin-bottom: 4px;
     }
-    /* 月曆格子 */
+    /* 月曆格子 (恢復上一版乾淨白色底) */
     .day-cell {
-      border: 1px solid #fbcfe8; /* 淺粉紅邊框 */
+      border: 1px solid #e5e7eb;
       min-height: 70px;
-      border-radius: 6px;
+      border-radius: 4px;
       padding: 2px;
       font-size: 11px;
       background: #fff;
       overflow: hidden;
     }
 
-    /* 月曆標籤 */
+    /* 月曆標籤 (改為柔粉色調) */
     .class-tag {
       background: #fdf2f8;
       color: #9d174d;
@@ -177,7 +173,6 @@
       padding: 2px 6px;
       border-radius: 4px;
       font-weight: bold;
-      border: 1px solid #fbcfe8;
     }
     .badge-admin {
       background: #fecdd3;
@@ -186,46 +181,44 @@
       padding: 2px 6px;
       border-radius: 4px;
       font-weight: bold;
-      border: 1px solid #fda4af;
     }
 
     .session-box {
-      background: #ffffff;
-      border: 1px solid #fbcfe8;
-      border-radius: 8px;
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
       padding: 10px;
       margin-top: 8px;
-      box-shadow: 0 1px 3px rgba(244, 114, 182, 0.05);
     }
     .session-line {
       margin-bottom: 4px;
       font-size: 12px;
     }
 
-    /* 課程卡片設計 (粉紅色調) */
+    /* 課程卡片設計 (還原上一版白底+粉邊) */
     .course-card {
       background: #ffffff;
-      border: 2px solid #f472b6;
-      border-radius: 12px;
+      border: 1px solid #fbcfe8;
+      border-radius: 8px;
       padding: 12px;
       margin-bottom: 20px;
-      box-shadow: 0 4px 6px -1px rgba(244, 114, 182, 0.15);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
     }
     .course-card-header {
       background: #fdf2f8;
       padding: 10px;
-      border-radius: 8px;
-      border-left: 5px solid #ec4899;
+      border-radius: 6px;
+      border-left: 4px solid #f472b6;
       margin-bottom: 10px;
     }
 
     .leader-note-box {
-      background: #fdf2f8;
+      background: #fff;
       border: 1px solid #fbcfe8;
-      border-radius: 8px;
-      padding: 10px;
+      border-radius: 6px;
+      padding: 8px;
       margin-top: 8px;
-      font-size: 13px;
+      font-size: 12px;
       color: #831843;
       white-space: pre-wrap;
     }
@@ -245,8 +238,8 @@
       width: 100%;
       overflow-x: auto;
       -webkit-overflow-scrolling: touch;
-      border: 1px solid var(--border);
-      border-radius: 8px;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
       background: #fff;
       margin-top: 6px;
     }
@@ -274,16 +267,15 @@
       margin: 0;
       padding: 4px;
       font-size: 12px;
-      border-color: #fbcfe8;
     }
 
     .user-select-list {
       display: flex;
       flex-wrap: wrap;
       gap: 6px;
-      border: 1px solid var(--border);
+      border: 1px solid #e5e7eb;
       padding: 8px;
-      border-radius: 8px;
+      border-radius: 6px;
       max-height: 150px;
       overflow-y: auto;
       background: #fff;
@@ -293,7 +285,7 @@
       background: #fdf2f8;
       color: #831843;
       padding: 4px 8px;
-      border-radius: 6px;
+      border-radius: 4px;
       display: inline-flex;
       align-items: center;
       gap: 4px;
@@ -316,7 +308,6 @@
       font-size: 11px;
       margin: 2px 0;
       font-weight: 500;
-      border: 1px solid #fbcfe8;
     }
     .student-chip button {
       width: auto;
@@ -325,7 +316,7 @@
       margin: 0;
       font-size: 10px;
       line-height: 12px;
-      background: #f43f5e;
+      background: #fb7185;
       border-radius: 50%;
     }
   </style>
@@ -336,8 +327,8 @@
   
   <div class="card flex between">
     <div>
-      <h2 style="margin:0; font-size:18px; color:#831843;">👶🏻🩷👱🏻‍♂️ Dancing-Sontos</h2>
-      <span id="user-status" style="font-size: 11px; color: #9d174d;">未登入</span>
+      <h2 style="margin:0; font-size:18px; color:#9d174d;">👶🏻🩷👱🏻‍♂️ Dancing-Sontos</h2>
+      <span id="user-status" style="font-size: 11px; color: #6b7280;">未登入</span>
     </div>
     <div id="user-action-btns" class="hidden flex" style="gap:4px;">
       <button id="delete-account-btn" class="btn-danger" style="width: auto; margin:0; font-size:11px; padding:4px 8px;">取消我的帳戶</button>
@@ -346,7 +337,7 @@
   </div>
 
   <div id="auth-section" class="card">
-    <h3 id="auth-title" style="color:#831843;">會員登入</h3>
+    <h3 id="auth-title" style="color:#9d174d;">會員登入</h3>
     <input type="text" id="auth-email" placeholder="電子郵件">
     <input type="password" id="auth-password" placeholder="密碼">
     
@@ -386,43 +377,43 @@
 
     <div class="card">
       <div class="flex between">
-        <h3 style="margin:0; font-size:16px; color:#831843;">➕ 我要開班 (發起課程)</h3>
+        <h3 style="margin:0; font-size:16px; color:#1f2937;">➕ 我要開班 (發起課程)</h3>
         <button id="toggle-create-btn" style="width:auto; margin:0; padding:4px 8px; font-size:12px;">展開/折疊</button>
       </div>
 
       <div id="create-class-form" class="hidden" style="margin-top: 15px;">
         <input type="text" id="class-name" placeholder="課程名稱 (例如: Jazz Pop 基礎班)">
         
-        <label style="font-size: 12px; font-weight: bold; color:#831843;">💬 班長的話 (短文章/課程介紹/給學員的話)：</label>
+        <label style="font-size: 12px; font-weight: bold;">💬 班長的話 (短文章/課程介紹/給學員的話)：</label>
         <textarea id="class-leader-note" rows="3" placeholder="例如：這期課程會教授基礎排舞，請大家穿著舒適運動服，帶備毛巾..."></textarea>
 
-        <label style="font-size: 12px; font-weight: bold; color:#831843;">預設上堂地點 / Studio 名稱：</label>
+        <label style="font-size: 12px; font-weight: bold;">預設上堂地點 / Studio 名稱：</label>
         <input type="text" id="class-default-location" placeholder="例如: 旺角 ABC Studio A房">
 
-        <label style="font-size: 12px; font-weight: bold; color:#831843;">點擊勾選預設上堂日期：</label>
+        <label style="font-size: 12px; font-weight: bold;">點擊勾選預設上堂日期：</label>
         <div class="flex" style="margin-top: 5px;">
           <input type="date" id="single-date-picker" style="margin:0;">
           <button id="add-date-btn" type="button" style="width: 100px; margin:0; padding:6px;">加入日期</button>
         </div>
         
         <div id="selected-dates-container" class="date-picker-grid" style="margin-top: 10px;">
-          <span style="font-size:12px; color:#9d174d;">尚未選擇日期</span>
+          <span style="font-size:12px; color:#6b7280;">尚未選擇日期</span>
         </div>
 
-        <label style="font-size: 12px; font-weight: bold; color:#831843;">⏰ 預設課堂時間：</label>
+        <label style="font-size: 12px; font-weight: bold;">⏰ 預設課堂時間：</label>
         <div class="flex">
           <div>
-            <span style="font-size:11px; color:#9d174d;">開始時間</span>
+            <span style="font-size:11px; color:#6b7280;">開始時間</span>
             <input type="time" id="class-start-time" value="19:00">
           </div>
           <div>
-            <span style="font-size:11px; color:#9d174d;">完結時間</span>
+            <span style="font-size:11px; color:#6b7280;">完結時間</span>
             <input type="time" id="class-end-time" value="21:00">
           </div>
         </div>
 
-        <div style="background:#fdf2f8; padding:8px; border-radius:8px; margin-bottom:10px; border:1px solid #fbcfe8;">
-          <label style="font-size: 12px; font-weight: bold; color:#831843;">💵 每節學費與學費付款人：</label>
+        <div style="background:#fdf2f8; padding:8px; border-radius:6px; margin-bottom:10px; border:1px solid #fbcfe8;">
+          <label style="font-size: 12px; font-weight: bold;">💵 每節學費與學費付款人：</label>
           <div class="flex" style="margin-top:5px;">
             <input type="number" id="class-price" placeholder="單堂學費 ($)" style="margin:0;">
             <select id="class-default-fee-payer" style="margin:0;">
@@ -430,8 +421,8 @@
           </div>
         </div>
 
-        <div style="background:#fdf2f8; padding:8px; border-radius:8px; margin-bottom:10px; border:1px solid #fbcfe8;">
-          <label style="font-size: 12px; font-weight: bold; color:#831843;">💰 每節場租與付款人：</label>
+        <div style="background:#fdf2f8; padding:8px; border-radius:6px; margin-bottom:10px; border:1px solid #fbcfe8;">
+          <label style="font-size: 12px; font-weight: bold;">💰 每節場租與付款人：</label>
           <div class="flex" style="margin-top:5px;">
             <input type="number" id="class-default-rent" placeholder="每節場租 ($)" style="margin:0;" value="0">
             <select id="class-default-rent-payer" style="margin:0;">
@@ -439,14 +430,14 @@
           </div>
         </div>
 
-        <label style="font-size: 12px; font-weight: bold; color:#831843;">誰能報讀 / 查看此課程：</label>
+        <label style="font-size: 12px; font-weight: bold;">誰能報讀 / 查看此課程：</label>
         <select id="access-type">
           <option value="all">全部人 (公開班)</option>
           <option value="specific">指定成員 (私人小組班)</option>
         </select>
 
         <div id="access-user-container" class="hidden" style="margin-bottom: 12px;">
-          <small style="color:#9d174d;">勾選可以查看與報名的成員：</small>
+          <small style="color:#6b7280;">勾選可以查看與報名的成員：</small>
           <div id="all-users-checkboxes" class="user-select-list">
           </div>
         </div>
@@ -458,10 +449,10 @@
     <!-- 月曆區塊 -->
     <div class="card">
       <div class="flex between" style="margin-bottom: 8px;">
-        <h3 style="margin:0; font-size:16px; color:#831843;">📅 課程月曆 <small style="font-size:10px; font-weight:normal; color:#9d174d;">(🌸 粉底表示已報名)</small></h3>
+        <h3 style="margin:0; font-size:16px; color:#1f2937;">📅 課程月曆 <small style="font-size:10px; font-weight:normal; color:#6b7280;">(🌸 粉底表示已報名)</small></h3>
         <div style="display:flex; align-items:center; gap:4px;">
           <button id="prev-month" style="width:auto; padding: 2px 8px; margin:0;">&lt;</button>
-          <span id="current-month-display" style="font-weight:bold; font-size:13px; color:#831843;"></span>
+          <span id="current-month-display" style="font-weight:bold; font-size:13px; color:#1f2937;"></span>
           <button id="next-month" style="width:auto; padding: 2px 8px; margin:0;">&gt;</button>
         </div>
       </div>
@@ -482,7 +473,7 @@
 
     <!-- 所有課程區塊 -->
     <div class="card">
-      <h3 style="margin-top:0; font-size:16px; margin-bottom:12px; color:#831843;">👱🏻‍♂️ 所有課程</h3>
+      <h3 style="margin-top:0; font-size:16px; margin-bottom:12px; color:#1f2937;">👱🏻‍♂️ 所有課程</h3>
       <div id="class-list">載入中...</div>
     </div>
 
@@ -732,7 +723,7 @@
   function renderSelectedDates() {
     const container = document.getElementById('selected-dates-container');
     if(selectedDates.length === 0) {
-      container.innerHTML = `<span style="font-size:12px; color:#9d174d;">尚未選擇日期</span>`;
+      container.innerHTML = `<span style="font-size:12px; color:#6b7280;">尚未選擇日期</span>`;
       return;
     }
     container.innerHTML = selectedDates.map(d => `
@@ -853,14 +844,14 @@
     for (let i = 0; i < firstDay; i++) {
       const emptyCell = document.createElement('div');
       emptyCell.className = 'day-cell';
-      emptyCell.style.background = '#fdf2f8';
+      emptyCell.style.background = '#f9fafb';
       calendarDays.appendChild(emptyCell);
     }
 
     for (let day = 1; day <= daysInMonth; day++) {
       const cell = document.createElement('div');
       cell.className = 'day-cell';
-      cell.innerHTML = `<strong style="color:#831843;">${day}</strong>`;
+      cell.innerHTML = `<strong>${day}</strong>`;
 
       const monthStr = String(month + 1).padStart(2, '0');
       const dayStr = String(day).padStart(2, '0');
@@ -899,7 +890,7 @@
   function renderClassList() {
     const listEl = document.getElementById('class-list');
     if(classesData.length === 0) {
-      listEl.innerHTML = "<p style='color:#9d174d;'>目前沒有課程。</p>";
+      listEl.innerHTML = "<p style='color:#6b7280;'>目前沒有課程。</p>";
       return;
     }
 
@@ -932,11 +923,11 @@
             <div class="flex between" style="align-items: flex-start;">
               <div style="width:100%;">
                 <div class="session-line">
-                  <strong style="color:#831843;">📅 ${dateStr}</strong> 
+                  <strong>📅 ${dateStr}</strong> 
                   <span style="color:#9d174d; font-weight:600; margin-left:6px;">⏰ ${startTime}${endTime}</span>
                 </div>
                 
-                <div class="session-line" style="color:#4a0e17;">
+                <div class="session-line" style="color:#374151;">
                   📍 ${sess.location || '未定地點'}
                 </div>
 
@@ -948,7 +939,7 @@
                   🏷️ 場租: $${sess.rent || 0} (付款人: ${sess.rentPayerName || c.leaderName})
                 </div>
 
-                <div class="session-line" style="color:#9d174d; margin-bottom:0;">
+                <div class="session-line" style="color:#6b7280; margin-bottom:0;">
                   👶🏻 出席 (${students.length}人): ${students.map(s => s.name).join(', ') || '暫無'}
                 </div>
               </div>
@@ -989,44 +980,44 @@
           </div>
 
           <div style="margin-top: 8px;">
-            ${sessionsHtml || '<p style="font-size:12px; color:#9d174d;">暫無上堂日期</p>'}
+            ${sessionsHtml || '<p style="font-size:12px; color:#6b7280;">暫無上堂日期</p>'}
           </div>
 
           ${canManage ? `
-            <div style="margin-top: 12px; padding: 10px; background: #fff1f2; border-radius: 8px; border: 1px solid #fda4af;">
+            <div style="margin-top: 12px; padding: 10px; background: #fdf2f8; border-radius: 8px; border: 1px solid #fbcfe8;">
               <div class="flex between">
                 <small style="font-weight:bold; color:#be123c;">🛠️ ${isAdmin ? 'Admin' : '班長'} 管理功能：</small>
-                <button onclick="toggleTableEdit('${c.id}')" style="width:auto; margin:0; padding:4px 8px; font-size:11px; background:#e11d48;">✏️ 管理課程與堂數細節</button>
+                <button onclick="toggleTableEdit('${c.id}')" style="width:auto; margin:0; padding:4px 8px; font-size:11px; background:#f472b6;">✏️ 管理課程與堂數細節</button>
               </div>
 
               <div id="table-editor-${c.id}" class="hidden" style="margin-top: 10px;">
                 
                 <div style="background:#fff; padding:8px; border-radius:8px; border:1px solid #fbcfe8; margin-bottom:8px;">
-                  <label style="font-size:11px; font-weight:bold; color:#831843;">📝 修改課程名稱：</label>
+                  <label style="font-size:11px; font-weight:bold;">📝 修改課程名稱：</label>
                   <input type="text" id="edit-class-name-${c.id}" value="${c.name}" style="margin-top:4px; font-size:12px;">
                 </div>
 
                 <div style="background:#fff; padding:8px; border-radius:8px; border:1px solid #fbcfe8; margin-bottom:8px;">
-                  <label style="font-size:11px; font-weight:bold; color:#831843;">💬 修改「班長的話」：</label>
+                  <label style="font-size:11px; font-weight:bold;">💬 修改「班長的話」：</label>
                   <textarea id="edit-leader-note-${c.id}" rows="2" style="margin-top:4px; font-size:12px;">${c.leaderNote || ''}</textarea>
                 </div>
 
                 <div style="background:#fff; padding:8px; border-radius:8px; border:1px solid #fbcfe8; margin-bottom:8px;">
-                  <label style="font-size:11px; font-weight:bold; color:#831843;">🔒 修改「誰能報讀/查看」此課程：</label>
+                  <label style="font-size:11px; font-weight:bold;">🔒 修改「誰能報讀/查看」此課程：</label>
                   <select id="edit-access-type-${c.id}" onchange="toggleEditAccessUserList('${c.id}')" style="margin-top:4px;">
                     <option value="all" ${c.accessType !== 'specific' ? 'selected' : ''}>全部人 (公開班)</option>
                     <option value="specific" ${c.accessType === 'specific' ? 'selected' : ''}>指定成員 (私人小組班)</option>
                   </select>
 
                   <div id="edit-access-user-container-${c.id}" class="${c.accessType === 'specific' ? '' : 'hidden'}" style="margin-top:6px;">
-                    <small style="color:#9d174d;">勾選可查看與報名的成員：</small>
+                    <small style="color:#6b7280;">勾選可查看與報名的成員：</small>
                     <div id="edit-users-list-${c.id}" class="user-select-list" style="margin-top:4px;">
                     </div>
                   </div>
                 </div>
 
                 <div class="flex between" style="align-items:center;">
-                  <label style="font-size:11px; font-weight:bold; color:#831843;">📅 編輯堂數、封盤狀態、時間、地點與付款人：</label>
+                  <label style="font-size:11px; font-weight:bold;">📅 編輯堂數、封盤狀態、時間、地點與付款人：</label>
                   <span style="font-size:10px; color:#be123c; font-weight:bold;">💡 橫向滑動查看 ➔</span>
                 </div>
 
@@ -1143,7 +1134,7 @@
         <tr data-date="${d}" class="edit-session-row">
           <td><input type="date" value="${d}" class="edit-date-input"></td>
           <td>
-            <select class="edit-closed-select" style="font-weight:bold; color: ${isClosed ? '#be123c' : '#9d174d'};">
+            <select class="edit-closed-select" style="font-weight:bold; color: ${isClosed ? '#be123c' : '#6b7280'};">
               <option value="false" ${!isClosed ? 'selected' : ''}>OFF</option>
               <option value="true" ${isClosed ? 'selected' : ''}>ON (封盤)</option>
             </select>
@@ -1172,7 +1163,7 @@
               <button type="button" onclick="addStudentToSessionRow(this)" style="width:auto; margin:0; padding:2px 6px; font-size:11px; background:#f472b6; white-space:nowrap; border-radius:4px;">加人</button>
             </div>
           </td>
-          <td><button onclick="this.closest('tr').remove()" style="padding:3px 6px; margin:0; background:#e11d48; font-size:11px; white-space:nowrap;">刪除</button></td>
+          <td><button onclick="this.closest('tr').remove()" style="padding:3px 6px; margin:0; background:#fb7185; font-size:11px; white-space:nowrap;">刪除</button></td>
         </tr>
       `;
     }).join('');
@@ -1216,7 +1207,7 @@
     tr.innerHTML = `
       <td><input type="date" value="${todayStr}" class="edit-date-input"></td>
       <td>
-        <select class="edit-closed-select" style="font-weight:bold; color: #9d174d;">
+        <select class="edit-closed-select" style="font-weight:bold; color: #6b7280;">
           <option value="false" selected>OFF</option>
           <option value="true">ON (封盤)</option>
         </select>
@@ -1245,7 +1236,7 @@
           <button type="button" onclick="addStudentToSessionRow(this)" style="width:auto; margin:0; padding:2px 6px; font-size:11px; background:#f472b6; white-space:nowrap; border-radius:4px;">加人</button>
         </div>
       </td>
-      <td><button onclick="this.closest('tr').remove()" style="padding:3px 6px; margin:0; background:#e11d48; font-size:11px; white-space:nowrap;">刪除</button></td>
+      <td><button onclick="this.closest('tr').remove()" style="padding:3px 6px; margin:0; background:#fb7185; font-size:11px; white-space:nowrap;">刪除</button></td>
     `;
     tbody.appendChild(tr);
   };
