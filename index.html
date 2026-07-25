@@ -2,259 +2,27 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Dancing-Sontos 舞蹈班管理系統</title>
-  <style>
-    :root {
-      --primary: #6366f1;
-      --primary-hover: #4f46e5;
-      --bg: #f8fafc;
-      --card-bg: #ffffff;
-      --text: #0f172a;
-      --border: #e2e8f0;
-      --success: #22c55e;
-      --joined-bg: #dcfce7;
-      --joined-border: #86efac;
-      --joined-text: #166534;
-      --admin-bg: #fef2f2;
-      --admin-border: #fca5a5;
-    }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background-color: var(--bg);
-      color: var(--text);
-      margin: 0;
-      padding: 15px;
-    }
-    .container { max-width: 950px; margin: 0 auto; }
-    .card {
-      background: var(--card-bg);
-      padding: 20px;
-      border-radius: 12px;
-      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
-      margin-bottom: 20px;
-    }
-    .card-admin {
-      background: var(--admin-bg);
-      border: 1px solid var(--admin-border);
-    }
-    .flex { display: flex; gap: 10px; }
-    .between { justify-content: space-between; align-items: center; }
-    input, select, button {
-      width: 100%;
-      padding: 10px;
-      margin-top: 8px;
-      margin-bottom: 12px;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      box-sizing: border-box;
-    }
-    button {
-      background: var(--primary);
-      color: white;
-      border: none;
-      font-weight: bold;
-      cursor: pointer;
-    }
-    button:hover { background: var(--primary-hover); }
-    .btn-success { background: var(--success); }
-    .btn-danger { background: #ef4444; }
-    .btn-secondary { background: #64748b; }
-    .btn-admin { background: #dc2626; }
-    .btn-warning { background: #f59e0b; color: white; }
-    .hidden { display: none !important; }
-    
-    .date-picker-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-      gap: 8px;
-      margin-bottom: 12px;
-      max-height: 150px;
-      overflow-y: auto;
-      border: 1px solid var(--border);
-      padding: 10px;
-      border-radius: 8px;
-    }
-    .date-chip {
-      padding: 6px;
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      text-align: center;
-      font-size: 12px;
-      cursor: pointer;
-      background: #fff;
-    }
-    .date-chip.selected {
-      background: var(--primary);
-      color: white;
-      border-color: var(--primary);
-    }
-
-    /* Calendar UI */
-    .calendar-grid {
-      display: grid;
-      grid-template-columns: repeat(7, 1fr);
-      gap: 5px;
-      text-align: center;
-    }
-    .day-header { font-weight: bold; padding: 5px 0; }
-    .day-cell {
-      border: 1px solid var(--border);
-      min-height: 70px;
-      border-radius: 6px;
-      padding: 4px;
-      font-size: 12px;
-      background: #fff;
-      transition: background-color 0.2s;
-    }
-    .class-tag {
-      background: #e0e7ff;
-      color: #3730a3;
-      padding: 3px 5px;
-      border-radius: 6px;
-      margin-top: 3px;
-      font-size: 10px;
-      text-align: left;
-      border: 1px solid #c7d2fe;
-    }
-    .class-tag.joined-tag {
-      background-color: var(--joined-bg) !important;
-      border: 1px solid var(--joined-border) !important;
-      color: var(--joined-text) !important;
-      font-weight: bold;
-    }
-    .badge-leader {
-      background: #fef3c7;
-      color: #b45309;
-      font-size: 10px;
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-weight: bold;
-    }
-    .badge-admin {
-      background: #fecdd3;
-      color: #9f1239;
-      font-size: 10px;
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-weight: bold;
-    }
-    .session-box {
-      background: #f1f5f9;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 10px;
-      margin-top: 8px;
-    }
-
-    /* 表格滾動容器與樣式優化 */
-    .table-container {
-      width: 100%;
-      overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      background: #fff;
-      margin-top: 6px;
-    }
-
-    /* 強制提示與高亮滾動條 */
-    .table-container::-webkit-scrollbar {
-      height: 10px;
-    }
-    .table-container::-webkit-scrollbar-track {
-      background: #f1f5f9;
-      border-radius: 4px;
-    }
-    .table-container::-webkit-scrollbar-thumb {
-      background: #6366f1;
-      border-radius: 4px;
-    }
-
-    .edit-table {
-      width: 100%;
-      min-width: 820px; /* 防止欄位在手機上被擠壓 */
-      border-collapse: collapse;
-      font-size: 12px;
-    }
-    .edit-table th, .edit-table td {
-      border: 1px solid var(--border);
-      padding: 6px;
-      text-align: left;
-      vertical-align: middle;
-    }
-    .edit-table input, .edit-table select {
-      margin: 0;
-      padding: 4px 6px;
-      font-size: 12px;
-      box-sizing: border-box;
-    }
-    
-    .user-select-list {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      border: 1px solid var(--border);
-      padding: 10px;
-      border-radius: 8px;
-      max-height: 160px;
-      overflow-y: auto;
-      background: #fff;
-    }
-    .user-select-item {
-      font-size: 13px;
-      background: #f1f5f9;
-      padding: 6px 10px;
-      border-radius: 6px;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      white-space: nowrap;
-      cursor: pointer;
-    }
-    .user-select-item input {
-      margin: 0;
-      width: auto;
-    }
-    .student-chip {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      background: #e0e7ff;
-      color: #3730a3;
-      padding: 3px 6px;
-      border-radius: 4px;
-      font-size: 11px;
-      margin: 2px 0;
-      font-weight: 500;
-    }
-    .student-chip button {
-      width: auto;
-      height: auto;
-      padding: 0 4px;
-      margin: 0;
-      font-size: 10px;
-      line-height: 12px;
-      background: #ef4444;
-      border-radius: 50%;
-    }
-  </style>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
 <div class="container">
   
+  <!-- 頁首 / 登入狀態 -->
   <div class="card flex between">
     <div>
-      <h2 style="margin:0">💃 Dancing-Sontos</h2>
-      <span id="user-status" style="font-size: 12px; color: #64748b;">未登入</span>
+      <h2 style="margin:0; font-size:18px;">💃 Dancing-Sontos</h2>
+      <span id="user-status" style="font-size: 11px; color: #64748b;">未登入</span>
     </div>
-    <div id="user-action-btns" class="hidden flex" style="gap:6px;">
-      <button id="delete-account-btn" class="btn-danger" style="width: auto; margin:0; font-size:12px; padding:6px 10px;">取消我的帳戶</button>
-      <button id="logout-btn" style="width: auto; margin:0; font-size:12px; padding:6px 10px;">登出</button>
+    <div id="user-action-btns" class="hidden flex" style="gap:4px;">
+      <button id="delete-account-btn" class="btn-danger" style="width: auto; margin:0; font-size:11px; padding:4px 8px;">取消帳戶</button>
+      <button id="logout-btn" style="width: auto; margin:0; font-size:11px; padding:4px 8px;">登出</button>
     </div>
   </div>
 
+  <!-- 身份驗證區塊 -->
   <div id="auth-section" class="card">
     <h3 id="auth-title">會員登入</h3>
     <input type="text" id="auth-email" placeholder="電子郵件">
@@ -270,15 +38,17 @@
     </div>
   </div>
 
+  <!-- 主應用程式區塊 -->
   <div id="app-section" class="hidden">
     
+    <!-- Admin 後台 -->
     <div id="admin-panel" class="card card-admin hidden">
       <h3 style="color:#9f1239; margin-top:0;">👑 Admin 全系統最高管理面板</h3>
       
-      <div style="margin-bottom: 20px;">
+      <div style="margin-bottom: 15px;">
         <h4 style="margin-bottom:5px;">👥 全站用戶列表與角色管理</h4>
         <div class="table-container">
-          <table class="edit-table" style="min-width:600px;">
+          <table class="edit-table" style="min-width:550px;">
             <thead>
               <tr>
                 <th>暱稱</th>
@@ -294,10 +64,11 @@
       </div>
     </div>
 
+    <!-- 發起課程表單 -->
     <div class="card">
       <div class="flex between">
-        <h3>➕ 我要開班 (發起課程)</h3>
-        <button id="toggle-create-btn" style="width:auto; margin:0;">展開/折疊</button>
+        <h3 style="margin:0; font-size:16px;">➕ 我要開班 (發起課程)</h3>
+        <button id="toggle-create-btn" style="width:auto; margin:0; padding:4px 8px; font-size:12px;">展開/折疊</button>
       </div>
 
       <div id="create-class-form" class="hidden" style="margin-top: 15px;">
@@ -309,7 +80,7 @@
         <label style="font-size: 12px; font-weight: bold;">點擊勾選預設上堂日期：</label>
         <div class="flex" style="margin-top: 5px;">
           <input type="date" id="single-date-picker" style="margin:0;">
-          <button id="add-date-btn" type="button" style="width: 120px; margin:0;">加入日期</button>
+          <button id="add-date-btn" type="button" style="width: 100px; margin:0; padding:6px;">加入日期</button>
         </div>
         
         <div id="selected-dates-container" class="date-picker-grid" style="margin-top: 10px;">
@@ -318,7 +89,7 @@
 
         <input type="time" id="class-time" value="19:00">
 
-        <div style="background:#f1f5f9; padding:10px; border-radius:8px; margin-bottom:12px;">
+        <div style="background:#f1f5f9; padding:8px; border-radius:8px; margin-bottom:10px;">
           <label style="font-size: 12px; font-weight: bold;">💵 每節學費與收款人：</label>
           <div class="flex" style="margin-top:5px;">
             <input type="number" id="class-price" placeholder="單堂學費 ($)" style="margin:0;">
@@ -327,7 +98,7 @@
           </div>
         </div>
 
-        <div style="background:#f1f5f9; padding:10px; border-radius:8px; margin-bottom:12px;">
+        <div style="background:#f1f5f9; padding:8px; border-radius:8px; margin-bottom:10px;">
           <label style="font-size: 12px; font-weight: bold;">💰 每節場租與付款人：</label>
           <div class="flex" style="margin-top:5px;">
             <input type="number" id="class-default-rent" placeholder="每節場租 ($)" style="margin:0;" value="0">
@@ -352,827 +123,1098 @@
       </div>
     </div>
 
+    <!-- 課程月曆 Card -->
     <div class="card">
-      <div class="flex between" style="margin-bottom: 10px;">
-        <h3>📅 課程月曆 <small style="font-size:11px; font-weight:normal; color:#166534;">(🟩 綠底表示已報名堂數)</small></h3>
-        <div>
-          <button id="prev-month" style="width:auto; padding: 4px 8px; margin:0;">&lt;</button>
-          <span id="current-month-display" style="font-weight:bold;"></span>
-          <button id="next-month" style="width:auto; padding: 4px 8px; margin:0;">&gt;</button>
+      <div class="flex between" style="margin-bottom: 8px;">
+        <h3 style="margin:0; font-size:16px;">📅 課程月曆 <small style="font-size:10px; font-weight:normal; color:#166534;">(🟩 綠底已報名)</small></h3>
+        <div style="display:flex; align-items:center; gap:4px;">
+          <button id="prev-month" style="width:auto; padding: 2px 8px; margin:0;">&lt;</button>
+          <span id="current-month-display" style="font-weight:bold; font-size:13px;"></span>
+          <button id="next-month" style="width:auto; padding: 2px 8px; margin:0;">&gt;</button>
         </div>
       </div>
-      <div class="calendar-grid" id="calendar-header">
-        <div class="day-header">日</div><div class="day-header">一</div><div class="day-header">二</div>
-        <div class="day-header">三</div><div class="day-header">四</div><div class="day-header">五</div><div class="day-header">六</div>
+
+      <div class="calendar-container">
+        <!-- 星期標頭 (嚴格 7 欄) -->
+        <div class="calendar-grid" id="calendar-header">
+          <div class="day-header">日</div>
+          <div class="day-header">一</div>
+          <div class="day-header">二</div>
+          <div class="day-header">三</div>
+          <div class="day-header">四</div>
+          <div class="day-header">五</div>
+          <div class="day-header">六</div>
+        </div>
+        <!-- 日期數字與課堂內容 -->
+        <div class="calendar-grid" id="calendar-days"></div>
       </div>
-      <div class="calendar-grid" id="calendar-days"></div>
     </div>
 
+    <!-- 課程列表 -->
     <div class="card">
-      <h3>📚 所有課程與獨立報名</h3>
+      <h3 style="margin-top:0; font-size:16px;">📚 所有課程與獨立報名</h3>
       <div id="class-list">載入中...</div>
     </div>
 
   </div>
 
 </div>
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-  import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, signOut, onAuthStateChanged, deleteUser } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-  import { getFirestore, collection, addDoc, getDocs, doc, setDoc, getDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-  const firebaseConfig = {
-    apiKey: "AIzaSyB2ky_jGsp4Me5XNXVpvow5oUAV-ME6oG8",
-    authDomain: "dancing-sontos.firebaseapp.com",
-    projectId: "dancing-sontos",
-    storageBucket: "dancing-sontos.firebasestorage.app",
-    messagingSenderId: "522879566788",
-    appId: "1:522879566788:web:e37c283d86a07d0ce79a91",
-    measurementId: "G-8DPXJJGF9B"
-  };
+<script type="module" src="app.js"></script>
+</body>
+</html>
+:root {
+  --primary: #6366f1;
+  --primary-hover: #4f46e5;
+  --bg: #f8fafc;
+  --card-bg: #ffffff;
+  --text: #0f172a;
+  --border: #e2e8f0;
+  --success: #22c55e;
+  --joined-bg: #dcfce7;
+  --joined-border: #86efac;
+  --joined-text: #166534;
+  --admin-bg: #fef2f2;
+  --admin-border: #fca5a5;
+}
 
-  const app = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
-  const db = getFirestore(app);
+* {
+  box-sizing: border-box; /* 確保邊框與內距不影響總寬度 */
+}
 
-  let currentUser = null;
-  let currentUserProfile = null;
-  let isAdmin = false;
-  let isRegisterMode = false;
-  let currentDate = new Date();
-  let classesData = [];
-  let allUsersList = [];
-  let selectedDates = [];
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background-color: var(--bg);
+  color: var(--text);
+  margin: 0;
+  padding: 10px;
+}
 
-  const authSection = document.getElementById('auth-section');
-  const appSection = document.getElementById('app-section');
-  const toggleAuthModeBtn = document.getElementById('toggle-auth-mode');
-  const registerExtra = document.getElementById('register-extra');
-  const authMainBtn = document.getElementById('auth-main-btn');
-  const userActionBtns = document.getElementById('user-action-btns');
-  const logoutBtn = document.getElementById('logout-btn');
-  const deleteAccountBtn = document.getElementById('delete-account-btn');
-  const userStatus = document.getElementById('user-status');
-  const adminPanel = document.getElementById('admin-panel');
+.container { 
+  max-width: 950px; 
+  margin: 0 auto; 
+  width: 100%; 
+}
 
-  document.getElementById('toggle-create-btn').addEventListener('click', () => {
-    document.getElementById('create-class-form').classList.toggle('hidden');
-    loadAllUsers();
-  });
+.card {
+  background: var(--card-bg);
+  padding: 15px;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+  margin-bottom: 15px;
+  width: 100%;
+  overflow: hidden; /* 防止內部元件溢出 */
+}
 
-  document.getElementById('access-type').addEventListener('change', (e) => {
-    document.getElementById('access-user-container').classList.toggle('hidden', e.target.value !== 'specific');
-  });
+.card-admin {
+  background: var(--admin-bg);
+  border: 1px solid var(--admin-border);
+}
 
-  toggleAuthModeBtn.addEventListener('click', (e) => {
-    e.preventDefault();
-    isRegisterMode = !isRegisterMode;
-    document.getElementById('auth-title').innerText = isRegisterMode ? "註冊帳號" : "會員登入";
-    authMainBtn.innerText = isRegisterMode ? "註冊" : "登入";
-    registerExtra.classList.toggle('hidden', !isRegisterMode);
-    toggleAuthModeBtn.innerText = isRegisterMode ? "已有帳號？登入" : "沒有帳號？註冊";
-  });
+.flex { display: flex; gap: 8px; }
+.between { justify-content: space-between; align-items: center; }
 
-  authMainBtn.addEventListener('click', async () => {
-    const email = document.getElementById('auth-email').value.trim();
-    const password = document.getElementById('auth-password').value.trim();
+input, select, button {
+  width: 100%;
+  padding: 8px 10px;
+  margin-top: 6px;
+  margin-bottom: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
 
-    if(!email || !password) return alert("請填寫完整資訊");
+button {
+  background: var(--primary);
+  color: white;
+  border: none;
+  font-weight: bold;
+  cursor: pointer;
+}
 
-    try {
-      if(isRegisterMode) {
-        const name = document.getElementById('auth-name').value || "舞者";
-        const res = await createUserWithEmailAndPassword(auth, email, password);
-        await setDoc(doc(db, "users", res.user.uid), { name, email, role: "user" });
-        alert("註冊成功！");
-      } else {
-        await signInWithEmailAndPassword(auth, email, password);
-      }
-    } catch (err) {
-      alert("登入/註冊失敗: " + err.message);
-    }
-  });
+button:hover { background: var(--primary-hover); }
+.btn-success { background: var(--success); }
+.btn-danger { background: #ef4444; }
+.btn-warning { background: #f59e0b; color: white; }
+.hidden { display: none !important; }
 
-  logoutBtn.addEventListener('click', () => {
-    signOut(auth);
-  });
+/* 選擇日期 Chips */
+.date-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+  gap: 6px;
+  margin-bottom: 10px;
+  max-height: 140px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  padding: 8px;
+  border-radius: 8px;
+}
 
-  deleteAccountBtn.addEventListener('click', async () => {
-    if (!currentUser) return;
-    
-    const confirmDelete = confirm("⚠️ 警告：確定要取消並刪除您的帳戶嗎？此動作無法復原！");
-    if (!confirmDelete) return;
+.date-chip {
+  padding: 5px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  text-align: center;
+  font-size: 11px;
+  cursor: pointer;
+  background: #fff;
+}
 
-    try {
-      const userUid = currentUser.uid;
-      await deleteDoc(doc(db, "users", userUid));
+.date-chip.selected {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
 
-      try {
-        await deleteUser(currentUser);
-        alert("您的帳戶已成功取消並刪除。");
-      } catch (authErr) {
-        alert("帳戶資料已清除，已為您自動登出。");
-        await signOut(auth);
-      }
-    } catch (err) {
-      alert("取消帳戶失敗：" + err.message);
-    }
-  });
+/* 📅 月曆樣式 (解決手機錯位與爆邊重點) */
+.calendar-container {
+  width: 100%;
+  overflow: hidden;
+}
 
-  onAuthStateChanged(auth, async (user) => {
-    if (user) {
-      currentUser = user;
-      try {
-        const userDoc = await getDoc(doc(db, "users", user.uid));
-        currentUserProfile = userDoc.exists() ? userDoc.data() : { name: '舞者', role: 'user' };
-      } catch(e) {
-        console.error("無法取得使用者 Profile", e);
-        currentUserProfile = { name: '舞者', role: 'user' };
-      }
-      
-      isAdmin = (currentUserProfile && currentUserProfile.role === 'admin') || user.email === 'yonnielo@yahoo.com';
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr) !important; /* 強制嚴格分成 7 欄 */
+  width: 100%;
+  gap: 2px;
+  text-align: center;
+}
 
-      if (isAdmin) {
-        userStatus.innerHTML = `<span class="badge-admin">👑 Admin</span> ${currentUserProfile.name || '管理員'}`;
-        adminPanel.classList.remove('hidden');
-        loadAdminUsers();
-      } else {
-        userStatus.innerText = `👤 ${currentUserProfile.name}`;
-        adminPanel.classList.add('hidden');
-      }
+.day-header { 
+  font-weight: bold; 
+  padding: 6px 0; 
+  font-size: 13px;
+  background: #f1f5f9;
+  border-radius: 4px;
+  margin-bottom: 4px;
+}
 
-      authSection.classList.add('hidden');
-      appSection.classList.remove('hidden');
-      userActionBtns.classList.remove('hidden');
+.day-cell {
+  border: 1px solid var(--border);
+  min-height: 65px;
+  border-radius: 6px;
+  padding: 2px;
+  font-size: 11px;
+  background: #fff;
+  overflow: hidden;
+}
 
-      loadClasses();
+.class-tag {
+  background: #e0e7ff;
+  color: #3730a3;
+  padding: 2px 3px;
+  border-radius: 4px;
+  margin-top: 2px;
+  font-size: 9px;
+  line-height: 1.1;
+  text-align: left;
+  border: 1px solid #c7d2fe;
+  word-break: break-all;
+}
+
+.class-tag.joined-tag {
+  background-color: var(--joined-bg) !important;
+  border: 1px solid var(--joined-border) !important;
+  color: var(--joined-text) !important;
+  font-weight: bold;
+}
+
+.badge-leader {
+  background: #fef3c7;
+  color: #b45309;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: bold;
+}
+
+.badge-admin {
+  background: #fecdd3;
+  color: #9f1239;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: bold;
+}
+
+.session-box {
+  background: #f1f5f9;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+  margin-top: 8px;
+}
+
+/* 表格滾動容器與樣式優化 */
+.table-container {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+  margin-top: 6px;
+}
+
+.table-container::-webkit-scrollbar { height: 8px; }
+.table-container::-webkit-scrollbar-track { background: #f1f5f9; }
+.table-container::-webkit-scrollbar-thumb { background: #6366f1; border-radius: 4px; }
+
+.edit-table {
+  width: 100%;
+  min-width: 800px;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.edit-table th, .edit-table td {
+  border: 1px solid var(--border);
+  padding: 6px;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.edit-table input, .edit-table select {
+  margin: 0;
+  padding: 4px;
+  font-size: 12px;
+}
+
+.user-select-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  border: 1px solid var(--border);
+  padding: 8px;
+  border-radius: 8px;
+  max-height: 150px;
+  overflow-y: auto;
+  background: #fff;
+}
+
+.user-select-item {
+  font-size: 12px;
+  background: #f1f5f9;
+  padding: 4px 8px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.user-select-item input { margin: 0; width: auto; }
+
+.student-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #e0e7ff;
+  color: #3730a3;
+  padding: 2px 5px;
+  border-radius: 4px;
+  font-size: 11px;
+  margin: 2px 0;
+}
+
+.student-chip button {
+  width: auto;
+  height: auto;
+  padding: 0 3px;
+  margin: 0;
+  font-size: 10px;
+  background: #ef4444;
+  border-radius: 50%;
+}
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, signOut, onAuthStateChanged, deleteUser } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, getDocs, doc, setDoc, getDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyB2ky_jGsp4Me5XNXVpvow5oUAV-ME6oG8",
+  authDomain: "dancing-sontos.firebaseapp.com",
+  projectId: "dancing-sontos",
+  storageBucket: "dancing-sontos.firebasestorage.app",
+  messagingSenderId: "522879566788",
+  appId: "1:522879566788:web:e37c283d86a07d0ce79a91",
+  measurementId: "G-8DPXJJGF9B"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+let currentUser = null;
+let currentUserProfile = null;
+let isAdmin = false;
+let isRegisterMode = false;
+let currentDate = new Date();
+let classesData = [];
+let allUsersList = [];
+let selectedDates = [];
+
+const authSection = document.getElementById('auth-section');
+const appSection = document.getElementById('app-section');
+const toggleAuthModeBtn = document.getElementById('toggle-auth-mode');
+const registerExtra = document.getElementById('register-extra');
+const authMainBtn = document.getElementById('auth-main-btn');
+const userActionBtns = document.getElementById('user-action-btns');
+const logoutBtn = document.getElementById('logout-btn');
+const deleteAccountBtn = document.getElementById('delete-account-btn');
+const userStatus = document.getElementById('user-status');
+const adminPanel = document.getElementById('admin-panel');
+
+document.getElementById('toggle-create-btn').addEventListener('click', () => {
+  document.getElementById('create-class-form').classList.toggle('hidden');
+  loadAllUsers();
+});
+
+document.getElementById('access-type').addEventListener('change', (e) => {
+  document.getElementById('access-user-container').classList.toggle('hidden', e.target.value !== 'specific');
+});
+
+toggleAuthModeBtn.addEventListener('click', (e) => {
+  e.preventDefault();
+  isRegisterMode = !isRegisterMode;
+  document.getElementById('auth-title').innerText = isRegisterMode ? "註冊帳號" : "會員登入";
+  authMainBtn.innerText = isRegisterMode ? "註冊" : "登入";
+  registerExtra.classList.toggle('hidden', !isRegisterMode);
+  toggleAuthModeBtn.innerText = isRegisterMode ? "已有帳號？登入" : "沒有帳號？註冊";
+});
+
+authMainBtn.addEventListener('click', async () => {
+  const email = document.getElementById('auth-email').value.trim();
+  const password = document.getElementById('auth-password').value.trim();
+
+  if(!email || !password) return alert("請填寫完整資訊");
+
+  try {
+    if(isRegisterMode) {
+      const name = document.getElementById('auth-name').value || "舞者";
+      const res = await createUserWithEmailAndPassword(auth, email, password);
+      await setDoc(doc(db, "users", res.user.uid), { name, email, role: "user" });
+      alert("註冊成功！");
     } else {
-      currentUser = null;
-      currentUserProfile = null;
-      isAdmin = false;
-      userStatus.innerText = "未登入";
-      authSection.classList.remove('hidden');
-      appSection.classList.add('hidden');
-      adminPanel.classList.add('hidden');
-      userActionBtns.classList.add('hidden');
+      await signInWithEmailAndPassword(auth, email, password);
     }
-  });
-
-  // ---------------- ADMIN 功能 ----------------
-
-  async function loadAdminUsers() {
-    try {
-      const querySnapshot = await getDocs(collection(db, "users"));
-      allUsersList = [];
-      querySnapshot.forEach(docSnap => {
-        allUsersList.push({ uid: docSnap.id, ...docSnap.data() });
-      });
-
-      const tbody = document.getElementById('admin-user-tbody');
-      tbody.innerHTML = allUsersList.map(u => `
-        <tr>
-          <td><input type="text" value="${u.name || ''}" id="admin-name-${u.uid}"></td>
-          <td><input type="text" value="${u.email || ''}" id="admin-email-${u.uid}"></td>
-          <td>
-            <select id="admin-role-${u.uid}" style="margin:0; padding:2px; font-size:12px;">
-              <option value="user" ${u.role !== 'admin' ? 'selected' : ''}>一般用戶</option>
-              <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>Admin</option>
-            </select>
-          </td>
-          <td>
-            <div class="flex" style="gap:4px; margin:0;">
-              <button onclick="adminSaveUser('${u.uid}')" style="width:auto; margin:0; padding:2px 6px; font-size:10px;" class="btn-success">儲存</button>
-              <button onclick="adminResetPassword('${u.email}')" style="width:auto; margin:0; padding:2px 6px; font-size:10px;" class="btn-warning">重設密碼信</button>
-            </div>
-          </td>
-        </tr>
-      `).join('');
-    } catch(e) {
-      alert("載入用戶列表失敗: " + e.message);
-    }
+  } catch (err) {
+    alert("登入/註冊失敗: " + err.message);
   }
+});
 
-  window.adminResetPassword = async (email) => {
-    if(!email) return alert("該用戶沒有有效的 Email！");
-    if(confirm(`確定要向 ${email} 發送密碼重設信嗎？`)) {
-      try {
-        await sendPasswordResetEmail(auth, email);
-        alert(`【成功】重設密碼信已成功發送到 ${email}！請提示用戶查收 Email 並設定新密碼。`);
-      } catch(e) {
-        alert("【失敗】無法發送重設信: " + e.message);
-      }
-    }
-  };
+logoutBtn.addEventListener('click', () => {
+  signOut(auth);
+});
 
-  window.adminSaveUser = async (uid) => {
-    const name = document.getElementById(`admin-name-${uid}`).value.trim();
-    const email = document.getElementById(`admin-email-${uid}`).value.trim();
-    const role = document.getElementById(`admin-role-${uid}`).value;
+deleteAccountBtn.addEventListener('click', async () => {
+  if (!currentUser) return;
+  
+  const confirmDelete = confirm("⚠️ 警告：確定要取消並刪除您的帳戶嗎？此動作無法復原！");
+  if (!confirmDelete) return;
+
+  try {
+    const userUid = currentUser.uid;
+    await deleteDoc(doc(db, "users", userUid));
 
     try {
-      await setDoc(doc(db, "users", uid), { name, email, role }, { merge: true });
-      alert("【成功】使用者資料已順利更新！");
-      loadAdminUsers();
-    } catch(e) {
-      alert("【失敗】資料庫拒絕變更，錯誤原因: " + e.message);
+      await deleteUser(currentUser);
+      alert("您的帳戶已成功取消並刪除。");
+    } catch (authErr) {
+      alert("帳戶資料已清除，已為您自動登出。");
+      await signOut(auth);
     }
-  };
-  // ---------------- 共通/課堂功能 ----------------
+  } catch (err) {
+    alert("取消帳戶失敗：" + err.message);
+  }
+});
 
-  async function loadAllUsers() {
+onAuthStateChanged(auth, async (user) => {
+  if (user) {
+    currentUser = user;
     try {
-      const querySnapshot = await getDocs(collection(db, "users"));
-      allUsersList = [];
-      querySnapshot.forEach(docSnap => {
-        allUsersList.push({ uid: docSnap.id, ...docSnap.data() });
-      });
-
-      const container = document.getElementById('all-users-checkboxes');
-      container.innerHTML = allUsersList.map(u => {
-        const userName = u.name || u.email || '未命名用戶';
-        return `
-          <label class="user-select-item">
-            <input type="checkbox" value="${u.uid}" class="access-user-checkbox"> ${userName}
-          </label>
-        `;
-      }).join('');
-
-      const optionsHtml = allUsersList.map(u => {
-        const userName = u.name || u.email || '未命名用戶';
-        const isSelf = u.uid === currentUser.uid;
-        return `<option value="${u.uid}" ${isSelf ? 'selected' : ''}>${userName} ${isSelf ? '(班長/預設)' : ''}</option>`;
-      }).join('');
-
-      document.getElementById('class-default-fee-payer').innerHTML = optionsHtml;
-      document.getElementById('class-default-rent-payer').innerHTML = optionsHtml;
-
+      const userDoc = await getDoc(doc(db, "users", user.uid));
+      currentUserProfile = userDoc.exists() ? userDoc.data() : { name: '舞者', role: 'user' };
     } catch(e) {
-      console.error("載入用戶名單失敗:", e);
+      console.error("無法取得使用者 Profile", e);
+      currentUserProfile = { name: '舞者', role: 'user' };
     }
-  }
-
-  document.getElementById('add-date-btn').addEventListener('click', () => {
-    const picker = document.getElementById('single-date-picker');
-    const val = picker.value;
-    if(!val) return alert("請先選擇日期");
-    if(!selectedDates.includes(val)) {
-      selectedDates.push(val);
-      selectedDates.sort();
-      renderSelectedDates();
-    }
-  });
-
-  function renderSelectedDates() {
-    const container = document.getElementById('selected-dates-container');
-    if(selectedDates.length === 0) {
-      container.innerHTML = `<span style="font-size:12px; color:#94a3b8;">尚未選擇日期</span>`;
-      return;
-    }
-    container.innerHTML = selectedDates.map(d => `
-      <div class="date-chip selected" onclick="removeDate('${d}')">
-        ${d} ✕
-      </div>
-    `).join('');
-  }
-
-  window.removeDate = (d) => {
-    selectedDates = selectedDates.filter(item => item !== d);
-    renderSelectedDates();
-  };
-
-  document.getElementById('add-class-btn').addEventListener('click', async () => {
-    const name = document.getElementById('class-name').value;
-    const defaultLocation = document.getElementById('class-default-location').value || '未定地點';
-    const time = document.getElementById('class-time').value;
     
-    const defaultFee = Number(document.getElementById('class-price').value) || 0;
-    const defaultFeePayerUid = document.getElementById('class-default-fee-payer').value || currentUser.uid;
-    const feePayerObj = allUsersList.find(u => u.uid === defaultFeePayerUid);
-    const defaultFeePayerName = feePayerObj ? (feePayerObj.name || feePayerObj.email) : (currentUserProfile.name || '班長');
+    isAdmin = (currentUserProfile && currentUserProfile.role === 'admin') || user.email === 'yonnielo@yahoo.com';
 
-    const defaultRent = Number(document.getElementById('class-default-rent').value) || 0;
-    const defaultRentPayerUid = document.getElementById('class-default-rent-payer').value || currentUser.uid;
-    const rentPayerObj = allUsersList.find(u => u.uid === defaultRentPayerUid);
-    const defaultRentPayerName = rentPayerObj ? (rentPayerObj.name || rentPayerObj.email) : (currentUserProfile.name || '班長');
-
-    const accessType = document.getElementById('access-type').value;
-    let allowedUsers = [];
-
-    if(accessType === 'specific') {
-      const checkboxes = document.querySelectorAll('.access-user-checkbox:checked');
-      allowedUsers = Array.from(checkboxes).map(cb => cb.value);
-      if(!allowedUsers.includes(currentUser.uid)) allowedUsers.push(currentUser.uid);
+    if (isAdmin) {
+      userStatus.innerHTML = `<span class="badge-admin">👑 Admin</span> ${currentUserProfile.name || '管理員'}`;
+      adminPanel.classList.remove('hidden');
+      loadAdminUsers();
+    } else {
+      userStatus.innerText = `👤 ${currentUserProfile.name}`;
+      adminPanel.classList.add('hidden');
     }
 
-    if(!name) return alert("請輸入課程名稱");
-    if(selectedDates.length === 0) return alert("請至少挑選一日上堂日期");
+    authSection.classList.add('hidden');
+    appSection.classList.remove('hidden');
+    userActionBtns.classList.remove('hidden');
 
-    const sessions = {};
-    selectedDates.forEach(d => {
-      sessions[d] = { 
-        time, 
-        location: defaultLocation, 
-        fee: defaultFee,
-        feePayerUid: defaultFeePayerUid,
-        feePayerName: defaultFeePayerName,
-        rent: defaultRent,
-        rentPayerUid: defaultRentPayerUid,
-        rentPayerName: defaultRentPayerName,
-        students: [] 
-      };
+    loadClasses();
+  } else {
+    currentUser = null;
+    currentUserProfile = null;
+    isAdmin = false;
+    userStatus.innerText = "未登入";
+    authSection.classList.remove('hidden');
+    appSection.classList.add('hidden');
+    adminPanel.classList.add('hidden');
+    userActionBtns.classList.add('hidden');
+  }
+});
+
+async function loadAdminUsers() {
+  try {
+    const querySnapshot = await getDocs(collection(db, "users"));
+    allUsersList = [];
+    querySnapshot.forEach(docSnap => {
+      allUsersList.push({ uid: docSnap.id, ...docSnap.data() });
     });
 
+    const tbody = document.getElementById('admin-user-tbody');
+    tbody.innerHTML = allUsersList.map(u => `
+      <tr>
+        <td><input type="text" value="${u.name || ''}" id="admin-name-${u.uid}"></td>
+        <td><input type="text" value="${u.email || ''}" id="admin-email-${u.uid}"></td>
+        <td>
+          <select id="admin-role-${u.uid}" style="margin:0; padding:2px; font-size:12px;">
+            <option value="user" ${u.role !== 'admin' ? 'selected' : ''}>一般用戶</option>
+            <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>Admin</option>
+          </select>
+        </td>
+        <td>
+          <div class="flex" style="gap:4px; margin:0;">
+            <button onclick="adminSaveUser('${u.uid}')" style="width:auto; margin:0; padding:2px 6px; font-size:10px;" class="btn-success">儲存</button>
+            <button onclick="adminResetPassword('${u.email}')" style="width:auto; margin:0; padding:2px 6px; font-size:10px;" class="btn-warning">重設密碼信</button>
+          </div>
+        </td>
+      </tr>
+    `).join('');
+  } catch(e) {
+    alert("載入用戶列表失敗: " + e.message);
+  }
+}
+
+window.adminResetPassword = async (email) => {
+  if(!email) return alert("該用戶沒有有效的 Email！");
+  if(confirm(`確定要向 ${email} 發送密碼重設信嗎？`)) {
     try {
-      await addDoc(collection(db, "classes"), {
-        name,
-        sessions,
-        price: defaultFee,
-        leaderId: currentUser.uid,
-        leaderName: currentUserProfile.name || '班長',
-        accessType,
-        allowedUsers,
-        createdAt: new Date()
-      });
-      alert("發布課程成功！");
-      
-      document.getElementById('class-name').value = '';
-      selectedDates = [];
-      renderSelectedDates();
-      document.getElementById('create-class-form').classList.add('hidden');
-      
-      loadClasses();
+      await sendPasswordResetEmail(auth, email);
+      alert(`【成功】重設密碼信已成功發送到 ${email}！`);
     } catch(e) {
-      alert("發布失敗: " + e.message);
-    }
-  });
-
-  async function loadClasses() {
-    try {
-      const querySnapshot = await getDocs(collection(db, "classes"));
-      classesData = [];
-      querySnapshot.forEach((docSnap) => {
-        const data = docSnap.data();
-        if(!isAdmin && data.accessType === 'specific' && (!data.allowedUsers || !data.allowedUsers.includes(currentUser.uid))) {
-          return;
-        }
-        classesData.push({ id: docSnap.id, ...data });
-      });
-      renderCalendar();
-      renderClassList();
-    } catch(e) {
-      console.error("載入課程失敗:", e);
+      alert("【失敗】無法發送重設信: " + e.message);
     }
   }
+};
 
-  function renderCalendar() {
-    const calendarDays = document.getElementById('calendar-days');
-    calendarDays.innerHTML = '';
+window.adminSaveUser = async (uid) => {
+  const name = document.getElementById(`admin-name-${uid}`).value.trim();
+  const email = document.getElementById(`admin-email-${uid}`).value.trim();
+  const role = document.getElementById(`admin-role-${uid}`).value;
 
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
-
-    document.getElementById('current-month-display').innerText = `${year}年 ${month + 1}月`;
-
-    const firstDay = new Date(year, month, 1).getDay();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-    for (let i = 0; i < firstDay; i++) {
-      const emptyCell = document.createElement('div');
-      emptyCell.className = 'day-cell';
-      calendarDays.appendChild(emptyCell);
-    }
-
-    for (let day = 1; day <= daysInMonth; day++) {
-      const cell = document.createElement('div');
-      cell.className = 'day-cell';
-      cell.innerHTML = `<strong>${day}</strong>`;
-
-      const monthStr = String(month + 1).padStart(2, '0');
-      const dayStr = String(day).padStart(2, '0');
-      const dateStr = `${year}-${monthStr}-${dayStr}`;
-
-      classesData.forEach(c => {
-        if(c.sessions && c.sessions[dateStr]) {
-          const sess = c.sessions[dateStr];
-          const isJoined = (sess.students || []).some(s => s.uid === currentUser.uid);
-
-          const tag = document.createElement('div');
-          tag.className = `class-tag ${isJoined ? 'joined-tag' : ''}`;
-          tag.innerText = `${sess.time || ''} ${c.name}`;
-          cell.appendChild(tag);
-        }
-      });
-
-      calendarDays.appendChild(cell);
-    }
+  try {
+    await setDoc(doc(db, "users", uid), { name, email, role }, { merge: true });
+    alert("【成功】使用者資料已順利更新！");
+    loadAdminUsers();
+  } catch(e) {
+    alert("【失敗】變更失敗: " + e.message);
   }
+};
 
-  document.getElementById('prev-month').addEventListener('click', () => {
-    currentDate.setMonth(currentDate.getMonth() - 1);
-    renderCalendar();
-  });
-  document.getElementById('next-month').addEventListener('click', () => {
-    currentDate.setMonth(currentDate.getMonth() + 1);
-    renderCalendar();
-  });
+async function loadAllUsers() {
+  try {
+    const querySnapshot = await getDocs(collection(db, "users"));
+    allUsersList = [];
+    querySnapshot.forEach(docSnap => {
+      allUsersList.push({ uid: docSnap.id, ...docSnap.data() });
+    });
 
-  function renderClassList() {
-    const listEl = document.getElementById('class-list');
-    if(classesData.length === 0) {
-      listEl.innerHTML = "<p style='color:#64748b;'>目前沒有課程。</p>";
-      return;
-    }
-
-    listEl.innerHTML = classesData.map(c => {
-      const isLeader = c.leaderId === currentUser.uid;
-      const canManage = isLeader || isAdmin;
-      const sessions = c.sessions || {};
-      const dateKeys = Object.keys(sessions).sort();
-
-      const sessionsHtml = dateKeys.map(dateStr => {
-        const sess = sessions[dateStr];
-        const students = sess.students || [];
-        const isJoined = students.some(s => s.uid === currentUser.uid);
-        const feeVal = sess.fee !== undefined ? sess.fee : c.price;
-        const feeText = `💵 學費: $${feeVal} (收款: ${sess.feePayerName || c.leaderName})`;
-        const rentText = ` | 🏷️ 場租: $${sess.rent || 0} (付款: ${sess.rentPayerName || sess.payerName || c.leaderName})`;
-
-        return `
-          <div class="session-box">
-            <div class="flex between">
-              <div>
-                <strong>📅 ${dateStr}</strong> 
-                <span style="font-size:12px; color:#475569;">⏰ ${sess.time} | 📍 ${sess.location}</span>
-                <div style="font-size:11px; color:#0369a1; margin-top:2px;">
-                  ${feeText} ${rentText}
-                </div>
-              </div>
-              <div>
-                ${isJoined ? 
-                  `<button onclick="toggleSessionJoin('${c.id}', '${dateStr}', false)" class="btn-danger" style="width:auto; margin:0; padding:4px 8px; font-size:12px;">取消此堂</button>` : 
-                  `<button onclick="toggleSessionJoin('${c.id}', '${dateStr}', true)" class="btn-success" style="width:auto; margin:0; padding:4px 8px; font-size:12px;">報名此堂</button>`
-                }
-              </div>
-            </div>
-            <div style="font-size:11px; color:#64748b; margin-top:4px;">
-              👥 出席 (${students.length}人): ${students.map(s => s.name).join(', ') || '暫無'}
-            </div>
-          </div>
-        `;
-      }).join('');
-
-      return `
-        <div style="border-bottom: 2px solid var(--border); padding: 15px 0;">
-          <div class="flex between">
-            <div>
-              <strong style="font-size: 18px;">${c.name}</strong> 
-              <span class="badge-leader">👑 班長: ${c.leaderName}</span>
-              ${c.accessType === 'specific' ? `<span style="font-size:10px; background:#f3e8ff; color:#6b21a8; padding:2px 4px; border-radius:4px;">🔒 私人班</span>` : ''}
-            </div>
-            <span style="color:#6366f1; font-weight:bold;">參考單堂 $${c.price}</span>
-          </div>
-
-          <div style="margin-top: 10px;">
-            ${sessionsHtml || '<p style="font-size:12px; color:#94a3b8;">暫無上堂日期</p>'}
-          </div>
-
-          ${canManage ? `
-            <div style="margin-top: 12px; padding: 10px; background: #fffbe0; border-radius: 8px; border: 1px solid #fde047;">
-              <div class="flex between">
-                <small style="font-weight:bold; color:#854d0e;">🛠️ ${isAdmin ? 'Admin' : '班長'} 管理功能：</small>
-                <button onclick="toggleTableEdit('${c.id}')" style="width:auto; margin:0; padding:4px 8px; font-size:12px; background:#d97706;">✏️ 管理堂數、學費/場租與學員</button>
-              </div>
-
-              <div id="table-editor-${c.id}" class="hidden" style="margin-top: 10px;">
-                
-                <div style="background:#fff; padding:10px; border-radius:8px; border:1px solid #e2e8f0; margin-bottom:10px;">
-                  <label style="font-size:12px; font-weight:bold;">🔒 修改「誰能報讀/查看」此課程：</label>
-                  <select id="edit-access-type-${c.id}" onchange="toggleEditAccessUserList('${c.id}')" style="margin-top:4px;">
-                    <option value="all" ${c.accessType !== 'specific' ? 'selected' : ''}>全部人 (公開班)</option>
-                    <option value="specific" ${c.accessType === 'specific' ? 'selected' : ''}>指定成員 (私人小組班)</option>
-                  </select>
-
-                  <div id="edit-access-user-container-${c.id}" class="${c.accessType === 'specific' ? '' : 'hidden'}" style="margin-top:6px;">
-                    <small style="color:#64748b;">勾選可查看與報名的成員：</small>
-                    <div id="edit-users-list-${c.id}" class="user-select-list" style="margin-top:4px;">
-                    </div>
-                  </div>
-                </div>
-
-                <div class="flex between" style="align-items:center;">
-                  <label style="font-size:12px; font-weight:bold;">📅 編輯堂數、地點、學費/場租與學員名單：</label>
-                  <span style="font-size:11px; color:#d97706; font-weight:bold;">💡 提示：表格可左右滑動 ➔</span>
-                </div>
-
-                <div class="table-container">
-                  <table class="edit-table">
-                    <thead>
-                      <tr>
-                        <th style="width:110px;">日期</th>
-                        <th style="width:65px;">時間</th>
-                        <th style="width:90px;">地點</th>
-                        <th style="width:60px;">學費($)</th>
-                        <th style="width:90px;">學費收款人</th>
-                        <th style="width:60px;">場租($)</th>
-                        <th style="width:90px;">場租付款人</th>
-                        <th style="min-width:180px;">已報名學員 (點擊可刪) / 手動加人</th>
-                        <th style="width:65px;">操作</th>
-                      </tr>
-                    </thead>
-                    <tbody id="table-tbody-${c.id}">
-                    </tbody>
-                  </table>
-                </div>
-
-                <div class="flex" style="margin-top: 10px; gap:6px;">
-                  <button onclick="addTableRow('${c.id}')" style="width:auto; margin:0; padding:6px 12px; font-size:12px; background:#10b981;">➕ 加開一堂</button>
-                  <button onclick="saveTableChanges('${c.id}')" style="width:auto; margin:0; padding:6px 12px; font-size:12px; background:#2563eb;">💾 儲存所有變更</button>
-                  <button onclick="deleteClass('${c.id}')" class="btn-danger" style="width:auto; margin:0; margin-left:auto; padding:6px 12px; font-size:12px;">刪除全課</button>
-                </div>
-              </div>
-            </div>
-          ` : ''}
-        </div>
-      `;
-    }).join('');
-  }
-
-  window.toggleEditAccessUserList = (classId) => {
-    const val = document.getElementById(`edit-access-type-${classId}`).value;
-    document.getElementById(`edit-access-user-container-${classId}`).classList.toggle('hidden', val !== 'specific');
-  };
-
-  window.toggleTableEdit = async (classId) => {
-    const container = document.getElementById(`table-editor-${classId}`);
-    container.classList.toggle('hidden');
-    if(!container.classList.contains('hidden')) {
-      const querySnapshot = await getDocs(collection(db, "users"));
-      allUsersList = [];
-      querySnapshot.forEach(docSnap => {
-        allUsersList.push({ uid: docSnap.id, ...docSnap.data() });
-      });
-
-      await renderEditUsersList(classId);
-      renderTableRows(classId);
-    }
-  };
-
-  async function renderEditUsersList(classId) {
-    const classObj = classesData.find(c => c.id === classId);
-    const allowed = classObj.allowedUsers || [];
-
-    const container = document.getElementById(`edit-users-list-${classId}`);
+    const container = document.getElementById('all-users-checkboxes');
     container.innerHTML = allUsersList.map(u => {
-      const isChecked = allowed.includes(u.uid);
       const userName = u.name || u.email || '未命名用戶';
       return `
         <label class="user-select-item">
-          <input type="checkbox" value="${u.uid}" class="edit-user-cb-${classId}" ${isChecked ? 'checked' : ''}> ${userName}
+          <input type="checkbox" value="${u.uid}" class="access-user-checkbox"> ${userName}
         </label>
       `;
     }).join('');
-  }
 
-  function renderTableRows(classId) {
-    const classObj = classesData.find(c => c.id === classId);
-    const tbody = document.getElementById(`table-tbody-${classId}`);
-    const sessions = classObj.sessions || {};
-    const dates = Object.keys(sessions).sort();
-
-    tbody.innerHTML = dates.map(d => {
-      const sess = sessions[d];
-      const students = sess.students || [];
-
-      // 已報名學員標籤
-      const studentChipsHtml = students.map(s => `
-        <span class="student-chip" data-uid="${s.uid}" data-name="${s.name}">
-          ${s.name}
-          <button type="button" onclick="removeStudentFromSessionRow(this)">✕</button>
-        </span>
-      `).join('');
-
-      // 手動加人選單
-      const addStudentOptions = allUsersList.map(u => `<option value="${u.uid}">${u.name || u.email}</option>`).join('');
-
-      // 學費收款人選單
-      const feePayerOptions = allUsersList.map(u => {
-        const isSelected = u.uid === (sess.feePayerUid || classObj.leaderId);
-        return `<option value="${u.uid}" ${isSelected ? 'selected' : ''}>${u.name || u.email}</option>`;
-      }).join('');
-
-      // 場租付款人選單
-      const rentPayerOptions = allUsersList.map(u => {
-        const isSelected = u.uid === (sess.rentPayerUid || sess.payerUid || classObj.leaderId);
-        return `<option value="${u.uid}" ${isSelected ? 'selected' : ''}>${u.name || u.email}</option>`;
-      }).join('');
-
-      const feeVal = sess.fee !== undefined ? sess.fee : classObj.price;
-
-      return `
-        <tr data-date="${d}" class="edit-session-row">
-          <td><input type="date" value="${d}" class="edit-date-input"></td>
-          <td><input type="text" value="${sess.time || '19:00'}" class="edit-time-input"></td>
-          <td><input type="text" value="${sess.location || ''}" class="edit-loc-input"></td>
-          
-          <td><input type="number" value="${feeVal}" class="edit-fee-input"></td>
-          <td>
-            <select class="edit-fee-payer-select">
-              ${feePayerOptions}
-            </select>
-          </td>
-
-          <td><input type="number" value="${sess.rent || 0}" class="edit-rent-input"></td>
-          <td>
-            <select class="edit-rent-payer-select">
-              ${rentPayerOptions}
-            </select>
-          </td>
-
-          <td>
-            <div class="students-container" style="display:flex; flex-wrap:wrap; gap:3px; margin-bottom:6px;">${studentChipsHtml}</div>
-            <div style="display:flex; gap:4px; align-items:center;">
-              <select class="add-student-select" style="margin:0; padding:4px; font-size:11px; flex:1;">
-                ${addStudentOptions}
-              </select>
-              <button type="button" onclick="addStudentToSessionRow(this)" style="width:auto; margin:0; padding:4px 8px; font-size:11px; background:#6366f1; white-space:nowrap; border-radius:6px;">加人</button>
-            </div>
-          </td>
-          <td><button onclick="this.closest('tr').remove()" style="padding:4px 6px; margin:0; background:#ef4444; font-size:11px; white-space:nowrap;">刪除</button></td>
-        </tr>
-      `;
-    }).join('');
-  }
-
-  window.addStudentToSessionRow = (btn) => {
-    const tr = btn.closest('tr');
-    const select = tr.querySelector('.add-student-select');
-    const selectedUid = select.value;
-    const userObj = allUsersList.find(u => u.uid === selectedUid);
-    if (!userObj) return;
-
-    const container = tr.querySelector('.students-container');
-    if (container.querySelector(`[data-uid="${selectedUid}"]`)) return alert("該學員已在名單中");
-
-    const chip = document.createElement('span');
-    chip.className = 'student-chip';
-    chip.setAttribute('data-uid', selectedUid);
-    chip.setAttribute('data-name', userObj.name || userObj.email);
-    chip.innerHTML = `${userObj.name || userObj.email} <button type="button" onclick="removeStudentFromSessionRow(this)">✕</button>`;
-    container.appendChild(chip);
-  };
-
-  window.removeStudentFromSessionRow = (btn) => {
-    btn.closest('.student-chip').remove();
-  };
-
-  window.addTableRow = (classId) => {
-    const tbody = document.getElementById(`table-tbody-${classId}`);
-    const todayStr = new Date().toISOString().split('T')[0];
-    const classObj = classesData.find(c => c.id === classId);
-
-    const addStudentOptions = allUsersList.map(u => `<option value="${u.uid}">${u.name || u.email}</option>`).join('');
-    const payerOptions = allUsersList.map(u => {
-      const isSelected = u.uid === classObj.leaderId;
-      return `<option value="${u.uid}" ${isSelected ? 'selected' : ''}>${u.name || u.email}</option>`;
+    const optionsHtml = allUsersList.map(u => {
+      const userName = u.name || u.email || '未命名用戶';
+      const isSelf = u.uid === currentUser.uid;
+      return `<option value="${u.uid}" ${isSelf ? 'selected' : ''}>${userName} ${isSelf ? '(班長)' : ''}</option>`;
     }).join('');
 
-    const tr = document.createElement('tr');
-    tr.className = 'edit-session-row';
-    tr.innerHTML = `
-      <td><input type="date" value="${todayStr}" class="edit-date-input"></td>
-      <td><input type="text" value="19:00" class="edit-time-input"></td>
-      <td><input type="text" value="Studio A" class="edit-loc-input"></td>
-      <td><input type="number" value="${classObj.price || 0}" class="edit-fee-input"></td>
-      <td>
-        <select class="edit-fee-payer-select">
-          ${payerOptions}
-        </select>
-      </td>
-      <td><input type="number" value="0" class="edit-rent-input"></td>
-      <td>
-        <select class="edit-rent-payer-select">
-          ${payerOptions}
-        </select>
-      </td>
-      <td>
-        <div class="students-container" style="display:flex; flex-wrap:wrap; gap:3px; margin-bottom:6px;"></div>
-        <div style="display:flex; gap:4px; align-items:center;">
-          <select class="add-student-select" style="margin:0; padding:4px; font-size:11px; flex:1;">
-            ${addStudentOptions}
-          </select>
-          <button type="button" onclick="addStudentToSessionRow(this)" style="width:auto; margin:0; padding:4px 8px; font-size:11px; background:#6366f1; white-space:nowrap; border-radius:6px;">加人</button>
-        </div>
-      </td>
-      <td><button onclick="this.closest('tr').remove()" style="padding:4px 6px; margin:0; background:#ef4444; font-size:11px; white-space:nowrap;">刪除</button></td>
-    `;
-    tbody.appendChild(tr);
-  };
+    document.getElementById('class-default-fee-payer').innerHTML = optionsHtml;
+    document.getElementById('class-default-rent-payer').innerHTML = optionsHtml;
 
-  window.saveTableChanges = async (classId) => {
-    const classObj = classesData.find(c => c.id === classId);
-    const tbody = document.getElementById(`table-tbody-${classId}`);
-    const rows = tbody.querySelectorAll('.edit-session-row');
+  } catch(e) {
+    console.error("載入用戶名單失敗:", e);
+  }
+}
 
-    const accessType = document.getElementById(`edit-access-type-${classId}`).value;
-    let allowedUsers = [];
+document.getElementById('add-date-btn').addEventListener('click', () => {
+  const picker = document.getElementById('single-date-picker');
+  const val = picker.value;
+  if(!val) return alert("請先選擇日期");
+  if(!selectedDates.includes(val)) {
+    selectedDates.push(val);
+    selectedDates.sort();
+    renderSelectedDates();
+  }
+});
 
-    if(accessType === 'specific') {
-      const cbs = document.querySelectorAll(`.edit-user-cb-${classId}:checked`);
-      allowedUsers = Array.from(cbs).map(cb => cb.value);
-      if(!allowedUsers.includes(classObj.leaderId)) allowedUsers.push(classObj.leaderId);
-    }
+function renderSelectedDates() {
+  const container = document.getElementById('selected-dates-container');
+  if(selectedDates.length === 0) {
+    container.innerHTML = `<span style="font-size:12px; color:#94a3b8;">尚未選擇日期</span>`;
+    return;
+  }
+  container.innerHTML = selectedDates.map(d => `
+    <div class="date-chip selected" onclick="removeDate('${d}')">
+      ${d} ✕
+    </div>
+  `).join('');
+}
 
-    const newSessions = {};
-    rows.forEach(tr => {
-      const dateVal = tr.querySelector('.edit-date-input').value;
-      const timeVal = tr.querySelector('.edit-time-input').value;
-      const locVal = tr.querySelector('.edit-loc-input').value;
+window.removeDate = (d) => {
+  selectedDates = selectedDates.filter(item => item !== d);
+  renderSelectedDates();
+};
 
-      const feeVal = Number(tr.querySelector('.edit-fee-input').value) || 0;
-      const feePayerUid = tr.querySelector('.edit-fee-payer-select').value;
-      const feePayerObj = allUsersList.find(u => u.uid === feePayerUid);
-      const feePayerName = feePayerObj ? (feePayerObj.name || feePayerObj.email) : '班長';
+document.getElementById('add-class-btn').addEventListener('click', async () => {
+  const name = document.getElementById('class-name').value;
+  const defaultLocation = document.getElementById('class-default-location').value || '未定地點';
+  const time = document.getElementById('class-time').value;
+  
+  const defaultFee = Number(document.getElementById('class-price').value) || 0;
+  const defaultFeePayerUid = document.getElementById('class-default-fee-payer').value || currentUser.uid;
+  const feePayerObj = allUsersList.find(u => u.uid === defaultFeePayerUid);
+  const defaultFeePayerName = feePayerObj ? (feePayerObj.name || feePayerObj.email) : (currentUserProfile.name || '班長');
 
-      const rentVal = Number(tr.querySelector('.edit-rent-input').value) || 0;
-      const rentPayerUid = tr.querySelector('.edit-rent-payer-select').value;
-      const rentPayerObj = allUsersList.find(u => u.uid === rentPayerUid);
-      const rentPayerName = rentPayerObj ? (rentPayerObj.name || rentPayerObj.email) : '班長';
+  const defaultRent = Number(document.getElementById('class-default-rent').value) || 0;
+  const defaultRentPayerUid = document.getElementById('class-default-rent-payer').value || currentUser.uid;
+  const rentPayerObj = allUsersList.find(u => u.uid === defaultRentPayerUid);
+  const defaultRentPayerName = rentPayerObj ? (rentPayerObj.name || rentPayerObj.email) : (currentUserProfile.name || '班長');
 
-      const studentChips = tr.querySelectorAll('.student-chip');
-      const updatedStudents = [];
-      studentChips.forEach(chip => {
-        const uid = chip.getAttribute('data-uid');
-        const nameText = chip.getAttribute('data-name') || chip.innerText.replace('✕', '').trim();
-        if (uid) {
-          updatedStudents.push({ uid, name: nameText });
-        }
-      });
+  const accessType = document.getElementById('access-type').value;
+  let allowedUsers = [];
 
-      if(dateVal) {
-        newSessions[dateVal] = {
-          time: timeVal,
-          location: locVal,
-          fee: feeVal,
-          feePayerUid,
-          feePayerName,
-          rent: rentVal,
-          rentPayerUid,
-          rentPayerName,
-          students: updatedStudents
-        };
+  if(accessType === 'specific') {
+    const checkboxes = document.querySelectorAll('.access-user-checkbox:checked');
+    allowedUsers = Array.from(checkboxes).map(cb => cb.value);
+    if(!allowedUsers.includes(currentUser.uid)) allowedUsers.push(currentUser.uid);
+  }
+
+  if(!name) return alert("請輸入課程名稱");
+  if(selectedDates.length === 0) return alert("請至少挑選一日上堂日期");
+
+  const sessions = {};
+  selectedDates.forEach(d => {
+    sessions[d] = { 
+      time, 
+      location: defaultLocation, 
+      fee: defaultFee,
+      feePayerUid: defaultFeePayerUid,
+      feePayerName: defaultFeePayerName,
+      rent: defaultRent,
+      rentPayerUid: defaultRentPayerUid,
+      rentPayerName: defaultRentPayerName,
+      students: [] 
+    };
+  });
+
+  try {
+    await addDoc(collection(db, "classes"), {
+      name,
+      sessions,
+      price: defaultFee,
+      leaderId: currentUser.uid,
+      leaderName: currentUserProfile.name || '班長',
+      accessType,
+      allowedUsers,
+      createdAt: new Date()
+    });
+    alert("發布課程成功！");
+    
+    document.getElementById('class-name').value = '';
+    selectedDates = [];
+    renderSelectedDates();
+    document.getElementById('create-class-form').classList.add('hidden');
+    
+    loadClasses();
+  } catch(e) {
+    alert("發布失敗: " + e.message);
+  }
+});
+
+async function loadClasses() {
+  try {
+    const querySnapshot = await getDocs(collection(db, "classes"));
+    classesData = [];
+    querySnapshot.forEach((docSnap) => {
+      const data = docSnap.data();
+      if(!isAdmin && data.accessType === 'specific' && (!data.allowedUsers || !data.allowedUsers.includes(currentUser.uid))) {
+        return;
+      }
+      classesData.push({ id: docSnap.id, ...data });
+    });
+    renderCalendar();
+    renderClassList();
+  } catch(e) {
+    console.error("載入課程失敗:", e);
+  }
+}
+
+/* 📅 月曆渲染邏輯（嚴格控制 7 欄與對位） */
+function renderCalendar() {
+  const calendarDays = document.getElementById('calendar-days');
+  calendarDays.innerHTML = '';
+
+  const year = currentDate.getFullYear();
+  const month = currentDate.getMonth();
+
+  document.getElementById('current-month-display').innerText = `${year}年 ${month + 1}月`;
+
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  // 填補當月第 1 天之前的空白格子
+  for (let i = 0; i < firstDay; i++) {
+    const emptyCell = document.createElement('div');
+    emptyCell.className = 'day-cell';
+    emptyCell.style.background = '#f8fafc';
+    calendarDays.appendChild(emptyCell);
+  }
+
+  // 填補日期 (1 到 daysInMonth)
+  for (let day = 1; day <= daysInMonth; day++) {
+    const cell = document.createElement('div');
+    cell.className = 'day-cell';
+    cell.innerHTML = `<strong>${day}</strong>`;
+
+    const monthStr = String(month + 1).padStart(2, '0');
+    const dayStr = String(day).padStart(2, '0');
+    const dateStr = `${year}-${monthStr}-${dayStr}`;
+
+    classesData.forEach(c => {
+      if(c.sessions && c.sessions[dateStr]) {
+        const sess = c.sessions[dateStr];
+        const isJoined = (sess.students || []).some(s => s.uid === currentUser.uid);
+
+        const tag = document.createElement('div');
+        tag.className = `class-tag ${isJoined ? 'joined-tag' : ''}`;
+        tag.innerText = `${sess.time || ''} ${c.name}`;
+        cell.appendChild(tag);
       }
     });
 
+    calendarDays.appendChild(cell);
+  }
+}
+
+document.getElementById('prev-month').addEventListener('click', () => {
+  currentDate.setMonth(currentDate.getMonth() - 1);
+  renderCalendar();
+});
+document.getElementById('next-month').addEventListener('click', () => {
+  currentDate.setMonth(currentDate.getMonth() + 1);
+  renderCalendar();
+});
+
+function renderClassList() {
+  const listEl = document.getElementById('class-list');
+  if(classesData.length === 0) {
+    listEl.innerHTML = "<p style='color:#64748b;'>目前沒有課程。</p>";
+    return;
+  }
+
+  listEl.innerHTML = classesData.map(c => {
+    const isLeader = c.leaderId === currentUser.uid;
+    const canManage = isLeader || isAdmin;
+    const sessions = c.sessions || {};
+    const dateKeys = Object.keys(sessions).sort();
+
+    const sessionsHtml = dateKeys.map(dateStr => {
+      const sess = sessions[dateStr];
+      const students = sess.students || [];
+      const isJoined = students.some(s => s.uid === currentUser.uid);
+      const feeVal = sess.fee !== undefined ? sess.fee : c.price;
+      const feeText = `💵 學費: $${feeVal} (收款: ${sess.feePayerName || c.leaderName})`;
+      const rentText = ` | 🏷️ 場租: $${sess.rent || 0} (付款: ${sess.rentPayerName || sess.payerName || c.leaderName})`;
+
+      return `
+        <div class="session-box">
+          <div class="flex between">
+            <div>
+              <strong>📅 ${dateStr}</strong> 
+              <span style="font-size:11px; color:#475569;">⏰ ${sess.time} | 📍 ${sess.location}</span>
+              <div style="font-size:11px; color:#0369a1; margin-top:2px;">
+                ${feeText} ${rentText}
+              </div>
+            </div>
+            <div>
+              ${isJoined ? 
+                `<button onclick="toggleSessionJoin('${c.id}', '${dateStr}', false)" class="btn-danger" style="width:auto; margin:0; padding:4px 8px; font-size:11px;">取消</button>` : 
+                `<button onclick="toggleSessionJoin('${c.id}', '${dateStr}', true)" class="btn-success" style="width:auto; margin:0; padding:4px 8px; font-size:11px;">報名</button>`
+              }
+            </div>
+          </div>
+          <div style="font-size:11px; color:#64748b; margin-top:4px;">
+            👥 出席 (${students.length}人): ${students.map(s => s.name).join(', ') || '暫無'}
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    return `
+      <div style="border-bottom: 2px solid var(--border); padding: 12px 0;">
+        <div class="flex between">
+          <div>
+            <strong style="font-size: 16px;">${c.name}</strong> 
+            <span class="badge-leader">👑 班長: ${c.leaderName}</span>
+            ${c.accessType === 'specific' ? `<span style="font-size:10px; background:#f3e8ff; color:#6b21a8; padding:2px 4px; border-radius:4px;">🔒 私人班</span>` : ''}
+          </div>
+          <span style="color:#6366f1; font-weight:bold; font-size:13px;">$${c.price}/堂</span>
+        </div>
+
+        <div style="margin-top: 8px;">
+          ${sessionsHtml || '<p style="font-size:12px; color:#94a3b8;">暫無上堂日期</p>'}
+        </div>
+
+        ${canManage ? `
+          <div style="margin-top: 10px; padding: 10px; background: #fffbe0; border-radius: 8px; border: 1px solid #fde047;">
+            <div class="flex between">
+              <small style="font-weight:bold; color:#854d0e;">🛠️ ${isAdmin ? 'Admin' : '班長'} 管理功能：</small>
+              <button onclick="toggleTableEdit('${c.id}')" style="width:auto; margin:0; padding:4px 8px; font-size:11px; background:#d97706;">✏️ 管理堂數與學員</button>
+            </div>
+
+            <div id="table-editor-${c.id}" class="hidden" style="margin-top: 10px;">
+              
+              <div style="background:#fff; padding:8px; border-radius:8px; border:1px solid #e2e8f0; margin-bottom:8px;">
+                <label style="font-size:11px; font-weight:bold;">🔒 修改「誰能報讀/查看」此課程：</label>
+                <select id="edit-access-type-${c.id}" onchange="toggleEditAccessUserList('${c.id}')" style="margin-top:4px;">
+                  <option value="all" ${c.accessType !== 'specific' ? 'selected' : ''}>全部人 (公開班)</option>
+                  <option value="specific" ${c.accessType === 'specific' ? 'selected' : ''}>指定成員 (私人小組班)</option>
+                </select>
+
+                <div id="edit-access-user-container-${c.id}" class="${c.accessType === 'specific' ? '' : 'hidden'}" style="margin-top:6px;">
+                  <small style="color:#64748b;">勾選可查看與報名的成員：</small>
+                  <div id="edit-users-list-${c.id}" class="user-select-list" style="margin-top:4px;">
+                  </div>
+                </div>
+              </div>
+
+              <div class="flex between" style="align-items:center;">
+                <label style="font-size:11px; font-weight:bold;">📅 編輯堂數與名單：</label>
+                <span style="font-size:10px; color:#d97706; font-weight:bold;">💡 橫向滑動查看 ➔</span>
+              </div>
+
+              <div class="table-container">
+                <table class="edit-table">
+                  <thead>
+                    <tr>
+                      <th style="width:110px;">日期</th>
+                      <th style="width:65px;">時間</th>
+                      <th style="width:90px;">地點</th>
+                      <th style="width:60px;">學費($)</th>
+                      <th style="width:90px;">學費收款人</th>
+                      <th style="width:60px;">場租($)</th>
+                      <th style="width:90px;">場租付款人</th>
+                      <th style="min-width:180px;">已報名學員 (點擊可刪) / 手動加人</th>
+                      <th style="width:60px;">操作</th>
+                    </tr>
+                  </thead>
+                  <tbody id="table-tbody-${c.id}">
+                  </tbody>
+                </table>
+              </div>
+
+              <div class="flex" style="margin-top: 8px; gap:4px;">
+                <button onclick="addTableRow('${c.id}')" style="width:auto; margin:0; padding:6px 10px; font-size:11px; background:#10b981;">➕ 加開一堂</button>
+                <button onclick="saveTableChanges('${c.id}')" style="width:auto; margin:0; padding:6px 10px; font-size:11px; background:#2563eb;">💾 儲存變更</button>
+                <button onclick="deleteClass('${c.id}')" class="btn-danger" style="width:auto; margin:0; margin-left:auto; padding:6px 10px; font-size:11px;">刪除全課</button>
+              </div>
+            </div>
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }).join('');
+}
+
+window.toggleEditAccessUserList = (classId) => {
+  const val = document.getElementById(`edit-access-type-${classId}`).value;
+  document.getElementById(`edit-access-user-container-${classId}`).classList.toggle('hidden', val !== 'specific');
+};
+
+window.toggleTableEdit = async (classId) => {
+  const container = document.getElementById(`table-editor-${classId}`);
+  container.classList.toggle('hidden');
+  if(!container.classList.contains('hidden')) {
+    const querySnapshot = await getDocs(collection(db, "users"));
+    allUsersList = [];
+    querySnapshot.forEach(docSnap => {
+      allUsersList.push({ uid: docSnap.id, ...docSnap.data() });
+    });
+
+    await renderEditUsersList(classId);
+    renderTableRows(classId);
+  }
+};
+
+async function renderEditUsersList(classId) {
+  const classObj = classesData.find(c => c.id === classId);
+  const allowed = classObj.allowedUsers || [];
+
+  const container = document.getElementById(`edit-users-list-${classId}`);
+  container.innerHTML = allUsersList.map(u => {
+    const isChecked = allowed.includes(u.uid);
+    const userName = u.name || u.email || '未命名用戶';
+    return `
+      <label class="user-select-item">
+        <input type="checkbox" value="${u.uid}" class="edit-user-cb-${classId}" ${isChecked ? 'checked' : ''}> ${userName}
+      </label>
+    `;
+  }).join('');
+}
+
+function renderTableRows(classId) {
+  const classObj = classesData.find(c => c.id === classId);
+  const tbody = document.getElementById(`table-tbody-${classId}`);
+  const sessions = classObj.sessions || {};
+  const dates = Object.keys(sessions).sort();
+
+  tbody.innerHTML = dates.map(d => {
+    const sess = sessions[d];
+    const students = sess.students || [];
+
+    const studentChipsHtml = students.map(s => `
+      <span class="student-chip" data-uid="${s.uid}" data-name="${s.name}">
+        ${s.name}
+        <button type="button" onclick="removeStudentFromSessionRow(this)">✕</button>
+      </span>
+    `).join('');
+
+    const addStudentOptions = allUsersList.map(u => `<option value="${u.uid}">${u.name || u.email}</option>`).join('');
+
+    const feePayerOptions = allUsersList.map(u => {
+      const isSelected = u.uid === (sess.feePayerUid || classObj.leaderId);
+      return `<option value="${u.uid}" ${isSelected ? 'selected' : ''}>${u.name || u.email}</option>`;
+    }).join('');
+
+    const rentPayerOptions = allUsersList.map(u => {
+      const isSelected = u.uid === (sess.rentPayerUid || sess.payerUid || classObj.leaderId);
+      return `<option value="${u.uid}" ${isSelected ? 'selected' : ''}>${u.name || u.email}</option>`;
+    }).join('');
+
+    const feeVal = sess.fee !== undefined ? sess.fee : classObj.price;
+
+    return `
+      <tr data-date="${d}" class="edit-session-row">
+        <td><input type="date" value="${d}" class="edit-date-input"></td>
+        <td><input type="text" value="${sess.time || '19:00'}" class="edit-time-input"></td>
+        <td><input type="text" value="${sess.location || ''}" class="edit-loc-input"></td>
+        
+        <td><input type="number" value="${feeVal}" class="edit-fee-input"></td>
+        <td>
+          <select class="edit-fee-payer-select">
+            ${feePayerOptions}
+          </select>
+        </td>
+
+        <td><input type="number" value="${sess.rent || 0}" class="edit-rent-input"></td>
+        <td>
+          <select class="edit-rent-payer-select">
+            ${rentPayerOptions}
+          </select>
+        </td>
+
+        <td>
+          <div class="students-container" style="display:flex; flex-wrap:wrap; gap:3px; margin-bottom:4px;">${studentChipsHtml}</div>
+          <div style="display:flex; gap:4px; align-items:center;">
+            <select class="add-student-select" style="margin:0; padding:2px 4px; font-size:11px; flex:1;">
+              ${addStudentOptions}
+            </select>
+            <button type="button" onclick="addStudentToSessionRow(this)" style="width:auto; margin:0; padding:2px 6px; font-size:11px; background:#6366f1; white-space:nowrap; border-radius:4px;">加人</button>
+          </div>
+        </td>
+        <td><button onclick="this.closest('tr').remove()" style="padding:3px 6px; margin:0; background:#ef4444; font-size:11px; white-space:nowrap;">刪除</button></td>
+      </tr>
+    `;
+  }).join('');
+}
+
+window.addStudentToSessionRow = (btn) => {
+  const tr = btn.closest('tr');
+  const select = tr.querySelector('.add-student-select');
+  const selectedUid = select.value;
+  const userObj = allUsersList.find(u => u.uid === selectedUid);
+  if (!userObj) return;
+
+  const container = tr.querySelector('.students-container');
+  if (container.querySelector(`[data-uid="${selectedUid}"]`)) return alert("該學員已在名單中");
+
+  const chip = document.createElement('span');
+  chip.className = 'student-chip';
+  chip.setAttribute('data-uid', selectedUid);
+  chip.setAttribute('data-name', userObj.name || userObj.email);
+  chip.innerHTML = `${userObj.name || userObj.email} <button type="button" onclick="removeStudentFromSessionRow(this)">✕</button>`;
+  container.appendChild(chip);
+};
+
+window.removeStudentFromSessionRow = (btn) => {
+  btn.closest('.student-chip').remove();
+};
+
+window.addTableRow = (classId) => {
+  const tbody = document.getElementById(`table-tbody-${classId}`);
+  const todayStr = new Date().toISOString().split('T')[0];
+  const classObj = classesData.find(c => c.id === classId);
+
+  const addStudentOptions = allUsersList.map(u => `<option value="${u.uid}">${u.name || u.email}</option>`).join('');
+  const payerOptions = allUsersList.map(u => {
+    const isSelected = u.uid === classObj.leaderId;
+    return `<option value="${u.uid}" ${isSelected ? 'selected' : ''}>${u.name || u.email}</option>`;
+  }).join('');
+
+  const tr = document.createElement('tr');
+  tr.className = 'edit-session-row';
+  tr.innerHTML = `
+    <td><input type="date" value="${todayStr}" class="edit-date-input"></td>
+    <td><input type="text" value="19:00" class="edit-time-input"></td>
+    <td><input type="text" value="Studio A" class="edit-loc-input"></td>
+    <td><input type="number" value="${classObj.price || 0}" class="edit-fee-input"></td>
+    <td>
+      <select class="edit-fee-payer-select">
+        ${payerOptions}
+      </select>
+    </td>
+    <td><input type="number" value="0" class="edit-rent-input"></td>
+    <td>
+      <select class="edit-rent-payer-select">
+        ${payerOptions}
+      </select>
+    </td>
+    <td>
+      <div class="students-container" style="display:flex; flex-wrap:wrap; gap:3px; margin-bottom:4px;"></div>
+      <div style="display:flex; gap:4px; align-items:center;">
+        <select class="add-student-select" style="margin:0; padding:2px 4px; font-size:11px; flex:1;">
+          ${addStudentOptions}
+        </select>
+        <button type="button" onclick="addStudentToSessionRow(this)" style="width:auto; margin:0; padding:2px 6px; font-size:11px; background:#6366f1; white-space:nowrap; border-radius:4px;">加人</button>
+      </div>
+    </td>
+    <td><button onclick="this.closest('tr').remove()" style="padding:3px 6px; margin:0; background:#ef4444; font-size:11px; white-space:nowrap;">刪除</button></td>
+  `;
+  tbody.appendChild(tr);
+};
+
+window.saveTableChanges = async (classId) => {
+  const classObj = classesData.find(c => c.id === classId);
+  const tbody = document.getElementById(`table-tbody-${classId}`);
+  const rows = tbody.querySelectorAll('.edit-session-row');
+
+  const accessType = document.getElementById(`edit-access-type-${classId}`).value;
+  let allowedUsers = [];
+
+  if(accessType === 'specific') {
+    const cbs = document.querySelectorAll(`.edit-user-cb-${classId}:checked`);
+    allowedUsers = Array.from(cbs).map(cb => cb.value);
+    if(!allowedUsers.includes(classObj.leaderId)) allowedUsers.push(classObj.leaderId);
+  }
+
+  const newSessions = {};
+  rows.forEach(tr => {
+    const dateVal = tr.querySelector('.edit-date-input').value;
+    const timeVal = tr.querySelector('.edit-time-input').value;
+    const locVal = tr.querySelector('.edit-loc-input').value;
+
+    const feeVal = Number(tr.querySelector('.edit-fee-input').value) || 0;
+    const feePayerUid = tr.querySelector('.edit-fee-payer-select').value;
+    const feePayerObj = allUsersList.find(u => u.uid === feePayerUid);
+    const feePayerName = feePayerObj ? (feePayerObj.name || feePayerObj.email) : '班長';
+
+    const rentVal = Number(tr.querySelector('.edit-rent-input').value) || 0;
+    const rentPayerUid = tr.querySelector('.edit-rent-payer-select').value;
+    const rentPayerObj = allUsersList.find(u => u.uid === rentPayerUid);
+    const rentPayerName = rentPayerObj ? (rentPayerObj.name || rentPayerObj.email) : '班長';
+
+    const studentChips = tr.querySelectorAll('.student-chip');
+    const updatedStudents = [];
+    studentChips.forEach(chip => {
+      const uid = chip.getAttribute('data-uid');
+      const nameText = chip.getAttribute('data-name') || chip.innerText.replace('✕', '').trim();
+      if (uid) {
+        updatedStudents.push({ uid, name: nameText });
+      }
+    });
+
+    if(dateVal) {
+      newSessions[dateVal] = {
+        time: timeVal,
+        location: locVal,
+        fee: feeVal,
+        feePayerUid,
+        feePayerName,
+        rent: rentVal,
+        rentPayerUid,
+        rentPayerName,
+        students: updatedStudents
+      };
+    }
+  });
+
+  try {
+    await updateDoc(doc(db, "classes", classId), {
+      accessType,
+      allowedUsers,
+      sessions: newSessions
+    });
+    alert("【成功】堂數與學員名單已順利更新！");
+    loadClasses();
+  } catch(e) {
+    alert("儲存失敗: " + e.message);
+  }
+};
+
+window.toggleSessionJoin = async (classId, dateStr, isJoining) => {
+  const classObj = classesData.find(c => c.id === classId);
+  if(!classObj) return;
+
+  const sessions = classObj.sessions;
+  let students = sessions[dateStr].students || [];
+
+  if(isJoining) {
+    if(!students.some(s => s.uid === currentUser.uid)) {
+      students.push({ uid: currentUser.uid, name: currentUserProfile.name || '學員' });
+    }
+  } else {
+    students = students.filter(s => s.uid !== currentUser.uid);
+  }
+
+  sessions[dateStr].students = students;
+
+  try {
+    await updateDoc(doc(db, "classes", classId), { sessions: sessions });
+    loadClasses();
+  } catch(e) {
+    alert("操作失敗: " + e.message);
+  }
+};
+
+window.deleteClass = async (id) => {
+  if(confirm("確定要刪除/解散此課程嗎？")) {
     try {
-      await updateDoc(doc(db, "classes", classId), {
-        accessType,
-        allowedUsers,
-        sessions: newSessions
-      });
-      alert("【成功】堂數、學費/場租及學員名單已順利更新！");
+      await deleteDoc(doc(db, "classes", id));
+      alert("課程已成功從資料庫刪除！");
       loadClasses();
     } catch(e) {
-      alert("儲存失敗: " + e.message);
-    }
-  };
-
-  window.toggleSessionJoin = async (classId, dateStr, isJoining) => {
-    const classObj = classesData.find(c => c.id === classId);
-    if(!classObj) return;
-
-    const sessions = classObj.sessions;
-    let students = sessions[dateStr].students || [];
-
-    if(isJoining) {
-      if(!students.some(s => s.uid === currentUser.uid)) {
-        students.push({ uid: currentUser.uid, name: currentUserProfile.name || '學員' });
-      }
-    } else {
-      students = students.filter(s => s.uid !== currentUser.uid);
-    }
-
-    sessions[dateStr].students = students;
-
-    try {
-      await updateDoc(doc(db, "classes", classId), { sessions: sessions });
-      loadClasses();
-    } catch(e) {
-      alert("操作失敗: " + e.message);
-    }
-  };
-
-  window.deleteClass = async (id) => {
-    if(confirm("確定要刪除/解散此課程嗎？")) {
-      try {
-        await deleteDoc(doc(db, "classes", id));
-        alert("課程已成功從資料庫刪除！");
-        loadClasses();
-      } catch(e) {
-        alert("刪除失敗: " + e.message);
-      }
+      alert("刪除失敗: " + e.message);
     }
   }
-</script>
-
-</body>
-</html>
+};
