@@ -53,7 +53,6 @@
     .btn-secondary { background: #64748b; }
     .hidden { display: none !important; }
     
-    /* 日期選擇器網格 */
     .date-picker-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
@@ -113,13 +112,19 @@
       border-radius: 4px;
       font-weight: bold;
     }
+    .session-box {
+      background: #f1f5f9;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px;
+      margin-top: 8px;
+    }
   </style>
 </head>
 <body>
 
 <div class="container">
   
-  <!-- 頂部 User Bar -->
   <div class="card flex between">
     <div>
       <h2 style="margin:0">💃 Dancing-Sontos</h2>
@@ -128,7 +133,6 @@
     <button id="logout-btn" class="hidden" style="width: auto; margin:0;">登出</button>
   </div>
 
-  <!-- Auth 登入/註冊區 -->
   <div id="auth-section" class="card">
     <h3 id="auth-title">會員登入</h3>
     <input type="email" id="auth-email" placeholder="電子郵件">
@@ -144,10 +148,8 @@
     </p>
   </div>
 
-  <!-- 主功能區 (登入後顯示) -->
   <div id="app-section" class="hidden">
     
-    <!-- 開班功能 (人人都是班長) -->
     <div class="card">
       <div class="flex between">
         <h3>➕ 我要開班 (發起課程)</h3>
@@ -157,26 +159,28 @@
       <div id="create-class-form" class="hidden" style="margin-top: 15px;">
         <input type="text" id="class-name" placeholder="課程名稱 (例如: Jazz Pop 基礎班)">
         
-        <label style="font-size: 12px; font-weight: bold;">點擊勾選上堂日期 (可多選非連續日子)：</label>
+        <label style="font-size: 12px; font-weight: bold;">預設上堂地點 / Studio 名稱：</label>
+        <input type="text" id="class-default-location" placeholder="例如: 旺角 ABC Studio A房">
+
+        <label style="font-size: 12px; font-weight: bold;">點擊勾選預設上堂日期：</label>
         <div class="flex" style="margin-top: 5px;">
           <input type="date" id="single-date-picker" style="margin:0;">
           <button id="add-date-btn" type="button" style="width: 120px; margin:0;">加入日期</button>
         </div>
         
         <div id="selected-dates-container" class="date-picker-grid" style="margin-top: 10px;">
-          <span style="font-size:12px; color:#94a3b8;">尚未選擇日期，請使用上方月曆新增日期</span>
+          <span style="font-size:12px; color:#94a3b8;">尚未選擇日期</span>
         </div>
 
         <div class="flex">
           <input type="time" id="class-time" value="19:00">
-          <input type="number" id="class-price" placeholder="每人學費 ($)">
+          <input type="number" id="class-price" placeholder="單堂學費 ($)">
         </div>
 
         <button id="add-class-btn" class="btn-success">正式發布課程</button>
       </div>
     </div>
 
-    <!-- 月曆檢視 -->
     <div class="card">
       <div class="flex between" style="margin-bottom: 10px;">
         <h3>📅 課程月曆</h3>
@@ -193,9 +197,8 @@
       <div class="calendar-grid" id="calendar-days"></div>
     </div>
 
-    <!-- 課程列表與報名區 -->
     <div class="card">
-      <h3>📚 所有課程與報名</h3>
+      <h3>📚 所有課程與獨立報名</h3>
       <div id="class-list">載入中...</div>
     </div>
 
@@ -203,11 +206,10 @@
 
 </div>
 
-<!-- Firebase SDKs -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
   import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-  import { getFirestore, collection, addDoc, getDocs, doc, setDoc, getDoc, updateDoc, arrayUnion, arrayRemove, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+  import { getFirestore, collection, addDoc, getDocs, doc, setDoc, getDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyB2ky_jGsp4Me5XNXVpvow5oUAV-ME6oG8",
@@ -230,7 +232,6 @@
   let classesData = [];
   let selectedDates = [];
 
-  // DOM 元素
   const authSection = document.getElementById('auth-section');
   const appSection = document.getElementById('app-section');
   const toggleAuthModeBtn = document.getElementById('toggle-auth-mode');
@@ -239,12 +240,10 @@
   const logoutBtn = document.getElementById('logout-btn');
   const userStatus = document.getElementById('user-status');
 
-  // 切換折疊開班表單
   document.getElementById('toggle-create-btn').addEventListener('click', () => {
     document.getElementById('create-class-form').classList.toggle('hidden');
   });
 
-  // 切換 登入/註冊 模式
   toggleAuthModeBtn.addEventListener('click', (e) => {
     e.preventDefault();
     isRegisterMode = !isRegisterMode;
@@ -254,7 +253,6 @@
     toggleAuthModeBtn.innerText = isRegisterMode ? "已有帳號？登入" : "沒有帳號？註冊";
   });
 
-  // 登入/註冊
   authMainBtn.addEventListener('click', async () => {
     const email = document.getElementById('auth-email').value;
     const password = document.getElementById('auth-password').value;
@@ -277,7 +275,6 @@
 
   logoutBtn.addEventListener('click', () => signOut(auth));
 
-  // 監聽登入狀態
   onAuthStateChanged(auth, async (user) => {
     if (user) {
       currentUser = user;
@@ -300,7 +297,6 @@
     }
   });
 
-  // 動態新增日期到選擇清單
   document.getElementById('add-date-btn').addEventListener('click', () => {
     const picker = document.getElementById('single-date-picker');
     const val = picker.value;
@@ -315,7 +311,7 @@
   function renderSelectedDates() {
     const container = document.getElementById('selected-dates-container');
     if(selectedDates.length === 0) {
-      container.innerHTML = `<span style="font-size:12px; color:#94a3b8;">尚未選擇日期，請使用上方月曆新增日期</span>`;
+      container.innerHTML = `<span style="font-size:12px; color:#94a3b8;">尚未選擇日期</span>`;
       return;
     }
     container.innerHTML = selectedDates.map(d => `
@@ -330,29 +326,37 @@
     renderSelectedDates();
   };
 
-  // 班長發布課程
+  // 班長發布課程 (包含獨立 sessions 結構)
   document.getElementById('add-class-btn').addEventListener('click', async () => {
     const name = document.getElementById('class-name').value;
+    const defaultLocation = document.getElementById('class-default-location').value || '未定地點';
     const time = document.getElementById('class-time').value;
     const price = document.getElementById('class-price').value;
 
     if(!name) return alert("請輸入課程名稱");
     if(selectedDates.length === 0) return alert("請至少挑選一日上堂日期");
 
+    // 建立獨立的 Sessions
+    const sessions = {};
+    selectedDates.forEach(d => {
+      sessions[d] = {
+        time: time,
+        location: defaultLocation,
+        students: [] // 該堂課的學員名單
+      };
+    });
+
     try {
       await addDoc(collection(db, "classes"), {
         name,
-        dates: selectedDates, // 儲存多個獨立日期陣列
-        time,
+        sessions: sessions,
         price: Number(price) || 0,
         leaderId: currentUser.uid,
         leaderName: currentUserProfile.name,
-        students: [], // 預設沒有學員報名
         createdAt: new Date()
       });
-      alert("開班成功！你已成為該班班長。");
+      alert("開班成功！已為每堂課建立獨立報名表。");
       
-      // 重置表單
       document.getElementById('class-name').value = '';
       selectedDates = [];
       renderSelectedDates();
@@ -364,7 +368,6 @@
     }
   });
 
-  // 載入班別
   async function loadClasses() {
     const querySnapshot = await getDocs(collection(db, "classes"));
     classesData = [];
@@ -375,7 +378,6 @@
     renderClassList();
   }
 
-  // 渲染月曆
   function renderCalendar() {
     const calendarDays = document.getElementById('calendar-days');
     calendarDays.innerHTML = '';
@@ -403,12 +405,12 @@
       const dayStr = String(day).padStart(2, '0');
       const dateStr = `${year}-${monthStr}-${dayStr}`;
 
-      // 檢查當日是否有課 (比對 dates 陣列)
       classesData.forEach(c => {
-        if(c.dates && c.dates.includes(dateStr)) {
+        if(c.sessions && c.sessions[dateStr]) {
+          const sess = c.sessions[dateStr];
           const tag = document.createElement('div');
           tag.className = 'class-tag';
-          tag.innerText = `${c.time || ''} ${c.name}`;
+          tag.innerText = `${sess.time || ''} ${c.name}`;
           cell.appendChild(tag);
         }
       });
@@ -426,7 +428,7 @@
     renderCalendar();
   });
 
-  // 渲染課程列表與報名按鈕
+  // 渲染課程與單堂獨立報名清單
   function renderClassList() {
     const listEl = document.getElementById('class-list');
     if(classesData.length === 0) {
@@ -436,68 +438,134 @@
 
     listEl.innerHTML = classesData.map(c => {
       const isLeader = c.leaderId === currentUser.uid;
-      const students = c.students || [];
-      const isJoined = students.some(s => s.uid === currentUser.uid);
+      const sessions = c.sessions || {};
+      const dateKeys = Object.keys(sessions).sort();
+
+      const sessionsHtml = dateKeys.map(dateStr => {
+        const sess = sessions[dateStr];
+        const students = sess.students || [];
+        const isJoined = students.some(s => s.uid === currentUser.uid);
+
+        return `
+          <div class="session-box">
+            <div class="flex between">
+              <div>
+                <strong>📅 ${dateStr}</strong> 
+                <span style="font-size:12px; color:#475569;">⏰ ${sess.time} | 📍 ${sess.location}</span>
+              </div>
+              <div>
+                ${isJoined ? 
+                  `<button onclick="toggleSessionJoin('${c.id}', '${dateStr}', false)" class="btn-danger" style="width:auto; margin:0; padding:4px 8px; font-size:12px;">取消此堂</button>` : 
+                  `<button onclick="toggleSessionJoin('${c.id}', '${dateStr}', true)" class="btn-success" style="width:auto; margin:0; padding:4px 8px; font-size:12px;">報名此堂</button>`
+                }
+              </div>
+            </div>
+            <div style="font-size:11px; color:#64748b; margin-top:4px;">
+              👥 出席 (${students.length}人): ${students.map(s => s.name).join(', ') || '暫無'}
+            </div>
+          </div>
+        `;
+      }).join('');
 
       return `
-        <div style="border-bottom: 1px solid var(--border); padding: 15px 0;">
+        <div style="border-bottom: 2px solid var(--border); padding: 15px 0;">
           <div class="flex between">
             <div>
-              <strong style="font-size: 16px;">${c.name}</strong> 
+              <strong style="font-size: 18px;">${c.name}</strong> 
               <span class="badge-leader">👑 班長: ${c.leaderName}</span>
             </div>
-            <span style="color:#6366f1; font-weight:bold;">$${c.price}</span>
+            <span style="color:#6366f1; font-weight:bold;">單堂 $${c.price}</span>
           </div>
 
-          <div style="margin-top:6px; font-size:13px; color:#475569;">
-            📅 上堂日期: <strong>${(c.dates || []).join(', ')}</strong><br>
-            ⏰ 時間: ${c.time}<br>
-            👥 已報名 (${students.length}人): ${students.map(s => s.name).join(', ') || '暫無人報名'}
+          <div style="margin-top: 10px;">
+            ${sessionsHtml || '<p style="font-size:12px; color:#94a3b8;">暫無上堂日期</p>'}
           </div>
 
-          <div style="margin-top: 10px;" class="flex">
-            <!-- 報名 / 取消報名 按鈕 -->
-            ${isJoined ? 
-              `<button onclick="toggleJoin('${c.id}', false)" class="btn-danger" style="width:auto; margin:0;">取消報名</button>` : 
-              `<button onclick="toggleJoin('${c.id}', true)" class="btn-success" style="width:auto; margin:0;">🙋‍♂️ 我要報名</button>`
-            }
-
-            <!-- 班長專用：刪除課程 -->
-            ${isLeader ? 
-              `<button onclick="deleteClass('${c.id}')" class="btn-secondary" style="width:auto; margin:0; margin-left:auto;">🗑️ 解散課程 (班長)</button>` : ''
-            }
-          </div>
+          ${isLeader ? `
+            <div style="margin-top: 12px; padding: 10px; background: #fffbe0; border-radius: 8px; border: 1px solid #fde047;">
+              <small style="font-weight:bold; color:#854d0e;">👑 班長管理面板：</small>
+              <div class="flex" style="margin-top:6px;">
+                <button onclick="addSessionToClass('${c.id}')" style="width:auto; margin:0; padding:4px 8px; font-size:12px; background:#d97706;">➕ 加開新日期</button>
+                <button onclick="editSessionDetails('${c.id}')" style="width:auto; margin:0; padding:4px 8px; font-size:12px; background:#b45309;">✏️ 修改時間/地點/刪堂</button>
+                <button onclick="deleteClass('${c.id}')" class="btn-secondary" style="width:auto; margin:0; margin-left:auto; padding:4px 8px; font-size:12px;">解散全課</button>
+              </div>
+            </div>
+          ` : ''}
         </div>
       `;
     }).join('');
   }
 
-  // 報名 / 取消報名 功能
-  window.toggleJoin = async (classId, isJoining) => {
-    const classRef = doc(db, "classes", classId);
-    const studentInfo = { uid: currentUser.uid, name: currentUserProfile.name };
+  // 獨立單堂報名 / 取消報名
+  window.toggleSessionJoin = async (classId, dateStr, isJoining) => {
+    const classObj = classesData.find(c => c.id === classId);
+    if(!classObj) return;
+
+    const sessions = classObj.sessions;
+    let students = sessions[dateStr].students || [];
+
+    if(isJoining) {
+      if(!students.some(s => s.uid === currentUser.uid)) {
+        students.push({ uid: currentUser.uid, name: currentUserProfile.name });
+      }
+    } else {
+      students = students.filter(s => s.uid !== currentUser.uid);
+    }
+
+    sessions[dateStr].students = students;
 
     try {
-      if(isJoining) {
-        await updateDoc(classRef, {
-          students: arrayUnion(studentInfo)
-        });
-        alert("報名成功！");
-      } else {
-        await updateDoc(classRef, {
-          students: arrayRemove(studentInfo)
-        });
-        alert("已取消報名！");
-      }
+      await updateDoc(doc(db, "classes", classId), { sessions: sessions });
       loadClasses();
     } catch(e) {
       alert("操作失敗: " + e.message);
     }
   };
 
-  // 刪除班別 (限班長)
+  // 班長：新增單堂日期
+  window.addSessionToClass = async (classId) => {
+    const dateStr = prompt("請輸入新增日期 (格式: YYYY-MM-DD，例: 2026-08-20)：");
+    if(!dateStr) return;
+    const timeStr = prompt("請輸入上堂時間 (例: 20:00 - 22:00)：", "19:00");
+    const locStr = prompt("請輸入上堂地點/Studio：", "旺角 Studio");
+
+    const classObj = classesData.find(c => c.id === classId);
+    const sessions = classObj.sessions || {};
+    sessions[dateStr] = { time: timeStr, location: locStr, students: [] };
+
+    await updateDoc(doc(db, "classes", classId), { sessions: sessions });
+    alert("加開堂數成功！");
+    loadClasses();
+  };
+
+  // 班長：修改或刪除個別堂數
+  window.editSessionDetails = async (classId) => {
+    const classObj = classesData.find(c => c.id === classId);
+    const dates = Object.keys(classObj.sessions || {});
+    if(dates.length === 0) return alert("目前沒有堂數可修改");
+
+    const dateStr = prompt(`請輸入你想修改/刪除的日期:\n(${dates.join(', ')})`);
+    if(!dateStr || !classObj.sessions[dateStr]) return alert("找不到該日期");
+
+    const action = prompt("請選擇操作:\n1 = 修改時間與地點\n2 = 刪除此堂課", "1");
+    if(action === "1") {
+      const newTime = prompt("新時間:", classObj.sessions[dateStr].time);
+      const newLoc = prompt("新地點/Studio:", classObj.sessions[dateStr].location);
+      classObj.sessions[dateStr].time = newTime;
+      classObj.sessions[dateStr].location = newLoc;
+      await updateDoc(doc(db, "classes", classId), { sessions: classObj.sessions });
+      alert("修改成功！");
+    } else if(action === "2") {
+      delete classObj.sessions[dateStr];
+      await updateDoc(doc(db, "classes", classId), { sessions: classObj.sessions });
+      alert("已刪除該堂課！");
+    }
+    loadClasses();
+  };
+
+  // 解散課程
   window.deleteClass = async (id) => {
-    if(confirm("你是這個班的班長，確定要解散此課程嗎？")) {
+    if(confirm("確定要全面解散此課程嗎？")) {
       await deleteDoc(doc(db, "classes", id));
       loadClasses();
     }
