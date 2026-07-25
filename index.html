@@ -182,6 +182,18 @@
       white-space: pre-wrap;
     }
 
+    /* 已封盤標籤 */
+    .closed-tag {
+      background: #e2e8f0;
+      color: #64748b;
+      font-size: 11px;
+      font-weight: bold;
+      padding: 4px 8px;
+      border-radius: 6px;
+      border: 1px solid #cbd5e1;
+      display: inline-block;
+    }
+
     /* 表格滾動容器 */
     .table-container {
       width: 100%;
@@ -206,7 +218,7 @@
 
     .edit-table {
       width: 100%;
-      min-width: 900px;
+      min-width: 980px;
       border-collapse: collapse;
       font-size: 12px;
     }
@@ -335,7 +347,6 @@
       <div id="create-class-form" class="hidden" style="margin-top: 15px;">
         <input type="text" id="class-name" placeholder="課程名稱 (例如: Jazz Pop 基礎班)">
         
-        <!-- 3. 班長的話 -->
         <label style="font-size: 12px; font-weight: bold;">💬 班長的話 (短文章/課程介紹/給學員的話)：</label>
         <textarea id="class-leader-note" rows="3" placeholder="例如：這期課程會教授基礎排舞，請大家穿著舒適運動服，帶備毛巾..."></textarea>
 
@@ -352,7 +363,6 @@
           <span style="font-size:12px; color:#94a3b8;">尚未選擇日期</span>
         </div>
 
-        <!-- 1. 開始時間與完結時間 -->
         <label style="font-size: 12px; font-weight: bold;">⏰ 預設課堂時間：</label>
         <div class="flex">
           <div>
@@ -699,7 +709,6 @@
     const leaderNote = document.getElementById('class-leader-note').value.trim();
     const defaultLocation = document.getElementById('class-default-location').value || '未定地點';
     
-    // 1. 開始時間與完結時間
     const startTime = document.getElementById('class-start-time').value || '19:00';
     const endTime = document.getElementById('class-end-time').value || '21:00';
 
@@ -737,6 +746,7 @@
         rent: defaultRent,
         rentPayerUid: defaultRentPayerUid,
         rentPayerName: defaultRentPayerName,
+        isClosed: false, // 2. 預設為 OFF (false)
         students: [] 
       };
     });
@@ -785,7 +795,7 @@
     }
   }
 
-  /* 📅 月曆渲染（1. 只顯示開始時間） */
+  /* 📅 月曆渲染 */
   function renderCalendar() {
     const calendarDays = document.getElementById('calendar-days');
     calendarDays.innerHTML = '';
@@ -840,7 +850,7 @@
     renderCalendar();
   });
 
-  /* 📚 課程列表渲染（2. 堂數欄位4行化 & 3. 班長的話） */
+  /* 📚 課程列表渲染（1. 按鈕更名 & 2. 已封盤邏輯） */
   function renderClassList() {
     const listEl = document.getElementById('class-list');
     if(classesData.length === 0) {
@@ -863,7 +873,17 @@
         const startTime = sess.startTime || sess.time || '19:00';
         const endTime = sess.endTime ? ` ~ ${sess.endTime}` : '';
 
-        // 2. 嚴格分為四行顯示
+        // 2. 判斷按鈕顯示邏輯 (是否封盤)
+        let actionBtnHtml = '';
+        if (sess.isClosed) {
+          actionBtnHtml = `<span class="closed-tag">🔒 已封盤</span>`;
+        } else {
+          // 1. 更名為「報名」與「取消報名」
+          actionBtnHtml = isJoined ? 
+            `<button onclick="toggleSessionJoin('${c.id}', '${dateStr}', false)" class="btn-danger" style="width:auto; margin:0; padding:4px 8px; font-size:11px;">取消報名</button>` : 
+            `<button onclick="toggleSessionJoin('${c.id}', '${dateStr}', true)" class="btn-success" style="width:auto; margin:0; padding:4px 8px; font-size:11px;">報名</button>`;
+        }
+
         return `
           <div class="session-box">
             <div class="flex between" style="align-items: flex-start;">
@@ -891,10 +911,7 @@
               </div>
 
               <div style="margin-left: 10px; white-space:nowrap;">
-                ${isJoined ? 
-                  `<button onclick="toggleSessionJoin('${c.id}', '${dateStr}', false)" class="btn-danger" style="width:auto; margin:0; padding:4px 8px; font-size:11px;">取消此堂</button>` : 
-                  `<button onclick="toggleSessionJoin('${c.id}', '${dateStr}', true)" class="btn-success" style="width:auto; margin:0; padding:4px 8px; font-size:11px;">報名此堂</button>`
-                }
+                ${actionBtnHtml}
               </div>
             </div>
           </div>
@@ -905,7 +922,6 @@
         ? `<span style="font-size:10px; background:#f3e8ff; color:#6b21a8; padding:2px 4px; border-radius:4px;">🔒 私人班</span>`
         : `<span style="font-size:10px; background:#e0f2fe; color:#0369a1; padding:2px 4px; border-radius:4px;">🌐 公開班</span>`;
 
-      // 3. 班長的話視窗與按鈕
       const leaderNoteHtml = c.leaderNote ? `
         <div style="margin-top: 6px;">
           <button onclick="toggleLeaderNote('${c.id}')" class="btn-secondary" style="width:auto; margin:0; padding:2px 6px; font-size:11px;">💬 查看班長的話</button>
@@ -941,13 +957,11 @@
 
               <div id="table-editor-${c.id}" class="hidden" style="margin-top: 10px;">
                 
-                <!-- 1. 修改課程名稱 -->
                 <div style="background:#fff; padding:8px; border-radius:8px; border:1px solid #e2e8f0; margin-bottom:8px;">
                   <label style="font-size:11px; font-weight:bold;">📝 修改課程名稱：</label>
                   <input type="text" id="edit-class-name-${c.id}" value="${c.name}" style="margin-top:4px; font-size:12px;">
                 </div>
 
-                <!-- 3. 修改班長的話 -->
                 <div style="background:#fff; padding:8px; border-radius:8px; border:1px solid #e2e8f0; margin-bottom:8px;">
                   <label style="font-size:11px; font-weight:bold;">💬 修改「班長的話」：</label>
                   <textarea id="edit-leader-note-${c.id}" rows="2" style="margin-top:4px; font-size:12px;">${c.leaderNote || ''}</textarea>
@@ -968,7 +982,7 @@
                 </div>
 
                 <div class="flex between" style="align-items:center;">
-                  <label style="font-size:11px; font-weight:bold;">📅 編輯堂數、時間、地點與付款人：</label>
+                  <label style="font-size:11px; font-weight:bold;">📅 編輯堂數、封盤狀態、時間、地點與付款人：</label>
                   <span style="font-size:10px; color:#d97706; font-weight:bold;">💡 橫向滑動查看 ➔</span>
                 </div>
 
@@ -977,6 +991,8 @@
                     <thead>
                       <tr>
                         <th style="width:110px;">日期</th>
+                        <!-- 2. 已封盤開關欄位 -->
+                        <th style="width:80px; color:#b91c1c;">已封盤?</th>
                         <th style="width:65px;">開始時間</th>
                         <th style="width:65px;">完結時間</th>
                         <th style="width:90px;">地點</th>
@@ -1078,11 +1094,20 @@
       const feeVal = sess.fee !== undefined ? sess.fee : classObj.price;
       const startTimeVal = sess.startTime || sess.time || '19:00';
       const endTimeVal = sess.endTime || '21:00';
+      const isClosed = sess.isClosed || false;
 
       return `
         <tr data-date="${d}" class="edit-session-row">
           <td><input type="date" value="${d}" class="edit-date-input"></td>
-          <!-- 1. 開始與完結時間編輯欄位 -->
+          
+          <!-- 2. 已封盤 ON/OFF 選擇框 (預設為 OFF) -->
+          <td>
+            <select class="edit-closed-select" style="font-weight:bold; color: ${isClosed ? '#dc2626' : '#166534'};">
+              <option value="false" ${!isClosed ? 'selected' : ''}>OFF</option>
+              <option value="true" ${isClosed ? 'selected' : ''}>ON (封盤)</option>
+            </select>
+          </td>
+
           <td><input type="time" value="${startTimeVal}" class="edit-start-time-input"></td>
           <td><input type="time" value="${endTimeVal}" class="edit-end-time-input"></td>
           <td><input type="text" value="${sess.location || ''}" class="edit-loc-input"></td>
@@ -1153,6 +1178,12 @@
     tr.className = 'edit-session-row';
     tr.innerHTML = `
       <td><input type="date" value="${todayStr}" class="edit-date-input"></td>
+      <td>
+        <select class="edit-closed-select" style="font-weight:bold; color: #166534;">
+          <option value="false" selected>OFF</option>
+          <option value="true">ON (封盤)</option>
+        </select>
+      </td>
       <td><input type="time" value="19:00" class="edit-start-time-input"></td>
       <td><input type="time" value="21:00" class="edit-end-time-input"></td>
       <td><input type="text" value="Studio A" class="edit-loc-input"></td>
@@ -1182,7 +1213,7 @@
     tbody.appendChild(tr);
   };
 
-  // 儲存所有變更
+  // 儲存變更 (包含已封盤狀態)
   window.saveTableChanges = async (classId) => {
     const classObj = classesData.find(c => c.id === classId);
     const tbody = document.getElementById(`table-tbody-${classId}`);
@@ -1205,6 +1236,7 @@
     const newSessions = {};
     rows.forEach(tr => {
       const dateVal = tr.querySelector('.edit-date-input').value;
+      const isClosed = tr.querySelector('.edit-closed-select').value === 'true'; // 讀取封盤設定
       const startTimeVal = tr.querySelector('.edit-start-time-input').value;
       const endTimeVal = tr.querySelector('.edit-end-time-input').value;
       const locVal = tr.querySelector('.edit-loc-input').value;
@@ -1240,6 +1272,7 @@
           rent: rentVal,
           rentPayerUid,
           rentPayerName,
+          isClosed, // 保存封盤 status
           students: updatedStudents
         };
       }
@@ -1253,7 +1286,7 @@
         allowedUsers,
         sessions: newSessions
       });
-      alert("【成功】課程名稱、班長的話、堂數與學員名單已順利更新！");
+      alert("【成功】課程資訊與堂數封盤狀態已順利更新！");
       loadClasses();
     } catch(e) {
       alert("儲存失敗: " + e.message);
@@ -1265,6 +1298,10 @@
     if(!classObj) return;
 
     const sessions = classObj.sessions;
+    if (sessions[dateStr].isClosed) {
+      return alert("該堂課已封盤，無法進行報名或取消報名！");
+    }
+
     let students = sessions[dateStr].students || [];
 
     if(isJoining) {
