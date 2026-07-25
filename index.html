@@ -26,7 +26,7 @@
       margin: 0;
       padding: 15px;
     }
-    .container { max-width: 850px; margin: 0 auto; }
+    .container { max-width: 900px; margin: 0 auto; }
     .card {
       background: var(--card-bg);
       padding: 20px;
@@ -107,7 +107,6 @@
       background: #fff;
       transition: background-color 0.2s;
     }
-    /* 未報名的課程標籤：預設灰藍色 */
     .class-tag {
       background: #e0e7ff;
       color: #3730a3;
@@ -118,7 +117,6 @@
       text-align: left;
       border: 1px solid #c7d2fe;
     }
-    /* 已報名的特定課程標籤：單獨顯示綠底綠框 */
     .class-tag.joined-tag {
       background-color: var(--joined-bg) !important;
       border: 1px solid var(--joined-border) !important;
@@ -159,8 +157,9 @@
       border: 1px solid var(--border);
       padding: 6px;
       text-align: left;
+      vertical-align: top;
     }
-    .edit-table input {
+    .edit-table input, .edit-table select {
       margin: 0;
       padding: 4px;
       font-size: 12px;
@@ -190,6 +189,26 @@
     .user-select-item input {
       margin: 0;
       width: auto;
+    }
+    .student-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: #e2e8f0;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 11px;
+      margin: 2px;
+    }
+    .student-chip button {
+      width: auto;
+      height: auto;
+      padding: 0 4px;
+      margin: 0;
+      font-size: 10px;
+      line-height: 12px;
+      background: #ef4444;
+      border-radius: 50%;
     }
   </style>
 </head>
@@ -272,6 +291,16 @@
         <div class="flex">
           <input type="time" id="class-time" value="19:00">
           <input type="number" id="class-price" placeholder="單堂學費 ($)">
+        </div>
+
+        <div style="background:#f1f5f9; padding:10px; border-radius:8px; margin-bottom:12px;">
+          <label style="font-size: 12px; font-weight: bold;">💰 每節課預設場租與付款人：</label>
+          <div class="flex" style="margin-top:5px;">
+            <input type="number" id="class-default-rent" placeholder="每節場租 ($)" style="margin:0;" value="0">
+            <select id="class-default-payer" style="margin:0;">
+              <!-- 動態載入成員選單 -->
+            </select>
+          </div>
         </div>
 
         <label style="font-size: 12px; font-weight: bold;">誰能報讀 / 查看此課程：</label>
@@ -395,7 +424,6 @@
     signOut(auth);
   });
 
-  // 1) 取消我的帳戶功能
   deleteAccountBtn.addEventListener('click', async () => {
     if (!currentUser) return;
     
@@ -404,11 +432,8 @@
 
     try {
       const userUid = currentUser.uid;
-      
-      // 刪除 Firestore 中的用戶資料
       await deleteDoc(doc(db, "users", userUid));
 
-      // 嘗試刪除 Auth 中的帳號
       try {
         await deleteUser(currentUser);
         alert("您的帳戶已成功取消並刪除。");
@@ -529,6 +554,7 @@
         allUsersList.push({ uid: docSnap.id, ...docSnap.data() });
       });
 
+      // 1) 填充發布課程時的成員勾選清單
       const container = document.getElementById('all-users-checkboxes');
       container.innerHTML = allUsersList.map(u => {
         const userName = u.name || u.email || '未命名用戶';
@@ -538,6 +564,15 @@
           </label>
         `;
       }).join('');
+
+      // 2) 填充預設付款人下拉選單（預設選中當前登入者）
+      const payerSelect = document.getElementById('class-default-payer');
+      payerSelect.innerHTML = allUsersList.map(u => {
+        const userName = u.name || u.email || '未命名用戶';
+        const isSelf = u.uid === currentUser.uid;
+        return `<option value="${u.uid}" ${isSelf ? 'selected' : ''}>${userName} ${isSelf ? '(班長/預設)' : ''}</option>`;
+      }).join('');
+
     } catch(e) {
       console.error("載入用戶名單失敗:", e);
     }
@@ -577,6 +612,12 @@
     const defaultLocation = document.getElementById('class-default-location').value || '未定地點';
     const time = document.getElementById('class-time').value;
     const price = document.getElementById('class-price').value;
+    
+    // 場租與付款人
+    const defaultRent = Number(document.getElementById('class-default-rent').value) || 0;
+    const defaultPayerUid = document.getElementById('class-default-payer').value || currentUser.uid;
+    const payerObj = allUsersList.find(u => u.uid === defaultPayerUid);
+    const defaultPayerName = payerObj ? (payerObj.name || payerObj.email) : (currentUserProfile.name || '班長');
 
     const accessType = document.getElementById('access-type').value;
     let allowedUsers = [];
@@ -592,7 +633,14 @@
 
     const sessions = {};
     selectedDates.forEach(d => {
-      sessions[d] = { time, location: defaultLocation, students: [] };
+      sessions[d] = { 
+        time, 
+        location: defaultLocation, 
+        rent: defaultRent,
+        payerUid: defaultPayerUid,
+        payerName: defaultPayerName,
+        students: [] 
+      };
     });
 
     try {
@@ -637,7 +685,6 @@
     }
   }
 
-  // 修正月曆：單獨只在「已報名」的那堂課小卡片顯示綠底
   function renderCalendar() {
     const calendarDays = document.getElementById('calendar-days');
     calendarDays.innerHTML = '';
@@ -671,7 +718,6 @@
           const isJoined = (sess.students || []).some(s => s.uid === currentUser.uid);
 
           const tag = document.createElement('div');
-          // 只針對報名的卡片加 joined-tag
           tag.className = `class-tag ${isJoined ? 'joined-tag' : ''}`;
           tag.innerText = `${sess.time || ''} ${c.name}`;
           cell.appendChild(tag);
@@ -708,13 +754,14 @@
         const sess = sessions[dateStr];
         const students = sess.students || [];
         const isJoined = students.some(s => s.uid === currentUser.uid);
+        const rentText = sess.rent ? ` | 🏷️ 場租: $${sess.rent} (付款人: ${sess.payerName || '班長'})` : '';
 
         return `
           <div class="session-box">
             <div class="flex between">
               <div>
                 <strong>📅 ${dateStr}</strong> 
-                <span style="font-size:12px; color:#475569;">⏰ ${sess.time} | 📍 ${sess.location}</span>
+                <span style="font-size:12px; color:#475569;">⏰ ${sess.time} | 📍 ${sess.location}${rentText}</span>
               </div>
               <div>
                 ${isJoined ? 
@@ -749,7 +796,7 @@
             <div style="margin-top: 12px; padding: 10px; background: #fffbe0; border-radius: 8px; border: 1px solid #fde047;">
               <div class="flex between">
                 <small style="font-weight:bold; color:#854d0e;">🛠️ ${isAdmin ? 'Admin' : '班長'} 管理功能：</small>
-                <button onclick="toggleTableEdit('${c.id}')" style="width:auto; margin:0; padding:4px 8px; font-size:12px; background:#d97706;">✏️ 管理堂數與成員權限</button>
+                <button onclick="toggleTableEdit('${c.id}')" style="width:auto; margin:0; padding:4px 8px; font-size:12px; background:#d97706;">✏️ 管理堂數、場租與學員</button>
               </div>
 
               <div id="table-editor-${c.id}" class="hidden" style="margin-top: 10px;">
@@ -764,23 +811,28 @@
                   <div id="edit-access-user-container-${c.id}" class="${c.accessType === 'specific' ? '' : 'hidden'}" style="margin-top:6px;">
                     <small style="color:#64748b;">勾選可查看與報名的成員：</small>
                     <div id="edit-users-list-${c.id}" class="user-select-list" style="margin-top:4px;">
-                      </div>
+                    </div>
                   </div>
                 </div>
 
-                <label style="font-size:12px; font-weight:bold;">📅 編輯堂數地點：</label>
-                <table class="edit-table">
-                  <thead>
-                    <tr>
-                      <th>日期 (YYYY-MM-DD)</th>
-                      <th>時間</th>
-                      <th>地點</th>
-                      <th>操作</th>
-                    </tr>
-                  </thead>
-                  <tbody id="table-tbody-${c.id}">
-                  </tbody>
-                </table>
+                <label style="font-size:12px; font-weight:bold;">📅 編輯堂數、地點、場租與學員名單：</label>
+                <div style="overflow-x:auto;">
+                  <table class="edit-table">
+                    <thead>
+                      <tr>
+                        <th>日期</th>
+                        <th>時間</th>
+                        <th>地點</th>
+                        <th>場租($)</th>
+                        <th>場租付款人</th>
+                        <th>已報名學員 (點擊可刪除) / 手動加人</th>
+                        <th>操作</th>
+                      </tr>
+                    </thead>
+                    <tbody id="table-tbody-${c.id}">
+                    </tbody>
+                  </table>
+                </div>
                 <div class="flex" style="margin-top: 8px;">
                   <button onclick="addTableRow('${c.id}')" style="width:auto; margin:0; padding:4px 8px; font-size:12px; background:#10b981;">➕ 加開一堂</button>
                   <button onclick="saveTableChanges('${c.id}')" style="width:auto; margin:0; padding:4px 8px; font-size:12px; background:#2563eb;">💾 儲存所有變更</button>
@@ -803,6 +855,12 @@
     const container = document.getElementById(`table-editor-${classId}`);
     container.classList.toggle('hidden');
     if(!container.classList.contains('hidden')) {
+      const querySnapshot = await getDocs(collection(db, "users"));
+      allUsersList = [];
+      querySnapshot.forEach(docSnap => {
+        allUsersList.push({ uid: docSnap.id, ...docSnap.data() });
+      });
+
       await renderEditUsersList(classId);
       renderTableRows(classId);
     }
@@ -811,12 +869,6 @@
   async function renderEditUsersList(classId) {
     const classObj = classesData.find(c => c.id === classId);
     const allowed = classObj.allowedUsers || [];
-
-    const querySnapshot = await getDocs(collection(db, "users"));
-    allUsersList = [];
-    querySnapshot.forEach(docSnap => {
-      allUsersList.push({ uid: docSnap.id, ...docSnap.data() });
-    });
 
     const container = document.getElementById(`edit-users-list-${classId}`);
     container.innerHTML = allUsersList.map(u => {
@@ -836,25 +888,110 @@
     const sessions = classObj.sessions || {};
     const dates = Object.keys(sessions).sort();
 
-    tbody.innerHTML = dates.map(d => `
-      <tr data-date="${d}">
-        <td><input type="date" value="${d}" class="edit-date-input"></td>
-        <td><input type="text" value="${sessions[d].time}" class="edit-time-input"></td>
-        <td><input type="text" value="${sessions[d].location}" class="edit-loc-input"></td>
-        <td><button onclick="this.closest('tr').remove()" style="padding:2px 6px; margin:0; background:#ef4444; font-size:10px;">刪除</button></td>
-      </tr>
-    `).join('');
+    tbody.innerHTML = dates.map(d => {
+      const sess = sessions[d];
+      const students = sess.students || [];
+
+      // 生成學員標籤 HTML
+      const studentChipsHtml = students.map(s => `
+        <span class="student-chip">
+          ${s.name}
+          <button type="button" onclick="removeStudentFromSessionRow(this, '${s.uid}')">✕</button>
+        </span>
+      `).join('');
+
+      // 生成手動新增學員下拉選單
+      const addStudentOptions = allUsersList.map(u => `<option value="${u.uid}">${u.name || u.email}</option>`).join('');
+
+      // 生成付款人選單
+      const payerOptions = allUsersList.map(u => {
+        const isSelected = u.uid === (sess.payerUid || classObj.leaderId);
+        return `<option value="${u.uid}" ${isSelected ? 'selected' : ''}>${u.name || u.email}</option>`;
+      }).join('');
+
+      return `
+        <tr data-date="${d}" class="edit-session-row">
+          <td><input type="date" value="${d}" class="edit-date-input" style="width:115px;"></td>
+          <td><input type="text" value="${sess.time || '19:00'}" class="edit-time-input" style="width:65px;"></td>
+          <td><input type="text" value="${sess.location || ''}" class="edit-loc-input" style="width:100px;"></td>
+          <td><input type="number" value="${sess.rent || 0}" class="edit-rent-input" style="width:60px;"></td>
+          <td>
+            <select class="edit-payer-select" style="width:90px;">
+              ${payerOptions}
+            </select>
+          </td>
+          <td>
+            <div class="students-container" style="margin-bottom:4px;">${studentChipsHtml}</div>
+            <div class="flex" style="gap:2px; margin:0;">
+              <select class="add-student-select" style="margin:0; padding:2px; font-size:10px;">
+                ${addStudentOptions}
+              </select>
+              <button type="button" onclick="addStudentToSessionRow(this)" style="width:auto; margin:0; padding:2px 6px; font-size:10px; background:#6366f1;">加人</button>
+            </div>
+          </td>
+          <td><button onclick="this.closest('tr').remove()" style="padding:2px 6px; margin:0; background:#ef4444; font-size:10px;">刪除堂數</button></td>
+        </tr>
+      `;
+    }).join('');
   }
+
+  // Row 內的動態加/減學員邏輯 (前端暫存，按下「儲存所有變更」才寫入 DB)
+  window.addStudentToSessionRow = (btn) => {
+    const tr = btn.closest('tr');
+    const select = tr.querySelector('.add-student-select');
+    const selectedUid = select.value;
+    const userObj = allUsersList.find(u => u.uid === selectedUid);
+    if (!userObj) return;
+
+    const container = tr.querySelector('.students-container');
+    // 檢查是否已在清單中
+    if (container.querySelector(`[data-uid="${selectedUid}"]`)) return alert("該學員已在名單中");
+
+    const chip = document.createElement('span');
+    chip.className = 'student-chip';
+    chip.setAttribute('data-uid', selectedUid);
+    chip.setAttribute('data-name', userObj.name || userObj.email);
+    chip.innerHTML = `${userObj.name || userObj.email} <button type="button" onclick="removeStudentFromSessionRow(this, '${selectedUid}')">✕</button>`;
+    container.appendChild(chip);
+  };
+
+  window.removeStudentFromSessionRow = (btn, uid) => {
+    btn.closest('.student-chip').remove();
+  };
 
   window.addTableRow = (classId) => {
     const tbody = document.getElementById(`table-tbody-${classId}`);
     const todayStr = new Date().toISOString().split('T')[0];
+    const classObj = classesData.find(c => c.id === classId);
+
+    const addStudentOptions = allUsersList.map(u => `<option value="${u.uid}">${u.name || u.email}</option>`).join('');
+    const payerOptions = allUsersList.map(u => {
+      const isSelected = u.uid === classObj.leaderId;
+      return `<option value="${u.uid}" ${isSelected ? 'selected' : ''}>${u.name || u.email}</option>`;
+    }).join('');
+
     const tr = document.createElement('tr');
+    tr.className = 'edit-session-row';
     tr.innerHTML = `
-      <td><input type="date" value="${todayStr}" class="edit-date-input"></td>
-      <td><input type="text" value="19:00" class="edit-time-input"></td>
-      <td><input type="text" value="Studio A" class="edit-loc-input"></td>
-      <td><button onclick="this.closest('tr').remove()" style="padding:2px 6px; margin:0; background:#ef4444; font-size:10px;">刪除</button></td>
+      <td><input type="date" value="${todayStr}" class="edit-date-input" style="width:115px;"></td>
+      <td><input type="text" value="19:00" class="edit-time-input" style="width:65px;"></td>
+      <td><input type="text" value="Studio A" class="edit-loc-input" style="width:100px;"></td>
+      <td><input type="number" value="0" class="edit-rent-input" style="width:60px;"></td>
+      <td>
+        <select class="edit-payer-select" style="width:90px;">
+          ${payerOptions}
+        </select>
+      </td>
+      <td>
+        <div class="students-container" style="margin-bottom:4px;"></div>
+        <div class="flex" style="gap:2px; margin:0;">
+          <select class="add-student-select" style="margin:0; padding:2px; font-size:10px;">
+            ${addStudentOptions}
+          </select>
+          <button type="button" onclick="addStudentToSessionRow(this)" style="width:auto; margin:0; padding:2px 6px; font-size:10px; background:#6366f1;">加人</button>
+        </div>
+      </td>
+      <td><button onclick="this.closest('tr').remove()" style="padding:2px 6px; margin:0; background:#ef4444; font-size:10px;">刪除堂數</button></td>
     `;
     tbody.appendChild(tr);
   };
@@ -862,7 +999,7 @@
   window.saveTableChanges = async (classId) => {
     const classObj = classesData.find(c => c.id === classId);
     const tbody = document.getElementById(`table-tbody-${classId}`);
-    const rows = tbody.querySelectorAll('tr');
+    const rows = tbody.querySelectorAll('.edit-session-row');
 
     const accessType = document.getElementById(`edit-access-type-${classId}`).value;
     let allowedUsers = [];
@@ -878,13 +1015,30 @@
       const dateVal = tr.querySelector('.edit-date-input').value;
       const timeVal = tr.querySelector('.edit-time-input').value;
       const locVal = tr.querySelector('.edit-loc-input').value;
+      const rentVal = Number(tr.querySelector('.edit-rent-input').value) || 0;
+      const payerUid = tr.querySelector('.edit-payer-select').value;
+      const payerObj = allUsersList.find(u => u.uid === payerUid);
+      const payerName = payerObj ? (payerObj.name || payerObj.email) : '班長';
+
+      // 提取學員名單
+      const studentChips = tr.querySelectorAll('.student-chip');
+      const updatedStudents = [];
+      studentChips.forEach(chip => {
+        const uid = chip.getAttribute('data-uid') || chip.querySelector('button')?.getAttribute('onclick')?.match(/'([^']+)'/)?.[1];
+        const nameText = chip.innerText.replace('✕', '').trim();
+        if (uid) {
+          updatedStudents.push({ uid, name: nameText });
+        }
+      });
 
       if(dateVal) {
-        const oldStudents = (classObj.sessions && classObj.sessions[dateVal]) ? classObj.sessions[dateVal].students : [];
         newSessions[dateVal] = {
           time: timeVal,
           location: locVal,
-          students: oldStudents
+          rent: rentVal,
+          payerUid,
+          payerName,
+          students: updatedStudents
         };
       }
     });
@@ -895,7 +1049,7 @@
         allowedUsers,
         sessions: newSessions
       });
-      alert("【成功】課程權限與堂數變更已儲存寫入資料庫！");
+      alert("【成功】堂數、場租與學員名單已順利更新！");
       loadClasses();
     } catch(e) {
       alert("儲存失敗: " + e.message);
