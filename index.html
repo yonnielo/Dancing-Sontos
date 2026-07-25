@@ -589,12 +589,14 @@
       snap.forEach(d => allUsersList.push({ uid: d.id, ...d.data() }));
 
       const container = document.getElementById('all-users-checkboxes');
-      container.innerHTML = allUsersList.map(u => `
-        <label class="user-select-item">
-          <input type="checkbox" value="${u.uid}" class="access-user-checkbox">
-          <span>${u.name || '未命名'} (${u.email || ''})</span>
-        </label>
-      `).join('');
+      if(container) {
+        container.innerHTML = allUsersList.map(u => `
+          <label class="user-select-item">
+            <input type="checkbox" value="${u.uid}" class="access-user-checkbox">
+            <span>${u.name || '未命名'} (${u.email || ''})</span>
+          </label>
+        `).join('');
+      }
     } catch(e) {
       console.error("載入使用者失敗", e);
     }
@@ -672,10 +674,10 @@
       renderClassList();
     } catch(e) {
       console.error("載入課程失敗", e);
+      document.getElementById('class-list').innerText = "載入失敗: " + e.message;
     }
   }
 
-  // 2) 修正月曆：僅真正的已報名單堂顯示綠底，格子背景保持空白
   function renderCalendar() {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
@@ -704,22 +706,23 @@
 
       // 檢查當天有哪些堂課
       classesData.forEach(cls => {
-        cls.sessions.forEach((s, sIdx) => {
-          if(s.date === dateStr) {
-            const isJoined = s.attendees && s.attendees.some(a => a.uid === currentUser.uid);
-            
-            const tag = document.createElement('div');
-            // 只在學員已報名的單堂加上 .joined 樣式 (綠底)
-            tag.className = `class-tag ${isJoined ? 'joined' : ''}`;
-            tag.innerHTML = `
-              <strong>${cls.name}</strong><br>
-              ⏰ ${s.time}<br>
-              📍 ${s.location || ' Studio'}<br>
-              ${isJoined ? '✅ 已報名' : '⭕ 未報名'}
-            `;
-            cell.appendChild(tag);
-          }
-        });
+        if(cls.sessions) {
+          cls.sessions.forEach((s) => {
+            if(s.date === dateStr) {
+              const isJoined = s.attendees && s.attendees.some(a => a.uid === currentUser.uid);
+              
+              const tag = document.createElement('div');
+              tag.className = `class-tag ${isJoined ? 'joined' : ''}`;
+              tag.innerHTML = `
+                <strong>${cls.name}</strong><br>
+                ⏰ ${s.time}<br>
+                📍 ${s.location || 'Studio'}<br>
+                ${isJoined ? '✅ 已報名' : '⭕ 未報名'}
+              `;
+              cell.appendChild(tag);
+            }
+          });
+        }
       });
 
       container.appendChild(cell);
@@ -746,7 +749,7 @@
     list.innerHTML = classesData.map(cls => {
       const isCreator = cls.creatorUid === currentUser.uid;
       
-      const sessionsHTML = cls.sessions.map((s, idx) => {
+      const sessionsHTML = (cls.sessions || []).map((s, idx) => {
         const isJoined = s.attendees && s.attendees.some(a => a.uid === currentUser.uid);
         const attendeeNames = s.attendees && s.attendees.length > 0 
           ? s.attendees.map(a => a.name).join(', ') 
