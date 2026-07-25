@@ -60,7 +60,7 @@
     .btn-danger { background: #ef4444; }
     .btn-secondary { background: #64748b; }
     .btn-admin { background: #dc2626; }
-    .btn-admin:hover { background: #b91c1c; }
+    .btn-warning { background: #f59e0b; color: white; }
     .hidden { display: none !important; }
     
     .date-picker-grid {
@@ -169,12 +169,16 @@
       border-radius: 8px;
       max-height: 120px;
       overflow-y: auto;
+      background: #fff;
     }
     .user-select-item {
       font-size: 12px;
       background: #f1f5f9;
       padding: 4px 8px;
       border-radius: 6px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
     }
   </style>
 </head>
@@ -301,10 +305,9 @@
   </div>
 
 </div>
-
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-  import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+  import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
   import { getFirestore, collection, addDoc, getDocs, doc, setDoc, getDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
   const firebaseConfig = {
@@ -392,7 +395,6 @@
         currentUserProfile = { name: '舞者', role: 'user' };
       }
       
-      // 判斷 Admin
       isAdmin = (currentUserProfile && currentUserProfile.role === 'admin') || user.email === 'yonnielo@yahoo.com';
 
       if (isAdmin) {
@@ -444,7 +446,8 @@
           </td>
           <td>
             <div class="flex" style="gap:4px; margin:0;">
-              <button onclick="adminSaveUser('${u.uid}')" style="width:auto; margin:0; padding:2px 6px; font-size:10px;" class="btn-success">儲存變更</button>
+              <button onclick="adminSaveUser('${u.uid}')" style="width:auto; margin:0; padding:2px 6px; font-size:10px;" class="btn-success">儲存</button>
+              <button onclick="adminResetPassword('${u.email}')" style="width:auto; margin:0; padding:2px 6px; font-size:10px;" class="btn-warning">重設密碼信</button>
               <button onclick="adminDeleteUser('${u.uid}')" style="width:auto; margin:0; padding:2px 6px; font-size:10px;" class="btn-danger">刪除</button>
             </div>
           </td>
@@ -454,6 +457,19 @@
       alert("載入用戶列表失敗: " + e.message);
     }
   }
+
+  // 重設密碼郵件發送功能
+  window.adminResetPassword = async (email) => {
+    if(!email) return alert("該用戶沒有有效的 Email！");
+    if(confirm(`確定要向 ${email} 發送密碼重設信嗎？`)) {
+      try {
+        await sendPasswordResetEmail(auth, email);
+        alert(`【成功】重設密碼信已成功發送到 ${email}！請提示用戶查收 Email 並設定新密碼。`);
+      } catch(e) {
+        alert("【失敗】無法發送重設信: " + e.message);
+      }
+    }
+  };
 
   document.getElementById('admin-add-user-btn').addEventListener('click', async () => {
     const name = document.getElementById('admin-new-name').value.trim();
@@ -480,7 +496,7 @@
 
     try {
       await setDoc(doc(db, "users", uid), { name, email, role }, { merge: true });
-      alert("【成功】使用者資料已順利更新並寫入 Firebase 資料庫！");
+      alert("【成功】使用者資料已順利更新！");
       loadAdminUsers();
     } catch(e) {
       alert("【失敗】資料庫拒絕變更，錯誤原因: " + e.message);
@@ -488,7 +504,7 @@
   };
 
   window.adminDeleteUser = async (uid) => {
-    if(confirm("確定要刪除此用戶嗎？")) {
+    if(confirm("確定要從資料庫刪除此用戶嗎？")) {
       try {
         await deleteDoc(doc(db, "users", uid));
         alert("【成功】使用者已成功從資料庫移除！");
@@ -498,7 +514,6 @@
       }
     }
   };
-
   // ---------------- 共通/課堂功能 ----------------
 
   async function loadAllUsers() {
@@ -731,11 +746,27 @@
           ${canManage ? `
             <div style="margin-top: 12px; padding: 10px; background: #fffbe0; border-radius: 8px; border: 1px solid #fde047;">
               <div class="flex between">
-                <small style="font-weight:bold; color:#854d0e;">🛠️ ${isAdmin ? 'Admin' : '班長'} 表格管理：</small>
-                <button onclick="toggleTableEdit('${c.id}')" style="width:auto; margin:0; padding:4px 8px; font-size:12px; background:#d97706;">✏️ 批次編輯課堂 (表格模式)</button>
+                <small style="font-weight:bold; color:#854d0e;">🛠️ ${isAdmin ? 'Admin' : '班長'} 管理功能：</small>
+                <button onclick="toggleTableEdit('${c.id}')" style="width:auto; margin:0; padding:4px 8px; font-size:12px; background:#d97706;">✏️ 管理堂數與成員權限</button>
               </div>
 
               <div id="table-editor-${c.id}" class="hidden" style="margin-top: 10px;">
+                
+                <div style="background:#fff; padding:10px; border-radius:8px; border:1px solid #e2e8f0; margin-bottom:10px;">
+                  <label style="font-size:12px; font-weight:bold;">🔒 修改「誰能報讀/查看」此課程：</label>
+                  <select id="edit-access-type-${c.id}" onchange="toggleEditAccessUserList('${c.id}')" style="margin-top:4px;">
+                    <option value="all" ${c.accessType !== 'specific' ? 'selected' : ''}>全部人 (公開班)</option>
+                    <option value="specific" ${c.accessType === 'specific' ? 'selected' : ''}>指定成員 (私人小組班)</option>
+                  </select>
+
+                  <div id="edit-access-user-container-${c.id}" class="${c.accessType === 'specific' ? '' : 'hidden'}" style="margin-top:6px;">
+                    <small style="color:#64748b;">勾選可查看與報名的成員：</small>
+                    <div id="edit-users-list-${c.id}" class="user-select-list" style="margin-top:4px;">
+                      </div>
+                  </div>
+                </div>
+
+                <label style="font-size:12px; font-weight:bold;">📅 編輯堂數地點：</label>
                 <table class="edit-table">
                   <thead>
                     <tr>
@@ -761,13 +792,42 @@
     }).join('');
   }
 
-  window.toggleTableEdit = (classId) => {
+  window.toggleEditAccessUserList = (classId) => {
+    const val = document.getElementById(`edit-access-type-${classId}`).value;
+    document.getElementById(`edit-access-user-container-${classId}`).classList.toggle('hidden', val !== 'specific');
+  };
+
+  window.toggleTableEdit = async (classId) => {
     const container = document.getElementById(`table-editor-${classId}`);
     container.classList.toggle('hidden');
     if(!container.classList.contains('hidden')) {
+      await renderEditUsersList(classId);
       renderTableRows(classId);
     }
   };
+
+  async function renderEditUsersList(classId) {
+    const classObj = classesData.find(c => c.id === classId);
+    const allowed = classObj.allowedUsers || [];
+
+    if(allUsersList.length === 0) {
+      const querySnapshot = await getDocs(collection(db, "users"));
+      allUsersList = [];
+      querySnapshot.forEach(docSnap => {
+        allUsersList.push({ uid: docSnap.id, ...docSnap.data() });
+      });
+    }
+
+    const container = document.getElementById(`edit-users-list-${classId}`);
+    container.innerHTML = allUsersList.map(u => {
+      const isChecked = allowed.includes(u.uid);
+      return `
+        <label class="user-select-item">
+          <input type="checkbox" value="${u.uid}" class="edit-user-cb-${classId}" ${isChecked ? 'checked' : ''}> ${u.name}
+        </label>
+      `;
+    }).join('');
+  }
 
   function renderTableRows(classId) {
     const classObj = classesData.find(c => c.id === classId);
@@ -803,8 +863,16 @@
     const tbody = document.getElementById(`table-tbody-${classId}`);
     const rows = tbody.querySelectorAll('tr');
 
-    const newSessions = {};
+    const accessType = document.getElementById(`edit-access-type-${classId}`).value;
+    let allowedUsers = [];
 
+    if(accessType === 'specific') {
+      const cbs = document.querySelectorAll(`.edit-user-cb-${classId}:checked`);
+      allowedUsers = Array.from(cbs).map(cb => cb.value);
+      if(!allowedUsers.includes(classObj.leaderId)) allowedUsers.push(classObj.leaderId);
+    }
+
+    const newSessions = {};
     rows.forEach(tr => {
       const dateVal = tr.querySelector('.edit-date-input').value;
       const timeVal = tr.querySelector('.edit-time-input').value;
@@ -821,8 +889,12 @@
     });
 
     try {
-      await updateDoc(doc(db, "classes", classId), { sessions: newSessions });
-      alert("課堂變更已成功更新寫入資料庫！");
+      await updateDoc(doc(db, "classes", classId), {
+        accessType,
+        allowedUsers,
+        sessions: newSessions
+      });
+      alert("【成功】課程權限與堂數變更已儲存寫入資料庫！");
       loadClasses();
     } catch(e) {
       alert("儲存失敗: " + e.message);
