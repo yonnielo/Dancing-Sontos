@@ -1221,6 +1221,7 @@
       const canManage = isLeader || isAdmin;
       const sessions = c.sessions || {};
       const dateKeys = Object.keys(sessions).sort();
+      const isSettled = !!c.settlementResult;
 
       const sessionsHtml = dateKeys.map(dateStr => {
         const sess = sessions[dateStr];
@@ -1389,7 +1390,7 @@
             <td style="padding:4px; border:1px solid var(--pojai-border); font-size:11px;">
               <div class="flex between" style="align-items:center;">
                 <span>$${roundedShare}</span>
-                ${canManage ? `<button onclick="deleteMiscItem('${c.id}', ${idx})" style="width:auto; margin:0; padding:1px 4px; font-size:12px; background:transparent; color:#be123c; border:none; box-shadow:none;">❌</button>` : ''}
+                ${(!isSettled && canManage) ? `<button onclick="deleteMiscItem('${c.id}', ${idx})" style="width:auto; margin:0; padding:1px 4px; font-size:12px; background:transparent; color:#be123c; border:none; box-shadow:none;">❌</button>` : ''}
               </div>
             </td>
           </tr>
@@ -1487,11 +1488,11 @@
                 <hr style="border: none; border-top: 1px solid var(--pojai-border); margin: 8px 0;">
                 <div style="font-weight:bold; color:var(--pojai-text); font-size:12px; margin-bottom:4px;">🪬雜費</div>
                 ${miscTableHtml}
-                ${isLeader ? addMiscFormHtml : ''}
+                ${!isSettled ? addMiscFormHtml : ''}
 
                 <hr style="border: none; border-top: 1px solid var(--pojai-border); margin: 10px 0;">
                 <div style="text-align: center; margin-bottom: 8px;">
-                  <button onclick="calculateSettlement('${c.id}')" class="btn-pojai" style="padding: 6px 16px; font-size: 13px; ${!isLeader ? 'background: #d1d5db; color: #4b5563; cursor: not-allowed;' : ''}">🧮 埋數</button>
+                  <button onclick="calculateSettlement('${c.id}')" class="btn-pojai" style="padding: 6px 16px; font-size: 13px; ${(!isLeader || isSettled) ? 'background: #d1d5db; color: #4b5563; cursor: not-allowed;' : ''}" ${isSettled ? 'disabled' : ''}>🧮 埋數</button>
                 </div>
                 
                 <div id="settlement-result-${c.id}" class="${c.settlementResult ? '' : 'hidden'}" style="background: #fff; padding: 8px; border-radius: 6px; border: 1px solid var(--pojai-border); margin-top: 8px; font-size: 12px; color: var(--pojai-text);">${c.settlementResult || ''}</div>
@@ -1895,7 +1896,7 @@
   window.addMiscItem = async (classId) => {
     const classObj = classesData.find(c => c.id === classId);
     if (!classObj) return;
-    if (classObj.leaderId !== currentUser.uid) return alert("只有班長才可以新增雜費！");
+    if (!!classObj.settlementResult) return alert("已完成埋數，雜費功能已暫停！");
 
     activeTabState[classId] = 'pojai';
     const nameInput = document.getElementById(`misc-name-${classId}`);
@@ -1925,9 +1926,11 @@
 
   window.deleteMiscItem = async (classId, index) => {
     activeTabState[classId] = 'pojai';
-    if (!confirm("確定要刪除此雜費項目嗎？")) return;
     const classObj = classesData.find(c => c.id === classId);
     if (!classObj) return;
+    if (!!classObj.settlementResult) return alert("已完成埋數，雜費功能已暫停！");
+
+    if (!confirm("確定要刪除此雜費項目嗎？")) return;
 
     const miscExpenses = classObj.miscExpenses || [];
     miscExpenses.splice(index, 1);
@@ -1952,6 +1955,7 @@
     const classObj = classesData.find(c => c.id === classId);
     if (!classObj) return;
     if (classObj.leaderId !== currentUser.uid) return alert("只有班長才可以按埋數！");
+    if (!!classObj.settlementResult) return;
 
     activeTabState[classId] = 'pojai';
 
