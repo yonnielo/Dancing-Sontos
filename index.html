@@ -265,7 +265,7 @@
       margin-bottom: 10px;
     }
 
-    /* 文字框內的預設文字靠左拍齊及置於頂行，且已取消「💬班長的話：」前綴 */
+    /* 確保班長的話文字靠左對齊且開頭不帶多餘留白 */
     .leader-note-box {
       background: #fff;
       border: 1px solid #fbcfe8;
@@ -275,7 +275,7 @@
       font-size: 12px;
       color: #831843;
       text-align: left;
-      white-space: pre-wrap;
+      white-space: pre-line;
     }
 
     .admin-edit-box {
@@ -1018,12 +1018,13 @@
         ? `<span class="class-type-badge-public">🔒 私人班</span>`
         : `<span class="class-type-badge-public">🌐 公開班</span>`;
 
-      // 修改點 1：取消「💬班長的話：」前綴文字
-      const leaderNoteHtml = c.leaderNote ? `
+      // 班長的話內容去除開頭可能帶有的多餘空白/換行
+      const cleanedLeaderNote = c.leaderNote ? c.leaderNote.trim() : '';
+      const leaderNoteHtml = cleanedLeaderNote ? `
         <div style="margin-top: 6px;">
           <button onclick="toggleLeaderNote('${c.id}')" class="btn-gray-action" style="width:auto; margin:0; padding:2px 6px; font-size:11px; border-radius:4px;">💬 查看班長的話</button>
           <div id="note-box-${c.id}" class="leader-note-box hidden">
-            ${c.leaderNote}
+            ${cleanedLeaderNote}
           </div>
         </div>
       ` : '';
@@ -1089,7 +1090,6 @@
                     <thead>
                       <tr>
                         <th style="width:110px;">日期</th>
-                        <!-- 修改點 2：「已封盤？」改為「封盤」並沿用相同的藍色 table 標題樣式 -->
                         <th style="width:80px;">封盤</th>
                         <th style="width:65px;">開始時間</th>
                         <th style="width:65px;">完結時間</th>
@@ -1108,7 +1108,6 @@
                 </div>
 
                 <div class="flex" style="margin-top: 8px; gap:4px;">
-                  <!-- 修改點 3：「➕加開一堂」掣改成跟儲存變更一樣的藍色配搭 (.btn-blue-action) -->
                   <button onclick="addTableRow('${c.id}')" class="btn-blue-action" style="width:auto; margin:0; padding:6px 10px; font-size:11px;">➕ 加開一堂</button>
                   <button onclick="saveTableChanges('${c.id}')" class="btn-blue-action" style="width:auto; margin:0; padding:6px 10px; font-size:11px;">💾 儲存變更</button>
                   <button onclick="deleteClass('${c.id}')" class="btn-danger" style="width:auto; margin:0; margin-left:auto; padding:6px 10px; font-size:11px;">刪除全課</button>
