@@ -340,7 +340,7 @@
       border: 1px solid var(--admin-box-border);
     }
 
-    /* 婆仔數區塊專屬樣式（按鈕底色已調淺 20%） */
+    /* 婆仔數區塊專屬樣式 */
     .pojai-box {
       margin-top: 12px;
       padding: 10px;
@@ -1279,7 +1279,7 @@
           `;
         }).join('');
 
-      // 取得所有可能參與的人員名單 (由班長、已報名學生、allowedUsers、allUsers合併去重)
+      // 取得所有可能參與的人員名單
       const eligibleNamesSet = new Set([c.leaderName]);
       dateKeys.forEach(d => {
         (sessions[d].students || []).forEach(s => eligibleNamesSet.add(s.name));
@@ -1310,7 +1310,7 @@
             <td style="padding:4px; border:1px solid var(--pojai-border); font-size:11px;">
               <div class="flex between" style="align-items:center;">
                 <span>$${roundedShare}</span>
-                ${canManage ? `<button onclick="deleteMiscItem('${c.id}', ${idx})" class="btn-danger" style="width:auto; margin:0; padding:1px 4px; font-size:10px;">刪除</button>` : ''}
+                ${canManage ? `<button onclick="deleteMiscItem('${c.id}', ${idx})" class="btn-danger" style="width:auto; margin:0; padding:1px 4px; font-size:10px;">❌ 刪除</button>` : ''}
               </div>
             </td>
           </tr>
@@ -1449,7 +1449,7 @@
                   <div class="flex" style="margin-top: 8px; gap:4px;">
                     <button onclick="addTableRow('${c.id}')" class="btn-blue-action" style="width:auto; margin:0; padding:6px 10px; font-size:11px;">➕ 加開一堂</button>
                     <button onclick="saveTableChanges('${c.id}')" class="btn-blue-action" style="width:auto; margin:0; padding:6px 10px; font-size:11px;">💾 儲存變更</button>
-                    <button onclick="deleteClass('${c.id}')" class="btn-danger" style="width:auto; margin:0; margin-left:auto; padding:6px 10px; font-size:11px;">刪除全課</button>
+                    <button onclick="deleteClass('${c.id}')" class="btn-danger" style="width:auto; margin:0; margin-left:auto; padding:6px 10px; font-size:11px;">❌ 刪除全課</button>
                   </div>
                 </div>
               </div>
@@ -1463,6 +1463,16 @@
               </div>
               <div id="pojai-body-${c.id}" class="hidden" style="margin-top: 8px; border-top: 1px dashed var(--pojai-border); padding-top: 6px;">
                 ${pojaiSummaryHtml}
+                
+                <!-- 分隔線與置中的「🧮 埋數」掣 -->
+                <hr style="border: none; border-top: 1px solid var(--pojai-border); margin: 10px 0;">
+                <div style="text-align: center; margin-bottom: 8px;">
+                  <button onclick="calculateSettlement('${c.id}')" class="btn-pojai" style="padding: 6px 16px; font-size: 13px;">🧮 埋數</button>
+                </div>
+                
+                <!-- 埋數結果顯示區 -->
+                <div id="settlement-result-${c.id}" class="hidden" style="background: #fff; padding: 8px; border-radius: 6px; border: 1px solid var(--pojai-border); margin-top: 8px; font-size: 12px; color: var(--pojai-text);"></div>
+
                 <hr style="border: none; border-top: 1px solid var(--pojai-border); margin: 8px 0;">
                 <div style="font-weight:bold; color:var(--pojai-text); font-size:12px; margin-bottom:4px;">🪬雜費</div>
                 ${miscTableHtml}
@@ -1608,7 +1618,7 @@
               <button type="button" onclick="addStudentToSessionRow(this)" style="width:auto; margin:0; padding:2px 6px; font-size:11px; background:#38bdf8; white-space:nowrap; border-radius:4px;">加人</button>
             </div>
           </td>
-          <td><button onclick="this.closest('tr').remove()" style="padding:3px 6px; margin:0; background:#fb7185; font-size:11px; white-space:nowrap;">刪除</button></td>
+          <td><button onclick="this.closest('tr').remove()" style="padding:3px 6px; margin:0; background:#fb7185; font-size:11px; white-space:nowrap;">❌ 刪除</button></td>
         </tr>
       `;
     }).join('');
@@ -1681,7 +1691,7 @@
           <button type="button" onclick="addStudentToSessionRow(this)" style="width:auto; margin:0; padding:2px 6px; font-size:11px; background:#38bdf8; white-space:nowrap; border-radius:4px;">加人</button>
         </div>
       </td>
-      <td><button onclick="this.closest('tr').remove()" style="padding:3px 6px; margin:0; background:#fb7185; font-size:11px; white-space:nowrap;">刪除</button></td>
+      <td><button onclick="this.closest('tr').remove()" style="padding:3px 6px; margin:0; background:#fb7185; font-size:11px; white-space:nowrap;">❌ 刪除</button></td>
     `;
     tbody.appendChild(tr);
   };
@@ -1808,6 +1818,119 @@
     } catch(e) {
       alert("刪除雜費失敗: " + e.message);
     }
+  };
+
+  // 🧮 埋數與最少 transactions 計算邏輯
+  window.calculateSettlement = (classId) => {
+    const classObj = classesData.find(c => c.id === classId);
+    if (!classObj) return;
+
+    const sessions = classObj.sessions || {};
+    const dateKeys = Object.keys(sessions);
+
+    // 1. 計算每日總開支與每個人的淨結餘（應付 - 已付）
+    const balances = {}; // name -> net amount (正數代表應付他人，負數代表應收他人)
+    const dailyExpenses = {}; // dateStr -> total amount
+
+    dateKeys.forEach(dateStr => {
+      const sess = sessions[dateStr];
+      const students = sess.students || [];
+      const feeVal = Number(sess.fee !== undefined ? sess.fee : classObj.price) || 0;
+      const rentVal = Number(sess.rent || 0);
+      const enrolledCount = students.length;
+
+      const feePayerName = sess.feePayerName || classObj.leaderName;
+      const rentPayerName = sess.rentPayerName || classObj.leaderName;
+
+      // 日總開支 = 總學費 (fee * count) + 場租
+      const sessionTotal = (feeVal * enrolledCount) + rentVal;
+      dailyExpenses[dateStr] = sessionTotal;
+
+      // 累計已付金額 (Paid)
+      if (!balances[feePayerName]) balances[feePayerName] = { paid: 0, cost: 0 };
+      if (!balances[rentPayerName]) balances[rentPayerName] = { paid: 0, cost: 0 };
+
+      balances[feePayerName].paid += (feeVal * enrolledCount);
+      balances[rentPayerName].paid += rentVal;
+
+      // 累計應付成本 (Cost)
+      students.forEach(s => {
+        if (!balances[s.name]) balances[s.name] = { paid: 0, cost: 0 };
+        balances[s.name].cost += feeVal;
+        if (enrolledCount > 0) {
+          balances[s.name].cost += (rentVal / enrolledCount);
+        }
+      });
+    });
+
+    // 處理雜費
+    const miscExpenses = classObj.miscExpenses || [];
+    miscExpenses.forEach(item => {
+      const amount = Number(item.amount) || 0;
+      const payer = item.payer || classObj.leaderName;
+      const participants = item.participants || [];
+
+      if (!balances[payer]) balances[payer] = { paid: 0, cost: 0 };
+      balances[payer].paid += amount;
+
+      const partCount = participants.length;
+      if (partCount > 0) {
+        const share = amount / partCount;
+        participants.forEach(pName => {
+          if (!balances[pName]) balances[pName] = { paid: 0, cost: 0 };
+          balances[pName].cost += share;
+        });
+      }
+    });
+
+    // 計算 net = cost - paid (正數代表欠錢需要付給別人，負數代表溢付需要收錢)
+    const netList = [];
+    Object.keys(balances).forEach(name => {
+      const net = balances[name].cost - balances[name].paid;
+      if (Math.abs(net) > 0.01) {
+        netList.push({ name, net: Math.round(net * 100) / 100 });
+      }
+    });
+
+    // 2. 最少 transactions (Greedy 最佳化配對)
+    netList.sort((a, b) => a.net - b.net); // 負數在前（債權人），正數在後（債務人）
+    let debtors = netList.filter(item => item.net > 0);   // 需要付錢的人
+    let creditors = netList.filter(item => item.net < 0); // 需要收錢的人 (net 為負)
+
+    let transactions = [];
+    let i = 0, j = 0;
+    while (i < debtors.length && j < creditors.length) {
+      let debtor = debtors[i];
+      let creditor = creditors[j];
+      let creditVal = -creditor.net; // 轉為正數
+
+      let amount = Math.min(debtor.net, creditVal);
+      amount = Math.round(amount * 100) / 100;
+
+      if (amount > 0) {
+        transactions.push(`👉 <b>${debtor.name}</b> 轉帳 <b>$${amount}</b> 畀 <b>${creditor.name}</b>`);
+      }
+
+      debtor.net -= amount;
+      creditor.net += amount;
+
+      if (Math.abs(debtor.net) < 0.01) i++;
+      if (Math.abs(creditor.net) < 0.01) j++;
+    }
+
+    // 3. 組合顯示內容
+    let dailyHtml = Object.entries(dailyExpenses).map(([d, amt]) => `📅 ${d} 總開支：$${amt}`).join('<br>');
+    let txHtml = transactions.length > 0 ? transactions.join('<br>') : '🎉 盤數清訖，無需轉帳！';
+
+    const resultContainer = document.getElementById(`settlement-result-${classId}`);
+    resultContainer.classList.remove('hidden');
+    resultContainer.innerHTML = `
+      <div style="font-weight:bold; margin-bottom:4px; color:#9d174d;">📊 每日總開支：</div>
+      ${dailyHtml || '暫無資料'}
+      <hr style="border:none; border-top:1px dashed var(--pojai-border); margin:6px 0;">
+      <div style="font-weight:bold; margin-bottom:4px; color:#9d174d;">💡 最少交易次數找數方案 (Transactions)：</div>
+      ${txHtml}
+    `;
   };
 
   window.toggleSessionJoin = async (classId, dateStr, isJoining) => {
