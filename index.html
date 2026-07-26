@@ -1119,7 +1119,6 @@
       }
     });
 
-    // 額外記錄「婆仔數」區塊的展開狀態
     const expandedPojaiIds = [];
     document.querySelectorAll('[id^="pojai-body-"]').forEach(el => {
       if (!el.classList.contains('hidden')) {
@@ -1206,8 +1205,10 @@
         </div>
       ` : '';
 
-      // 3 & 4) 盆數：收集全課程所有出現過的成員名單，並依據規則計算總學費與總場租
+      // 婆仔數精確計算：
+      // 1) 收集所有參與過堂數的成員名稱/ID，確保完整對應
       const memberMap = {};
+      
       dateKeys.forEach(dateStr => {
         const sess = sessions[dateStr];
         const students = sess.students || [];
@@ -1215,18 +1216,36 @@
         const rentVal = Number(sess.rent || 0);
         const enrolledCount = students.length;
 
+        // 確保學費付款人與場租付款人也存在於 memberMap 中（即使他們當堂沒有報名成為學生）
+        const feePayerName = sess.feePayerName || c.leaderName;
+        const rentPayerName = sess.rentPayerName || c.leaderName;
+
+        if (!memberMap[feePayerName]) {
+          memberMap[feePayerName] = { totalTuition: 0, totalCourtFee: 0, totalPaid: 0 };
+        }
+        if (!memberMap[rentPayerName]) {
+          memberMap[rentPayerName] = { totalTuition: 0, totalCourtFee: 0, totalPaid: 0 };
+        }
+
         students.forEach(s => {
           if (!memberMap[s.name]) {
             memberMap[s.name] = { totalTuition: 0, totalCourtFee: 0, totalPaid: 0 };
           }
-          // 3) 總學費：該成員在全個課程中，有報名的課堂的學費總數
+          // 每個學員應付的學費總數累積
           memberMap[s.name].totalTuition += feeVal;
 
-          // 4) 總場租：成員有報名之課堂，場租錢除以該堂的總報名人數的價錢總和
+          // 場租按人數平分
           if (enrolledCount > 0) {
             memberMap[s.name].totalCourtFee += (rentVal / enrolledCount);
           }
         });
+
+        // 2) 學費付款人已付了該堂所有報名人的學費 (該堂總學費 = feeVal * enrolledCount)
+        const totalSessionTuition = feeVal * enrolledCount;
+        memberMap[feePayerName].totalPaid += totalSessionTuition;
+
+        // 3) 場租付款人已付了該堂的場租總額 (rentVal)
+        memberMap[rentPayerName].totalPaid += rentVal;
       });
 
       let pojaiSummaryHtml = Object.keys(memberMap).length === 0 ? 
