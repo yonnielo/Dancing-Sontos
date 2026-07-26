@@ -625,7 +625,7 @@
   import { getFirestore, collection, addDoc, getDocs, doc, setDoc, getDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
   const firebaseConfig = {
-    apiKey: "AIzaSyB2ky_jGsp4Me5XNXVpvow5oUAV-ME6oG8",
+    apiKey: "AIzaSyB2ky_jGsp4Me5XNXVpvpvpvow5oUAV-ME6oG8",
     authDomain: "dancing-sontos.firebaseapp.com",
     projectId: "dancing-sontos",
     storageBucket: "dancing-sontos.firebasestorage.app",
@@ -647,6 +647,9 @@
   let classesData = [];
   let allUsersList = [];
   let selectedDates = [];
+
+  // 用來記錄哪些課程目前是被展開的（Key: classId, Value: true）
+  let expandedCoursesMap = {};
 
   document.getElementById('toggle-create-btn').addEventListener('click', () => {
     document.getElementById('create-class-form').classList.toggle('hidden');
@@ -757,6 +760,7 @@
       document.getElementById('app-section').classList.add('hidden');
       adminPanel.classList.add('hidden');
       document.getElementById('user-action-btns').classList.add('hidden');
+      expandedCoursesMap = {}; // 登出清空展開紀錄
     }
   });
 
@@ -1170,6 +1174,9 @@
         </div>
       ` : '';
 
+      // 檢查此課程目前是否被展開
+      const isExpanded = !!expandedCoursesMap[c.id];
+
       return `
         <div class="course-card">
           
@@ -1181,13 +1188,13 @@
                 ${classTypeBadge}
               </div>
             </div>
-            <button onclick="toggleCourseBody('${c.id}')" id="collapse-btn-${c.id}" class="collapse-toggle-btn" title="展開/收藏課程資料">
+            <button onclick="toggleCourseBody('${c.id}')" id="collapse-btn-${c.id}" class="collapse-toggle-btn ${isExpanded ? 'expanded' : ''}" title="展開/收藏課程資料">
               <div class="collapse-arrow"></div>
             </button>
           </div>
 
-          <!-- 預設 hidden (預設為全部收藏) -->
-          <div id="course-body-${c.id}" class="hidden">
+          <!-- 根據 expandedCoursesMap 決定預設是否 hidden -->
+          <div id="course-body-${c.id}" class="${isExpanded ? '' : 'hidden'}">
             ${leaderNoteHtml}
 
             <div style="margin-top: 8px;">
@@ -1275,6 +1282,13 @@
     const btnEl = document.getElementById(`collapse-btn-${classId}`);
     bodyEl.classList.toggle('hidden');
     btnEl.classList.toggle('expanded');
+
+    // 記錄當前展開狀態
+    if (!bodyEl.classList.contains('hidden')) {
+      expandedCoursesMap[classId] = true;
+    } else {
+      delete expandedCoursesMap[classId];
+    }
   };
 
   window.toggleLeaderNote = (classId) => {
@@ -1575,6 +1589,8 @@
       try {
         await deleteDoc(doc(db, "classes", id));
         alert("課程已成功從資料庫刪除！");
+        // 刪除後從記憶體清單移除
+        delete expandedCoursesMap[id];
         loadClasses();
       } catch(e) {
         alert("刪除失敗: " + e.message);
