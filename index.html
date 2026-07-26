@@ -266,6 +266,39 @@
       border-radius: 6px;
       border-left: 4px solid #f472b6;
       margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* 小正方形內含小倒三角形按鈕 */
+    .collapse-toggle-btn {
+      width: 26px;
+      height: 26px;
+      background: #ffffff;
+      border: 1px solid #f472b6;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      margin: 0;
+      padding: 0;
+      transition: background 0.2s;
+    }
+    .collapse-toggle-btn:hover {
+      background: #fce7f3;
+    }
+    .collapse-arrow {
+      width: 0;
+      height: 0;
+      border-left: 5px solid transparent;
+      border-right: 5px solid transparent;
+      border-top: 6px solid #be123c;
+      transition: transform 0.2s ease;
+    }
+    .collapse-toggle-btn.expanded .collapse-arrow {
+      transform: rotate(180deg);
     }
 
     .leader-note-box {
@@ -1126,90 +1159,106 @@
           <div class="course-card-header">
             <div>
               <strong style="font-size: 17px; color:#831843;">${c.name}</strong> 
-            </div>
-            <div style="margin-top: 6px; display: flex; gap: 6px; align-items: center;">
-              <span class="badge-leader">👑 班長: ${c.leaderName}</span>
-              ${classTypeBadge}
-            </div>
-            ${leaderNoteHtml}
-          </div>
-
-          <div style="margin-top: 8px;">
-            ${sessionsHtml || '<p style="font-size:12px; color:#6b7280;">暫無上堂日期</p>'}
-          </div>
-
-          ${canManage ? `
-            <div class="admin-edit-box">
-              <div class="flex between">
-                <small style="font-weight:bold; color:#0369a1;">🛠️ ${isAdmin ? 'Admin' : '班長'} 管理功能：</small>
-                <button onclick="toggleTableEdit('${c.id}')" class="btn-gray-action" style="width:auto; margin:0; padding:4px 8px; font-size:11px; border-radius:4px;">✏️ 管理及修改課程</button>
+              <div style="margin-top: 6px; display: flex; gap: 6px; align-items: center;">
+                <span class="badge-leader">👑 班長: ${c.leaderName}</span>
+                ${classTypeBadge}
               </div>
+            </div>
+            <button onclick="toggleCourseBody('${c.id}')" id="collapse-btn-${c.id}" class="collapse-toggle-btn" title="展開/收藏課程資料">
+              <div class="collapse-arrow"></div>
+            </button>
+          </div>
 
-              <div id="table-editor-${c.id}" class="hidden" style="margin-top: 10px;">
-                
-                <div style="background:#fff; padding:8px; border-radius:8px; border:1px solid #bae6fd; margin-bottom:8px;">
-                  <label style="font-size:11px; font-weight:bold; color:#0369a1;">📝 修改課程名稱：</label>
-                  <input type="text" id="edit-class-name-${c.id}" value="${c.name}" style="margin-top:4px; font-size:12px;">
+          <!-- 預設 hidden (預設為全部收藏) -->
+          <div id="course-body-${c.id}" class="hidden">
+            ${leaderNoteHtml}
+
+            <div style="margin-top: 8px;">
+              ${sessionsHtml || '<p style="font-size:12px; color:#6b7280;">暫無上堂日期</p>'}
+            </div>
+
+            ${canManage ? `
+              <div class="admin-edit-box">
+                <div class="flex between">
+                  <small style="font-weight:bold; color:#0369a1;">🛠️ ${isAdmin ? 'Admin' : '班長'} 管理功能：</small>
+                  <button onclick="toggleTableEdit('${c.id}')" class="btn-gray-action" style="width:auto; margin:0; padding:4px 8px; font-size:11px; border-radius:4px;">✏️ 管理及修改課程</button>
                 </div>
 
-                <div style="background:#fff; padding:8px; border-radius:8px; border:1px solid #bae6fd; margin-bottom:8px;">
-                  <label style="font-size:11px; font-weight:bold; color:#0369a1;">💬 修改「班長的話」：</label>
-                  <textarea id="edit-leader-note-${c.id}" rows="2" style="margin-top:4px; font-size:12px;">${c.leaderNote || ''}</textarea>
-                </div>
+                <div id="table-editor-${c.id}" class="hidden" style="margin-top: 10px;">
+                  
+                  <div style="background:#fff; padding:8px; border-radius:8px; border:1px solid #bae6fd; margin-bottom:8px;">
+                    <label style="font-size:11px; font-weight:bold; color:#0369a1;">📝 修改課程名稱：</label>
+                    <input type="text" id="edit-class-name-${c.id}" value="${c.name}" style="margin-top:4px; font-size:12px;">
+                  </div>
 
-                <div style="background:#fff; padding:8px; border-radius:8px; border:1px solid #bae6fd; margin-bottom:8px;">
-                  <label style="font-size:11px; font-weight:bold; color:#0369a1;">🔒 修改「誰能報讀/查看」此課程：</label>
-                  <select id="edit-access-type-${c.id}" onchange="toggleEditAccessUserList('${c.id}')" style="margin-top:4px;">
-                    <option value="all" ${c.accessType !== 'specific' ? 'selected' : ''}>全部人 (公開班)</option>
-                    <option value="specific" ${c.accessType === 'specific' ? 'selected' : ''}>指定成員 (私人小組班)</option>
-                  </select>
+                  <div style="background:#fff; padding:8px; border-radius:8px; border:1px solid #bae6fd; margin-bottom:8px;">
+                    <label style="font-size:11px; font-weight:bold; color:#0369a1;">💬 修改「班長的話」：</label>
+                    <textarea id="edit-leader-note-${c.id}" rows="2" style="margin-top:4px; font-size:12px;">${c.leaderNote || ''}</textarea>
+                  </div>
 
-                  <div id="edit-access-user-container-${c.id}" class="${c.accessType === 'specific' ? '' : 'hidden'}" style="margin-top:6px;">
-                    <small style="color:#6b7280;">勾選可查看與報名的成員：</small>
-                    <div id="edit-users-list-${c.id}" class="user-select-list" style="margin-top:4px;">
+                  <div style="background:#fff; padding:8px; border-radius:8px; border:1px solid #bae6fd; margin-bottom:8px;">
+                    <label style="font-size:11px; font-weight:bold; color:#0369a1;">🔒 修改「誰能報讀/查看」此課程：</label>
+                    <select id="edit-access-type-${c.id}" onchange="toggleEditAccessUserList('${c.id}')" style="margin-top:4px;">
+                      <option value="all" ${c.accessType !== 'specific' ? 'selected' : ''}>全部人 (公開班)</option>
+                      <option value="specific" ${c.accessType === 'specific' ? 'selected' : ''}>指定成員 (私人小組班)</option>
+                    </select>
+
+                    <div id="edit-access-user-container-${c.id}" class="${c.accessType === 'specific' ? '' : 'hidden'}" style="margin-top:6px;">
+                      <small style="color:#6b7280;">勾選可查看與報名的成員：</small>
+                      <div id="edit-users-list-${c.id}" class="user-select-list" style="margin-top:4px;">
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div class="flex between" style="align-items:center;">
-                  <label style="font-size:11px; font-weight:bold; color:#0369a1;">📅 編輯堂數、封盤狀態、時間、地點與付款人：</label>
-                  <span style="font-size:10px; color:#0284c7; font-weight:bold;">💡 橫向滑動查看 ➔</span>
-                </div>
+                  <div class="flex between" style="align-items:center;">
+                    <label style="font-size:11px; font-weight:bold; color:#0369a1;">📅 編輯堂數、封盤狀態、時間、地點與付款人：</label>
+                    <span style="font-size:10px; color:#0284c7; font-weight:bold;">💡 橫向滑動查看 ➔</span>
+                  </div>
 
-                <div class="table-container">
-                  <table class="edit-table">
-                    <thead>
-                      <tr>
-                        <th style="width:110px;">日期</th>
-                        <th style="width:80px;">封盤</th>
-                        <th style="width:65px;">開始時間</th>
-                        <th style="width:65px;">完結時間</th>
-                        <th style="width:90px;">地點</th>
-                        <th style="width:60px;">學費($)</th>
-                        <th style="width:90px;">學費付款人</th>
-                        <th style="width:60px;">場租($)</th>
-                        <th style="width:90px;">場租付款人</th>
-                        <th style="min-width:180px;">已報名學員 (點擊刪除) / 手動加人</th>
-                        <th style="width:50px;">操作</th>
-                      </tr>
-                    </thead>
-                    <tbody id="table-tbody-${c.id}">
-                    </tbody>
-                  </table>
-                </div>
+                  <div class="table-container">
+                    <table class="edit-table">
+                      <thead>
+                        <tr>
+                          <th style="width:110px;">日期</th>
+                          <th style="width:80px;">封盤</th>
+                          <th style="width:65px;">開始時間</th>
+                          <th style="width:65px;">完結時間</th>
+                          <th style="width:90px;">地點</th>
+                          <th style="width:60px;">學費($)</th>
+                          <th style="width:90px;">學費付款人</th>
+                          <th style="width:60px;">場租($)</th>
+                          <th style="width:90px;">場租付款人</th>
+                          <th style="min-width:180px;">已報名學員 (點擊刪除) / 手動加人</th>
+                          <th style="width:50px;">操作</th>
+                        </tr>
+                      </thead>
+                      <tbody id="table-tbody-${c.id}">
+                      </tbody>
+                    </table>
+                  </div>
 
-                <div class="flex" style="margin-top: 8px; gap:4px;">
-                  <button onclick="addTableRow('${c.id}')" class="btn-blue-action" style="width:auto; margin:0; padding:6px 10px; font-size:11px;">➕ 加開一堂</button>
-                  <button onclick="saveTableChanges('${c.id}')" class="btn-blue-action" style="width:auto; margin:0; padding:6px 10px; font-size:11px;">💾 儲存變更</button>
-                  <button onclick="deleteClass('${c.id}')" class="btn-danger" style="width:auto; margin:0; margin-left:auto; padding:6px 10px; font-size:11px;">刪除全課</button>
+                  <div class="flex" style="margin-top: 8px; gap:4px;">
+                    <button onclick="addTableRow('${c.id}')" class="btn-blue-action" style="width:auto; margin:0; padding:6px 10px; font-size:11px;">➕ 加開一堂</button>
+                    <button onclick="saveTableChanges('${c.id}')" class="btn-blue-action" style="width:auto; margin:0; padding:6px 10px; font-size:11px;">💾 儲存變更</button>
+                    <button onclick="deleteClass('${c.id}')" class="btn-danger" style="width:auto; margin:0; margin-left:auto; padding:6px 10px; font-size:11px;">刪除全課</button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ` : ''}
+            ` : ''}
+          </div>
+
         </div>
       `;
     }).join('');
   }
+
+  // 切換課程詳細資料展開/收藏
+  window.toggleCourseBody = (classId) => {
+    const bodyEl = document.getElementById(`course-body-${classId}`);
+    const btnEl = document.getElementById(`collapse-btn-${classId}`);
+    bodyEl.classList.toggle('hidden');
+    btnEl.classList.toggle('expanded');
+  };
 
   window.toggleLeaderNote = (classId) => {
     document.getElementById(`note-box-${classId}`).classList.toggle('hidden');
