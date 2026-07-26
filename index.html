@@ -1092,6 +1092,15 @@
   });
 
   function renderClassList() {
+    // 【修改】記錄目前哪些課程是展開狀態
+    const expandedIds = [];
+    document.querySelectorAll('[id^="course-body-"]').forEach(el => {
+      if (!el.classList.contains('hidden')) {
+        const classId = el.id.replace('course-body-', '');
+        expandedIds.push(classId);
+      }
+    });
+
     const listEl = document.getElementById('class-list');
     if(classesData.length === 0) {
       listEl.innerHTML = "<p style='color:#6b7280;'>目前沒有課程。</p>";
@@ -1267,6 +1276,14 @@
         </div>
       `;
     }).join('');
+
+    // 【修改】重新渲染後，恢復原本已展開的課程狀態
+    expandedIds.forEach(classId => {
+      const bodyEl = document.getElementById(`course-body-${classId}`);
+      const btnEl = document.getElementById(`collapse-btn-${classId}`);
+      if (bodyEl) bodyEl.classList.remove('hidden');
+      if (btnEl) btnEl.classList.add('expanded');
+    });
   }
 
   // 切換課程詳細資料展開/收藏
