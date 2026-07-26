@@ -316,7 +316,8 @@
                 rentPayer: 'Sonto',
                 instructor: 'Sonto',
                 locked: false,
-                attendees: ['Sonto', 'Amy', 'John', 'May']
+                attendees: ['Sonto', 'Amy', 'John', 'May'],
+                miscExpenses: [] // 雜費陣列：{ desc, payer, participants, amount }
             },
             {
                 id: 'c2',
@@ -329,7 +330,8 @@
                 rentPayer: 'John',
                 instructor: 'Guest',
                 locked: true,
-                attendees: ['Sonto', 'Amy', 'John']
+                attendees: ['Sonto', 'Amy', 'John'],
+                miscExpenses: []
             }
         ];
 
@@ -456,7 +458,6 @@
             card.classList.remove('hidden');
             txt.textContent = announcement;
 
-            // 如果是管理員，點擊可編輯公告
             if (currentUser && currentUser.isAdmin) {
                 card.classList.add('cursor-pointer', 'hover:opacity-95');
                 card.title = '點擊修改公告';
@@ -502,17 +503,13 @@
 
             container.innerHTML = '';
             classes.forEach(cls => {
+                if (!cls.miscExpenses) cls.miscExpenses = [];
                 const isAttending = cls.attendees.includes(currentUser.name);
                 const isCreatorOrAdmin = currentUser.isAdmin;
 
-                // 報名按鈕狀態
                 let joinBtnHtml = '';
                 if (cls.locked) {
-                    if (isAttending) {
-                        joinBtnHtml = `<span class="text-xs bg-gray-100 text-gray-500 px-3 py-1.5 rounded-xl font-bold flex items-center space-x-1"><i class="fa-solid fa-lock text-[10px]"></i><span>已報名 (已封盤)</span></span>`;
-                    } else {
-                        joinBtnHtml = `<span class="text-xs bg-gray-100 text-gray-400 px-3 py-1.5 rounded-xl font-bold flex items-center space-x-1"><i class="fa-solid fa-lock text-[10px]"></i><span>已封盤</span></span>`;
-                    }
+                    joinBtnHtml = `<span class="text-xs bg-gray-100 text-gray-400 px-3 py-1.5 rounded-xl font-bold flex items-center space-x-1"><i class="fa-solid fa-lock text-[10px]"></i><span>${isAttending ? '已報名 (已封盤)' : '已封盤'}</span></span>`;
                 } else {
                     if (isAttending) {
                         joinBtnHtml = `<button onclick="toggleJoin('${cls.id}')" class="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-bold rounded-xl transition flex items-center space-x-1"><i class="fa-solid fa-check"></i><span>已報名 (取消)</span></button>`;
@@ -521,7 +518,6 @@
                     }
                 }
 
-                // 管理員動作按鈕
                 let adminActionsHtml = '';
                 if (isCreatorOrAdmin) {
                     adminActionsHtml = `
@@ -536,17 +532,38 @@
                     `;
                 }
 
-                // 學員清單標籤
                 let attendeeTags = cls.attendees.map(name => `<span class="bg-pink-50 text-brand-dark text-[10px] px-2 py-0.5 rounded-md font-medium">${name}</span>`).join(' ');
                 if (cls.attendees.length === 0) {
                     attendeeTags = `<span class="text-[10px] text-gray-400 italic">暫無學員報名</span>`;
                 }
 
+                // 產生全部可報名該課程的人名選項 (供雜費的付款人、邊個有份使用)
+                let allMemberOptions = '<option value="">請選擇付款人</option>';
+                let memberCheckboxesHtml = '';
+                members.forEach(m => {
+                    allMemberOptions += `<option value="${m.name}">${m.name}</option>`;
+                });
+
+                // 渲染已加入的雜費列表項目
+                let miscListHtml = '';
+                cls.miscExpenses.forEach((item, idx) => {
+                    miscListHtml += `
+                        <div class="flex justify-between items-center bg-white p-2 rounded-lg border border-amber-100 mb-1.5 text-xs">
+                            <div>
+                                <span class="font-bold text-gray-700">${item.desc}</span>
+                                <span class="text-[10px] text-gray-500 block">付款人: <strong>${item.payer || '未指定'}</strong> | 有份: ${item.participants.join(', ') || '無'} | 每人: <strong>$${item.amount}</strong></span>
+                            </div>
+                            <button onclick="removeMiscExpense('${cls.id}', ${idx})" class="text-gray-400 hover:text-red-500 p-1">
+                                <i class="fa-solid fa-trash-can text-xs"></i>
+                            </button>
+                        </div>
+                    `;
+                });
+
                 const cardHtml = `
                     <div class="bg-white rounded-2xl p-4 shadow-sm border border-pink-100 relative overflow-hidden transition hover:shadow-md">
                         ${cls.locked ? '<div class="absolute top-0 right-0 bg-gray-400 text-white text-[9px] px-2 py-0.5 rounded-bl-lg font-bold">已封盤</div>' : ''}
                         
-                        <!-- 標題與基本資訊 -->
                         <div class="flex justify-between items-start mb-2">
                             <div>
                                 <h3 class="font-bold text-gray-800 text-sm flex items-center space-x-1.5">
@@ -560,7 +577,6 @@
                             ${adminActionsHtml}
                         </div>
 
-                        <!-- 財務與付款人資訊 -->
                         <div class="bg-pink-50/50 rounded-xl p-2.5 mb-3 text-xs grid grid-cols-2 gap-2 border border-pink-100/60">
                             <div>
                                 <span class="text-gray-400">學費:</span> <strong class="text-gray-700">$${cls.fee}/位</strong>
@@ -572,7 +588,6 @@
                             </div>
                         </div>
 
-                        <!-- 報名名單 -->
                         <div class="mb-3">
                             <div class="flex justify-between items-center text-xs text-gray-500 mb-1">
                                 <span>報名名單 (${cls.attendees.length}人):</span>
@@ -582,7 +597,7 @@
                             </div>
                         </div>
 
-                        <!-- 底部按鈕區：👀 睇吓盆數掣，加返深啡色外框 -->
+                        <!-- 底部按鈕區 -->
                         <div class="flex justify-between items-center pt-2 border-t border-gray-100">
                             ${joinBtnHtml}
                             <button onclick="togglePoonSee('${cls.id}')" class="px-3 py-1.5 bg-white hover:bg-amber-50 text-amber-800 text-xs font-bold rounded-xl border border-amber-900 shadow-xs transition flex items-center space-x-1">
@@ -592,7 +607,7 @@
                         </div>
 
                         <!-- 隱藏的單堂盆數明細區 -->
-                        <div id="poonsee-${cls.id}" class="hidden mt-3 pt-3 border-t border-dashed border-amber-200 bg-amber-50/40 p-3 rounded-xl text-xs space-y-1.5 fade-in">
+                        <div id="poonsee-${cls.id}" class="hidden mt-3 pt-3 border-t border-dashed border-amber-200 bg-amber-50/40 p-3 rounded-xl text-xs space-y-2 fade-in">
                             <div class="font-bold text-amber-900 mb-1 flex items-center space-x-1">
                                 <i class="fa-solid fa-receipt"></i>
                                 <span>[${cls.title}] 盆數明細：</span>
@@ -608,11 +623,122 @@
                                 • 場租總額：<strong class="text-brand-dark">$${cls.rent}</strong> 
                                 ${cls.rentPayer ? `(付款人：<strong>${cls.rentPayer}</strong> 已付)` : ''}
                             </div>
+
+                            <!-- 1) 每個成員費用列完後的分隔線 -->
+                            <hr style="border: none; border-top: 1px solid #d6d8db; margin: 10px 0;">
+
+                            <!-- 2) 雜費文字 -->
+                            <div style="font-weight: bold; font-size: 1.05em; color: #495057; margin-bottom: 6px;">
+                                🪬雜費
+                            </div>
+
+                            <!-- 已新增的雜費清單 -->
+                            <div class="space-y-1 mb-2">
+                                ${miscListHtml}
+                            </div>
+
+                            <!-- 3) 雜費輸入小 Table -->
+                            <div class="bg-white p-2 rounded-xl border border-amber-200">
+                                <table style="width: 100%; border-collapse: collapse; font-size: 0.9em;">
+                                    <thead>
+                                        <tr style="background-color: #f1f3f5; text-align: left;">
+                                            <th style="padding: 6px; border: 1px solid #ced4da;">項目</th>
+                                            <th style="padding: 6px; border: 1px solid #ced4da;">付款人</th>
+                                            <th style="padding: 6px; border: 1px solid #ced4da;">邊個有份</th>
+                                            <th style="padding: 6px; border: 1px solid #ced4da; width: 75px;">每人幾錢</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td style="padding: 4px; border: 1px solid #ced4da;">
+                                                <input type="text" id="misc-desc-${cls.id}" placeholder="例：買水/道具" style="width: 100%; padding: 4px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; font-size: 11px;">
+                                            </td>
+                                            <td style="padding: 4px; border: 1px solid #ced4da;">
+                                                <select id="misc-payer-${cls.id}" style="width: 100%; padding: 4px; border: 1px solid #ccc; border-radius: 4px; font-size: 11px;">
+                                                    ${allMemberOptions}
+                                                </select>
+                                            </td>
+                                            <td style="padding: 4px; border: 1px solid #ced4da;">
+                                                <select id="misc-participants-${cls.id}" multiple style="width: 100%; padding: 2px; height: 36px; border: 1px solid #ccc; border-radius: 4px; font-size: 11px;" title="可按 Ctrl/Cmd 多選">
+                                                    ${members.map(m => `<option value="${m.name}">${m.name}</option>`).join('')}
+                                                </select>
+                                            </td>
+                                            <td style="padding: 4px; border: 1px solid #ced4da;">
+                                                <input type="number" id="misc-amount-${cls.id}" placeholder="$0" style="width: 100%; padding: 4px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; font-size: 11px;">
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                                <button onclick="addMiscExpense('${cls.id}')" class="mt-2 w-full py-1.5 bg-amber-800 hover:bg-amber-900 text-white font-bold rounded-lg text-xs transition">
+                                    <i class="fa-solid fa-plus mr-1"></i>新增此筆雜費
+                                </button>
+                            </div>
                         </div>
                     </div>
                 `;
                 container.innerHTML += cardHtml;
             });
+        }
+
+        // 新增雜費記錄
+        function addMiscExpense(classId) {
+            const cls = classes.find(c => c.id === classId);
+            if (!cls) return;
+
+            const descInput = document.getElementById(`misc-desc-${classId}`);
+            const payerSelect = document.getElementById(`misc-payer-${classId}`);
+            const participantsSelect = document.getElementById(`misc-participants-${classId}`);
+            const amountInput = document.getElementById(`misc-amount-${classId}`);
+
+            const desc = descInput.value.trim();
+            const payer = payerSelect.value;
+            const amount = Number(amountInput.value);
+
+            // 取得多選的成員清單
+            const participants = [];
+            for (let option of participantsSelect.selectedOptions) {
+                participants.push(option.value);
+            }
+
+            if (!desc) {
+                alert('請輸入雜費項目名稱！');
+                return;
+            }
+            if (!payer) {
+                alert('請選擇付款人！');
+                return;
+            }
+            if (participants.length === 0) {
+                alert('請選擇最少一位「邊個有份」參與者！');
+                return;
+            }
+            if (!amount || amount <= 0) {
+                alert('請輸入有效的每人幾錢金額！');
+                return;
+            }
+
+            if (!cls.miscExpenses) cls.miscExpenses = [];
+            cls.miscExpenses.push({
+                desc,
+                payer,
+                participants,
+                amount
+            });
+
+            saveData();
+            renderClasses();
+            renderFinance();
+        }
+
+        // 刪除雜費記錄
+        function removeMiscExpense(classId, index) {
+            const cls = classes.find(c => c.id === classId);
+            if (!cls || !cls.miscExpenses) return;
+
+            cls.miscExpenses.splice(index, 1);
+            saveData();
+            renderClasses();
+            renderFinance();
         }
 
         // 切換報名狀態
@@ -643,14 +769,9 @@
         }
 
         // 渲染整體「婆仔數」財務統計
-        // 規則 2、3、4 實現：
-        // 2) 如果課堂的學費付款人係成員A，咁成員A便已付了該課堂的（學費價錢乘以該堂的報名人數）咁多錢
-        // 3) 如果場租付款人係成員A，咁成員A便已付了該堂場租咁多錢
-        // 4) 最後在睇吓盆數時，成員A已付的總數，就係上面第二第三點的價錢總和
         function renderFinance() {
             const container = document.getElementById('finance-summary-container');
             
-            // 初始化每位成員的財務統計
             let stats = {};
             members.forEach(m => {
                 stats[m.name] = {
@@ -659,7 +780,6 @@
                 };
             });
 
-            // 計算各堂課的付款金額
             classes.forEach(cls => {
                 const headCount = cls.attendees.length;
                 const totalFeeAmount = cls.fee * headCount;
@@ -676,14 +796,22 @@
                     stats[cls.rentPayer].totalPaid += rentAmount;
                     stats[cls.rentPayer].details.push(`《${cls.title}》場租：$${rentAmount}`);
                 }
+
+                // 雜費付款人累計 (雜費付款人付出的總金額 = 每人幾錢 × 參與人數)
+                if (cls.miscExpenses) {
+                    cls.miscExpenses.forEach(misc => {
+                        const miscTotal = misc.amount * misc.participants.length;
+                        if (misc.payer && stats[misc.payer]) {
+                            stats[misc.payer].totalPaid += miscTotal;
+                            stats[misc.payer].details.push(`《${cls.title}》雜費 [${misc.desc}]：$${miscTotal} (${misc.amount}×${misc.participants.length}人)`);
+                        }
+                    });
+                }
             });
 
             container.innerHTML = '';
-            let hasAnyPaid = false;
-
             members.forEach(m => {
                 const data = stats[m.name];
-                hasAnyPaid = true;
 
                 let detailsHtml = data.details.map(d => `<li class="text-[11px] text-gray-500">• ${d}</li>`).join('');
                 if (data.details.length === 0) {
@@ -749,7 +877,6 @@
             const titleEl = document.getElementById('class-modal-title');
             const form = document.getElementById('class-form');
             
-            // 填充付款人下拉選單
             const feePayerSelect = document.getElementById('input-fee-payer');
             const rentPayerSelect = document.getElementById('input-rent-payer');
             
@@ -780,7 +907,6 @@
                 }
             } else {
                 titleEl.textContent = '新增課堂';
-                // 預設日期為今日
                 document.getElementById('input-date').value = new Date().toISOString().split('T')[0];
             }
 
@@ -833,7 +959,8 @@
                     rentPayer,
                     instructor,
                     locked,
-                    attendees: []
+                    attendees: [],
+                    miscExpenses: []
                 };
                 classes.push(newCls);
             }
@@ -890,6 +1017,7 @@
             initAuthSelect();
             renderMembers();
             renderFinance();
+            renderClasses();
         }
 
         function deleteMember(memberId) {
@@ -899,10 +1027,11 @@
             if (confirm(`確定要刪除成員 [${target.name}] 嗎？`)) {
                 members = members.filter(m => m.id !== memberId);
                 saveData();
-                initAuthSelects();
+                initAuthSelect();
                 checkAuth();
                 renderMembers();
                 renderFinance();
+                renderClasses();
             }
         }
     </script>
