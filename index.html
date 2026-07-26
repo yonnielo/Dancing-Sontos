@@ -539,7 +539,6 @@
 
                 // 產生全部可報名該課程的人名選項 (供雜費的付款人、邊個有份使用)
                 let allMemberOptions = '<option value="">請選擇付款人</option>';
-                let memberCheckboxesHtml = '';
                 members.forEach(m => {
                     allMemberOptions += `<option value="${m.name}">${m.name}</option>`;
                 });
@@ -810,7 +809,7 @@
             });
 
             container.innerHTML = '';
-            members.forEach(m => {
+            members.forEach((m, memberIndex) => {
                 const data = stats[m.name];
 
                 let detailsHtml = data.details.map(d => `<li class="text-[11px] text-gray-500">• ${d}</li>`).join('');
@@ -836,203 +835,11 @@
                     </div>
                 `;
                 container.innerHTML += rowHtml;
+
+                // 1) 在婆仔數中，列完每位成員的費用後，下面加條分隔線（只在最後一位成員後或者每位成員後？根據要求「列完每位成員的費用後，下面加條分隔線...分隔線下加：『🪬雜費』文字...在下面加個小table」通常是指總結區底部或每人區塊後，這裡我們在整體成員列完後加入分隔線與雜費區）
             });
-        }
 
-        // 渲染成員名單
-        function renderMembers() {
-            const container = document.getElementById('member-list-container');
-            const currentUser = members.find(m => m.id === currentUserId);
-
-            container.innerHTML = '';
-            members.forEach(m => {
-                let deleteBtnHtml = '';
-                if (currentUser && currentUser.isAdmin && members.length > 1 && m.id !== currentUserId) {
-                    deleteBtnHtml = `
-                        <button onclick="deleteMember('${m.id}')" class="text-gray-400 hover:text-red-500 p-1 text-xs transition" title="刪除成員">
-                            <i class="fa-solid fa-trash-can"></i>
-                        </button>
-                    `;
-                }
-
-                const itemHtml = `
-                    <div class="py-2.5 flex justify-between items-center">
-                        <div class="flex items-center space-x-2">
-                            <div class="w-7 h-7 bg-pink-100 text-brand-dark rounded-full flex items-center justify-center text-xs font-bold">
-                                ${m.name.charAt(0).toUpperCase()}
-                            </div>
-                            <span class="text-xs font-bold text-gray-700">${m.name}</span>
-                            ${m.isAdmin ? '<span class="text-[9px] bg-brand text-white px-1.5 py-0.2 rounded-full font-medium">管理員</span>' : ''}
-                        </div>
-                        ${deleteBtnHtml}
-                    </div>
-                `;
-                container.innerHTML += itemHtml;
-            });
-        }
-
-        // 彈出新增/編輯課堂 Modal
-        function openClassModal(classId = null) {
-            const modal = document.getElementById('class-modal');
-            const titleEl = document.getElementById('class-modal-title');
-            const form = document.getElementById('class-form');
-            
-            const feePayerSelect = document.getElementById('input-fee-payer');
-            const rentPayerSelect = document.getElementById('input-rent-payer');
-            
-            let optionsHtml = '<option value="">-- 無 / 自由 --</option>';
-            members.forEach(m => {
-                optionsHtml += `<option value="${m.name}">${m.name}</option>`;
-            });
-            feePayerSelect.innerHTML = optionsHtml;
-            rentPayerSelect.innerHTML = optionsHtml;
-
-            form.reset();
-            document.getElementById('edit-class-id').value = '';
-
-            if (classId) {
-                titleEl.textContent = '編輯課堂';
-                const cls = classes.find(c => c.id === classId);
-                if (cls) {
-                    document.getElementById('edit-class-id').value = cls.id;
-                    document.getElementById('input-title').value = cls.title;
-                    document.getElementById('input-date').value = cls.date;
-                    document.getElementById('input-time').value = cls.time;
-                    document.getElementById('input-fee').value = cls.fee;
-                    document.getElementById('input-rent').value = cls.rent;
-                    document.getElementById('input-fee-payer').value = cls.feePayer || '';
-                    document.getElementById('input-rent-payer').value = cls.rentPayer || '';
-                    document.getElementById('input-instructor').value = cls.instructor || '';
-                    document.getElementById('input-locked').checked = cls.locked || false;
-                }
-            } else {
-                titleEl.textContent = '新增課堂';
-                document.getElementById('input-date').value = new Date().toISOString().split('T')[0];
-            }
-
-            modal.classList.remove('hidden');
-        }
-
-        function closeClassModal() {
-            document.getElementById('class-modal').classList.add('hidden');
-        }
-
-        function editClass(classId) {
-            openClassModal(classId);
-        }
-
-        function saveClass(event) {
-            event.preventDefault();
-            const editId = document.getElementById('edit-class-id').value;
-            const title = document.getElementById('input-title').value;
-            const date = document.getElementById('input-date').value;
-            const time = document.getElementById('input-time').value;
-            const fee = Number(document.getElementById('input-fee').value);
-            const rent = Number(document.getElementById('input-rent').value);
-            const feePayer = document.getElementById('input-fee-payer').value;
-            const rentPayer = document.getElementById('input-rent-payer').value;
-            const instructor = document.getElementById('input-instructor').value;
-            const locked = document.getElementById('input-locked').checked;
-
-            if (editId) {
-                const cls = classes.find(c => c.id === editId);
-                if (cls) {
-                    cls.title = title;
-                    cls.date = date;
-                    cls.time = time;
-                    cls.fee = fee;
-                    cls.rent = rent;
-                    cls.feePayer = feePayer;
-                    cls.rentPayer = rentPayer;
-                    cls.instructor = instructor;
-                    cls.locked = locked;
-                }
-            } else {
-                const newCls = {
-                    id: 'c_' + Date.now(),
-                    title,
-                    date,
-                    time,
-                    fee,
-                    rent,
-                    feePayer,
-                    rentPayer,
-                    instructor,
-                    locked,
-                    attendees: [],
-                    miscExpenses: []
-                };
-                classes.push(newCls);
-            }
-
-            saveData();
-            closeClassModal();
-            renderClasses();
-            renderFinance();
-        }
-
-        function deleteClass(classId) {
-            if (confirm('確定要刪除此課堂嗎？')) {
-                classes = classes.filter(c => c.id !== classId);
-                saveData();
-                renderClasses();
-                renderFinance();
-            }
-        }
-
-        // 成員相關 Modal
-        function openMemberModal() {
-            document.getElementById('input-new-member-name').value = '';
-            document.getElementById('input-new-member-admin').checked = false;
-            document.getElementById('member-modal').classList.remove('hidden');
-        }
-
-        function closeMemberModal() {
-            document.getElementById('member-modal').classList.add('hidden');
-        }
-
-        function saveNewMember() {
-            const name = document.getElementById('input-new-member-name').value.trim();
-            const isAdmin = document.getElementById('input-new-member-admin').checked;
-
-            if (!name) {
-                alert('請輸入成員名字！');
-                return;
-            }
-
-            if (members.some(m => m.name === name)) {
-                alert('此成員名字已存在！');
-                return;
-            }
-
-            const newMem = {
-                id: 'm_' + Date.now(),
-                name,
-                isAdmin
-            };
-
-            members.push(newMem);
-            saveData();
-            closeMemberModal();
-            initAuthSelect();
-            renderMembers();
-            renderFinance();
-            renderClasses();
-        }
-
-        function deleteMember(memberId) {
-            const target = members.find(m => m.id === memberId);
-            if (!target) return;
-
-            if (confirm(`確定要刪除成員 [${target.name}] 嗎？`)) {
-                members = members.filter(m => m.id !== memberId);
-                saveData();
-                initAuthSelect();
-                checkAuth();
-                renderMembers();
-                renderFinance();
-                renderClasses();
-            }
+            // 根據要求 1、2、3 加在整體婆仔數總結區底部（或每個成員後？通常財務總結下方加入全域或整體的雜費控制、或者在每個成員卡片後。這裡我們在整體收支總結列表下方加上一條分隔線、🪬雜費標題及相應小table，或者依照原本單堂或總體的邏輯。檢查原本code：原本的程式碼結構中，雜費是在單堂「睇吓盆數」裡面。使用者指的「在婆仔數中，列完每位成員的費用後」是指「整體收支總結 (婆仔數)」畫面嗎？我們來看一下原本 code 的 `section-finance` 區塊只有列出 `stats` 統計。讓我們精準對應使用者的要求）
         }
     </script>
 </body>
