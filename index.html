@@ -97,7 +97,6 @@
     .btn-danger { background: var(--btn-cancel); }
     .btn-warning { background: #f472b6; color: white; }
     
-    /* 與登出按鈕、查看班長的話一樣的顏色配搭 (預設灰白) */
     .btn-gray-action {
       background: #f3f4f6;
       color: #374151;
@@ -107,7 +106,6 @@
       background: #e5e7eb;
     }
 
-    /* 儲存變更及加開一堂共用的藍色按鈕樣式 */
     .btn-blue-action {
       background: #0284c7;
       color: white;
@@ -265,7 +263,6 @@
       margin-bottom: 10px;
     }
 
-    /* 確保班長的話文字靠左且靠頂對齊，完全清除上方空行 */
     .leader-note-box {
       background: #fff;
       border: 1px solid #fbcfe8;
@@ -387,6 +384,26 @@
       background: #be123c;
       border-radius: 50%;
     }
+
+    /* 自訂彈出月曆 Modal 樣式，完美呼應附圖風格 */
+    .custom-modal-overlay {
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.6);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+    }
+    .custom-modal-content {
+      background: #27272a;
+      color: #f4f4f5;
+      width: 90%;
+      max-width: 380px;
+      border-radius: 20px;
+      padding: 20px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    }
   </style>
 </head>
 <body>
@@ -460,31 +477,8 @@
 
         <label style="font-size: 12px; font-weight: bold;">點擊勾選預設上堂日期：</label>
         <div class="flex" style="margin-top: 5px;">
-          <input type="date" id="single-date-picker" style="margin:0;">
-          <button id="add-date-btn" type="button" style="width: 100px; margin:0; padding:6px;">加入日期</button>
-        </div>
-
-        <div style="margin-top: 8px;">
-          <div class="flex between" style="margin-bottom: 4px;">
-            <span style="font-size:11px; font-weight:bold; color:#374151;">📅 選擇月曆日期（可多選）：</span>
-            <div style="display:flex; align-items:center; gap:4px;">
-              <button id="create-prev-month" type="button" style="width:auto; padding: 2px 6px; margin:0; font-size:11px;">&lt;</button>
-              <span id="create-current-month-display" style="font-weight:bold; font-size:12px; color:#1f2937;"></span>
-              <button id="create-next-month" type="button" style="width:auto; padding: 2px 6px; margin:0; font-size:11px;">&gt;</button>
-            </div>
-          </div>
-          <div class="calendar-container" style="border: 1px solid #e5e7eb; border-radius: 6px; padding: 6px; background: #fff;">
-            <div class="calendar-grid" id="create-calendar-header">
-              <div class="day-header" style="font-size:11px; padding:3px 0;">日</div>
-              <div class="day-header" style="font-size:11px; padding:3px 0;">一</div>
-              <div class="day-header" style="font-size:11px; padding:3px 0;">二</div>
-              <div class="day-header" style="font-size:11px; padding:3px 0;">三</div>
-              <div class="day-header" style="font-size:11px; padding:3px 0;">四</div>
-              <div class="day-header" style="font-size:11px; padding:3px 0;">五</div>
-              <div class="day-header" style="font-size:11px; padding:3px 0;">六</div>
-            </div>
-            <div class="calendar-grid" id="create-calendar-days" style="margin-top:2px;"></div>
-          </div>
+          <button id="open-picker-modal-btn" type="button" style="background:#fff; color:#374151; border:1px solid #d1d5db; margin:0; text-align:left; padding:8px 10px; border-radius:6px;">📅 點擊開啟多選月曆...</button>
+          <button id="add-date-btn" type="hidden" class="hidden" type="button">加入日期</button>
         </div>
         
         <div id="selected-dates-container" class="date-picker-grid" style="margin-top: 10px;">
@@ -570,6 +564,32 @@
   </div>
 
 </div>
+
+<!-- 自訂月曆多選彈窗 Modal -->
+<div id="custom-calendar-modal" class="custom-modal-overlay hidden">
+  <div class="custom-modal-content">
+    <div class="flex between" style="margin-bottom: 15px;">
+      <span id="modal-month-display" style="font-size: 16px; font-weight: bold;">July 2026</span>
+      <div style="display:flex; gap:10px;">
+        <button id="modal-prev-month" style="width:30px; height:30px; background:#3f3f46; border-radius:50%; padding:0; margin:0;">&lt;</button>
+        <button id="modal-next-month" style="width:30px; height:30px; background:#3f3f46; border-radius:50%; padding:0; margin:0;">&gt;</button>
+      </div>
+    </div>
+
+    <div style="display:grid; grid-template-columns: repeat(7, 1fr); text-align:center; font-size:12px; color:#a1a1aa; margin-bottom:8px;">
+      <span>SUN</span><span>MON</span><span>TUE</span><span>WED</span><span>THU</span><span>FRI</span><span>SAT</span>
+    </div>
+
+    <div id="modal-calendar-days" style="display:grid; grid-template-columns: repeat(7, 1fr); gap:4px; text-align:center; margin-bottom: 15px;">
+    </div>
+
+    <div class="flex between">
+      <button id="modal-reset-btn" style="background:#3f3f46; color:#f4f4f5; width:90px; border-radius:20px; padding:8px 0; margin:0;">Reset</button>
+      <button id="modal-confirm-btn" style="background:#3b82f6; color:white; width:50px; height:50px; border-radius:50%; padding:0; margin:0; display:flex; justify-content:center; align-items:center; font-size:20px;">✓</button>
+    </div>
+  </div>
+</div>
+
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
   import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, signOut, onAuthStateChanged, deleteUser } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
@@ -594,15 +614,15 @@
   let isAdmin = false;
   let isRegisterMode = false;
   let currentDate = new Date();
-  let createCalendarDate = new Date();
+  let modalCalendarDate = new Date();
   let classesData = [];
   let allUsersList = [];
   let selectedDates = [];
+  let tempModalSelectedDates = [];
 
   document.getElementById('toggle-create-btn').addEventListener('click', () => {
     document.getElementById('create-class-form').classList.toggle('hidden');
     loadAllUsers();
-    renderCreateCalendar();
   });
 
   document.getElementById('access-type').addEventListener('change', (e) => {
@@ -801,85 +821,98 @@
     }
   }
 
-  document.getElementById('add-date-btn').addEventListener('click', () => {
-    const picker = document.getElementById('single-date-picker');
-    const val = picker.value;
-    if(!val) return alert("請先選擇日期");
-    if(!selectedDates.includes(val)) {
-      selectedDates.push(val);
-      selectedDates.sort();
-      renderSelectedDates();
-      renderCreateCalendar();
-    }
+  // 自訂彈出月曆邏輯
+  const openPickerModalBtn = document.getElementById('open-picker-modal-btn');
+  const customCalendarModal = document.getElementById('custom-calendar-modal');
+
+  openPickerModalBtn.addEventListener('click', () => {
+    tempModalSelectedDates = [...selectedDates];
+    modalCalendarDate = new Date();
+    renderModalCalendar();
+    customCalendarModal.classList.remove('hidden');
   });
 
-  function renderCreateCalendar() {
-    const calendarDays = document.getElementById('create-calendar-days');
-    if (!calendarDays) return;
-    calendarDays.innerHTML = '';
+  document.getElementById('modal-prev-month').addEventListener('click', () => {
+    modalCalendarDate.setMonth(modalCalendarDate.getMonth() - 1);
+    renderModalCalendar();
+  });
 
-    const year = createCalendarDate.getFullYear();
-    const month = createCalendarDate.getMonth();
+  document.getElementById('modal-next-month').addEventListener('click', () => {
+    modalCalendarDate.setMonth(modalCalendarDate.getMonth() + 1);
+    renderModalCalendar();
+  });
 
-    const monthDisplay = document.getElementById('create-current-month-display');
-    if (monthDisplay) {
-      monthDisplay.innerText = `${year}年 ${month + 1}月`;
-    }
+  document.getElementById('modal-reset-btn').addEventListener('click', () => {
+    tempModalSelectedDates = [];
+    renderModalCalendar();
+  });
+
+  document.getElementById('modal-confirm-btn').addEventListener('click', () => {
+    selectedDates = [...tempModalSelectedDates];
+    selectedDates.sort();
+    renderSelectedDates();
+    customCalendarModal.classList.add('hidden');
+  });
+
+  function renderModalCalendar() {
+    const daysContainer = document.getElementById('modal-calendar-days');
+    daysContainer.innerHTML = '';
+
+    const year = modalCalendarDate.getFullYear();
+    const month = modalCalendarDate.getMonth();
+
+    const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    document.getElementById('modal-month-display').innerText = `${monthNames[month]} ${year}`;
 
     const firstDay = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
 
     for (let i = 0; i < firstDay; i++) {
-      const emptyCell = document.createElement('div');
-      emptyCell.className = 'day-cell';
-      emptyCell.style.background = '#f9fafb';
-      emptyCell.style.minHeight = '45px';
-      calendarDays.appendChild(emptyCell);
+      const emptyDiv = document.createElement('div');
+      daysContainer.appendChild(emptyDiv);
     }
 
     for (let day = 1; day <= daysInMonth; day++) {
-      const cell = document.createElement('div');
-      cell.className = 'day-cell';
-      cell.style.minHeight = '45px';
-      cell.style.padding = '2px';
-      cell.style.cursor = 'pointer';
+      const dayDiv = document.createElement('div');
+      dayDiv.style.padding = '8px 0';
+      dayDiv.style.borderRadius = '50%';
+      dayDiv.style.cursor = 'pointer';
+      dayDiv.style.fontSize = '14px';
+      dayDiv.style.width = '36px';
+      dayDiv.style.height = '36px';
+      dayDiv.style.display = 'flex';
+      dayDiv.style.alignItems = 'center';
+      dayDiv.style.justifyContent = 'center';
+      dayDiv.style.margin = '0 auto';
 
       const monthStr = String(month + 1).padStart(2, '0');
       const dayStr = String(day).padStart(2, '0');
       const dateStr = `${year}-${monthStr}-${dayStr}`;
 
-      const isSelected = selectedDates.includes(dateStr);
+      const isSelected = tempModalSelectedDates.includes(dateStr);
       if (isSelected) {
-        cell.style.background = 'var(--primary)';
-        cell.style.color = 'white';
-        cell.style.borderColor = 'var(--primary)';
+        dayDiv.style.background = 'var(--primary)';
+        dayDiv.style.color = 'white';
+        dayDiv.style.fontWeight = 'bold';
+      } else {
+        dayDiv.style.color = '#f4f4f5';
       }
 
-      cell.innerHTML = `<strong style="font-size:11px;">${day}</strong>`;
-      
-      cell.addEventListener('click', () => {
-        if (selectedDates.includes(dateStr)) {
-          selectedDates = selectedDates.filter(d => d !== dateStr);
+      dayDiv.innerText = day;
+
+      dayDiv.addEventListener('click', () => {
+        if (tempModalSelectedDates.includes(dateStr)) {
+          tempModalSelectedDates = tempModalSelectedDates.filter(d => d !== dateStr);
         } else {
-          selectedDates.push(dateStr);
-          selectedDates.sort();
+          tempModalSelectedDates.push(dateStr);
+          tempModalSelectedDates.sort();
         }
-        renderSelectedDates();
-        renderCreateCalendar();
+        renderModalCalendar();
       });
 
-      calendarDays.appendChild(cell);
+      daysContainer.appendChild(dayDiv);
     }
   }
-
-  document.getElementById('create-prev-month').addEventListener('click', () => {
-    createCalendarDate.setMonth(createCalendarDate.getMonth() - 1);
-    renderCreateCalendar();
-  });
-  document.getElementById('create-next-month').addEventListener('click', () => {
-    createCalendarDate.setMonth(createCalendarDate.getMonth() + 1);
-    renderCreateCalendar();
-  });
 
   function renderSelectedDates() {
     const container = document.getElementById('selected-dates-container');
@@ -897,7 +930,6 @@
   window.removeDate = (d) => {
     selectedDates = selectedDates.filter(item => item !== d);
     renderSelectedDates();
-    renderCreateCalendar();
   };
 
   document.getElementById('add-class-btn').addEventListener('click', async () => {
@@ -965,7 +997,6 @@
       document.getElementById('class-leader-note').value = '';
       selectedDates = [];
       renderSelectedDates();
-      renderCreateCalendar();
       document.getElementById('create-class-form').classList.add('hidden');
       
       loadClasses();
@@ -1119,7 +1150,6 @@
         ? `<span class="class-type-badge-public">🔒 私人班</span>`
         : `<span class="class-type-badge-public">🌐 公開班</span>`;
 
-      // 使用 .trim() 徹底清除開頭與結尾所有空白與換行，完美解決上方空行
       const cleanedLeaderNote = c.leaderNote ? c.leaderNote.trim() : '';
       const leaderNoteHtml = cleanedLeaderNote ? `
         <div style="margin-top: 6px;">
