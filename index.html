@@ -107,6 +107,15 @@
       background: #e5e7eb;
     }
 
+    /* 儲存變更及加開一堂共用的藍色按鈕樣式 */
+    .btn-blue-action {
+      background: #0284c7;
+      color: white;
+    }
+    .btn-blue-action:hover {
+      background: #0369a1;
+    }
+
     .hidden { display: none !important; }
 
     .date-picker-grid {
@@ -256,7 +265,7 @@
       margin-bottom: 10px;
     }
 
-    /* 修改點 1：文字框內的預設文字靠左拍齊及置於頂行 */
+    /* 文字框內的預設文字靠左拍齊及置於頂行，且已取消「💬班長的話：」前綴 */
     .leader-note-box {
       background: #fff;
       border: 1px solid #fbcfe8;
@@ -500,6 +509,7 @@
       </div>
     </div>
 
+    <!-- 月曆區塊 -->
     <div class="card">
       <div class="flex between" style="margin-bottom: 8px;">
         <h3 style="margin:0; font-size:16px; color:#1f2937;">📅 課程月曆 <small style="font-size:10px; font-weight:normal; color:#6b7280;">（綠色：已報名）</small></h3>
@@ -965,7 +975,6 @@
         if (sess.isClosed) {
           actionBtnHtml = `<span class="closed-tag">🔒 已封盤</span>`;
         } else {
-          /* 修改點 2：按鈕文字改成「我要報名」 */
           actionBtnHtml = isJoined ? 
             `<button onclick="toggleSessionJoin('${c.id}', '${dateStr}', false)" class="btn-cancel" style="width:auto; margin:0; padding:4px 8px; font-size:11px;">取消報名</button>` : 
             `<button onclick="toggleSessionJoin('${c.id}', '${dateStr}', true)" class="btn-signup" style="width:auto; margin:0; padding:4px 8px; font-size:11px;">我要報名</button>`;
@@ -1009,11 +1018,12 @@
         ? `<span class="class-type-badge-public">🔒 私人班</span>`
         : `<span class="class-type-badge-public">🌐 公開班</span>`;
 
+      // 修改點 1：取消「💬班長的話：」前綴文字
       const leaderNoteHtml = c.leaderNote ? `
         <div style="margin-top: 6px;">
           <button onclick="toggleLeaderNote('${c.id}')" class="btn-gray-action" style="width:auto; margin:0; padding:2px 6px; font-size:11px; border-radius:4px;">💬 查看班長的話</button>
           <div id="note-box-${c.id}" class="leader-note-box hidden">
-            <strong>💬 班長的話：</strong><br>${c.leaderNote}
+            ${c.leaderNote}
           </div>
         </div>
       ` : '';
@@ -1079,7 +1089,8 @@
                     <thead>
                       <tr>
                         <th style="width:110px;">日期</th>
-                        <th style="width:80px; color:#be123c;">已封盤?</th>
+                        <!-- 修改點 2：「已封盤？」改為「封盤」並沿用相同的藍色 table 標題樣式 -->
+                        <th style="width:80px;">封盤</th>
                         <th style="width:65px;">開始時間</th>
                         <th style="width:65px;">完結時間</th>
                         <th style="width:90px;">地點</th>
@@ -1097,8 +1108,9 @@
                 </div>
 
                 <div class="flex" style="margin-top: 8px; gap:4px;">
-                  <button onclick="addTableRow('${c.id}')" class="btn-secondary" style="width:auto; margin:0; padding:6px 10px; font-size:11px;">➕ 加開一堂</button>
-                  <button onclick="saveTableChanges('${c.id}')" style="width:auto; margin:0; padding:6px 10px; font-size:11px; background:#0284c7;">💾 儲存變更</button>
+                  <!-- 修改點 3：「➕加開一堂」掣改成跟儲存變更一樣的藍色配搭 (.btn-blue-action) -->
+                  <button onclick="addTableRow('${c.id}')" class="btn-blue-action" style="width:auto; margin:0; padding:6px 10px; font-size:11px;">➕ 加開一堂</button>
+                  <button onclick="saveTableChanges('${c.id}')" class="btn-blue-action" style="width:auto; margin:0; padding:6px 10px; font-size:11px;">💾 儲存變更</button>
                   <button onclick="deleteClass('${c.id}')" class="btn-danger" style="width:auto; margin:0; margin-left:auto; padding:6px 10px; font-size:11px;">刪除全課</button>
                 </div>
               </div>
