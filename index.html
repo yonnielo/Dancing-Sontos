@@ -271,7 +271,7 @@
       background: #ffffff;
       border: 1px solid #fbcfe8;
       border-radius: 8px;
-      padding: 12px;
+      padding: 0px;
       margin-bottom: 20px;
       box-shadow: 0 1px 3px rgba(0,0,0,0.05);
     }
@@ -336,8 +336,8 @@
     }
 
     .leader-note-card {
-      background: #fefce8;
-      border: 1px solid #fef08a;
+      background: #f9fafb;
+      border: 1px solid #4b5563;
       border-radius: 6px;
       padding: 10px;
       margin-top: 6px;
@@ -1241,9 +1241,9 @@
           <div class="session-box">
             <div class="flex between" style="align-items: flex-start;">
               <div style="width:100%;">
-                <div class="session-line">
+                <div class="session-line" style="word-spacing: -1px; white-space: nowrap;">
                   <strong>📅 ${dateStr}</strong> 
-                  <span style="color:#0284c7; font-weight:600; margin-left:6px;">⏰ ${startTime}${endTime}</span>
+                  <span style="color:#0284c7; font-weight:600; margin-left:6px; font-size: 11px;">⏰ ${startTime}${endTime}</span>
                 </div>
                 
                 <div class="session-line" style="color:#374151;">
@@ -1277,9 +1277,9 @@
 
       const cleanedLeaderNote = c.leaderNote ? c.leaderNote.trim() : '';
       const leaderNoteHtml = cleanedLeaderNote ? `
-        <button onclick="toggleLeaderNote('${c.id}')" id="leader-note-btn-${c.id}" class="leader-note-toggle-btn">💬 班長的話</button>
+        <button onclick="toggleLeaderNote('${c.id}')" id="leader-note-btn-${c.id}" class="leader-note-toggle-btn">班長的話</button>
         <div id="leader-note-box-${c.id}" class="leader-note-card hidden">
-          <div class="note-title">💬 班長的話</div>
+          <div class="note-title">班長的話</div>
           <div class="note-content">${cleanedLeaderNote}</div>
         </div>
       ` : '';
