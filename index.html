@@ -1095,8 +1095,14 @@
     if(!name) return alert("請輸入課程名稱");
     if(selectedDates.length === 0) return alert("請至少在月曆上挑選一日上堂日期");
 
+    const now = new Date();
     const sessions = {};
     selectedDates.forEach(d => {
+      // 2） 每個課堂的日子過了7日後，亦會自動將該課堂「封盤」status變成on。
+      const sessionDate = new Date(d + 'T00:00:00');
+      const diffDays = (now - sessionDate) / (1000 * 60 * 60 * 24);
+      const isAutoClosed = diffDays > 7;
+
       sessions[d] = { 
         startTime, 
         endTime, 
@@ -1107,7 +1113,7 @@
         rent: defaultRent,
         rentPayerUid: defaultRentPayerUid,
         rentPayerName: defaultRentPayerName,
-        isClosed: false,
+        isClosed: isAutoClosed,
         students: [] 
       };
     });
@@ -1159,21 +1165,20 @@
           }
         }
 
-        // 3）每個課堂的日子過了7日後，亦會自動將該課堂「封盤」status變成on
+        // 2） 每個課堂的日子過了7日後，亦會自動將該課堂「封盤」status變成on。檢查並自動更新
         let sessionsUpdated = false;
-        const sessions = data.sessions || {};
-        Object.keys(sessions).forEach(dateStr => {
-          const sessionDate = new Date(dateStr + 'T23:59:59');
-          const diffDays = (now - sessionDate) / (1000 * 60 * 60 * 24);
-          if (diffDays > 7 && !sessions[dateStr].isClosed) {
-            sessions[dateStr].isClosed = true;
-            sessionsUpdated = true;
+        if (data.sessions) {
+          Object.keys(data.sessions).forEach(dateStr => {
+            const sessionDate = new Date(dateStr + 'T00:00:00');
+            const diffDays = (now - sessionDate) / (1000 * 60 * 60 * 24);
+            if (diffDays > 7 && !data.sessions[dateStr].isClosed) {
+              data.sessions[dateStr].isClosed = true;
+              sessionsUpdated = true;
+            }
+          });
+          if (sessionsUpdated) {
+            await updateDoc(doc(db, "classes", docSnap.id), { sessions: data.sessions });
           }
-        });
-
-        if (sessionsUpdated) {
-          await updateDoc(doc(db, "classes", docSnap.id), { sessions });
-          data.sessions = sessions;
         }
 
         if(!isAdmin && data.accessType === 'specific' && (!data.allowedUsers || !data.allowedUsers.includes(currentUser.uid))) {
@@ -1182,7 +1187,7 @@
         classesData.push({ id: docSnap.id, ...data });
       }
 
-      // 每個課程內最後一個課堂完了後，在顯示上會排到最底，並在課程名後標示（已完成）
+      // 每個課程內最後一個課堂完了後，在顯示上會排到最底
       classesData.sort((a, b) => {
         const aDates = Object.keys(a.sessions || {}).sort();
         const bDates = Object.keys(b.sessions || {}).sort();
@@ -1289,7 +1294,9 @@
 
       const lastDate = dateKeys.length > 0 ? dateKeys[dateKeys.length - 1] : '';
       const isFinished = lastDate && new Date(lastDate + 'T23:59:59') < now;
-      const displayName = isFinished ? `${c.name}<span style="color: #9ca3af; font-size: 0.7em;">（已完成）</span>` : c.name;
+      
+      // 1） 每個課程內最後一個課堂完了後，課程名後標示（已完成），（巳完成）字用淺灰色，font size比課程名細約30%。
+      const displayName = isFinished ? `${c.name} <span style="color: #9ca3af; font-size: 70%;">（已完成）</span>` : c.name;
 
       const sessionsHtml = dateKeys.map(dateStr => {
         const sess = sessions[dateStr];
@@ -1493,7 +1500,7 @@
       let addMiscFormHtml = `
         <div style="margin-top: 6px; padding: 6px; background: #fff; border: 1px dashed var(--pojai-border); border-radius: 4px;">
           <div style="font-size:11px; font-weight:bold; color:var(--pojai-text); margin-bottom:4px;">➕ 新增雜費項目</div>
-          <input type="text" id="misc-name-${c.id}" placeholder="項目名稱 (例如: 買水 / 道具)" style="margin:2px 0 4px 0; font-size:11px; padding:4px;">
+          <input type="text" id="misc-name-${c.id}" placeholder="項目名稱 (例如:買水 / 道具)" style="margin:2px 0 4px 0; font-size:11px; padding:4px;">
           <div class="flex" style="gap:4px; margin-bottom:4px;">
             <input type="number" id="misc-amount-${c.id}" placeholder="總金額 ($)" style="margin:0; font-size:11px; padding:4px;" title="請輸入該項目的總金額">
             <select id="misc-payer-${c.id}" style="margin:0; font-size:11px; padding:4px;">
