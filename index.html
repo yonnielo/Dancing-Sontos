@@ -549,6 +549,11 @@
 </head>
 <body>
 
+<!-- 一按即 Copy 按鈕 -->
+<div style="max-width: 950px; margin: 10px auto; text-align: right;">
+  <button id="copy-code-btn" onclick="copyEntireCode()" style="background:#0284c7; width:auto; padding:6px 14px; font-size:12px; border-radius:6px;">📋 一按Copy完整程式碼</button>
+</div>
+
 <div class="container">
   
   <div id="header-section" class="card flex between">
@@ -574,7 +579,6 @@
     <button id="auth-main-btn">登入</button>
     <div style="display:flex; justify-content:space-between; margin-top: 10px;">
       <a href="#" id="toggle-auth-mode" style="font-size:13px; color:#be123c;">沒有帳號？點此註冊</a>
-      <a href="#" id="forgot-password-link" style="font-size:13px; color:#be123c;">忘記密碼？</a>
     </div>
 
     <div style="margin-top: 15px; text-align: center;">
@@ -720,7 +724,7 @@
     </div>
 
     <div class="card">
-      <h3 style="margin-top:0; font-size:16px; margin-bottom:12px; color:#1f2937;">👱🏻‍♂️所有課程</h3>
+      <h3 style="margin-top:0; font-size:16px; margin-bottom:12px; color:#1f2937;">所有課程</h3>
       <div id="class-list">載入中...</div>
     </div>
 
@@ -771,7 +775,6 @@
   });
 
   const toggleAuthModeBtn = document.getElementById('toggle-auth-mode');
-  const forgotPasswordLink = document.getElementById('forgot-password-link');
   const registerExtra = document.getElementById('register-extra');
   const authMainBtn = document.getElementById('auth-main-btn');
   const logoutBtn = document.getElementById('logout-btn');
@@ -786,18 +789,6 @@
     authMainBtn.innerText = isRegisterMode ? "註冊" : "登入";
     registerExtra.classList.toggle('hidden', !isRegisterMode);
     toggleAuthModeBtn.innerText = isRegisterMode ? "已有帳號？登入" : "沒有帳號？註冊";
-  });
-
-  forgotPasswordLink.addEventListener('click', async (e) => {
-    e.preventDefault();
-    const email = document.getElementById('auth-email').value.trim();
-    if(!email) return alert("請先在上方輸入您的電子郵件信箱！");
-    try {
-      await sendPasswordResetEmail(auth, email);
-      alert("重設密碼信已成功發送至您的電郵，請查收！");
-    } catch(err) {
-      alert("發送失敗: " + err.message);
-    }
   });
 
   authMainBtn.addEventListener('click', async () => {
@@ -1144,56 +1135,59 @@
       const querySnapshot = await getDocs(collection(db, "classes"));
       classesData = [];
       const now = new Date();
-      
+
       for (const docSnap of querySnapshot.docs) {
         const data = docSnap.data();
         
-        // 檢查是否超過90日需自動刪除
-        const createdAt = data.createdAt ? (data.createdAt.toDate ? data.createdAt.toDate() : new Date(data.createdAt)) : null;
-        if (createdAt) {
-          const diffTime = now - createdAt;
+        // 檢查規則1：90日後將整個課程所有資料取消，database內也取消
+        const sessions = data.sessions || {};
+        const dateKeys = Object.keys(sessions).sort();
+        if (dateKeys.length > 0) {
+          const lastDateStr = dateKeys[dateKeys.length - 1];
+          const lastDate = new Date(lastDateStr);
+          const diffTime = now - lastDate;
           const diffDays = diffTime / (1000 * 60 * 60 * 24);
           if (diffDays > 90) {
             await deleteDoc(doc(db, "classes", docSnap.id));
-            continue;
+            continue; // 跳過此課程不載入
           }
-        }
-
-        // 3）每個課堂的日子過了7日後，亦會自動將該課堂「封盤」status變成on
-        let sessionsUpdated = false;
-        const sessions = data.sessions || {};
-        Object.keys(sessions).forEach(dateStr => {
-          const sessionDate = new Date(dateStr + 'T23:59:59');
-          const diffDays = (now - sessionDate) / (1000 * 60 * 60 * 24);
-          if (diffDays > 7 && !sessions[dateStr].isClosed) {
-            sessions[dateStr].isClosed = true;
-            sessionsUpdated = true;
-          }
-        });
-
-        if (sessionsUpdated) {
-          await updateDoc(doc(db, "classes", docSnap.id), { sessions });
-          data.sessions = sessions;
         }
 
         if(!isAdmin && data.accessType === 'specific' && (!data.allowedUsers || !data.allowedUsers.includes(currentUser.uid))) {
           continue;
         }
+
+        // 檢查規則2：每個課堂的日子過了7日後，亦會自動將該課堂「封盤」status變成on
+        let needsUpdate = false;
+        dateKeys.forEach(d => {
+          const sess = sessions[d];
+          const sessionDate = new Date(d);
+          const sessionDiffDays = (now - sessionDate) / (1000 * 60 * 60 * 24);
+          if (sessionDiffDays > 7 && !sess.isClosed) {
+            sess.isClosed = true;
+            needsUpdate = true;
+          }
+        });
+
+        if (needsUpdate) {
+          await updateDoc(doc(db, "classes", docSnap.id), { sessions });
+        }
+
         classesData.push({ id: docSnap.id, ...data });
       }
 
-      // 每個課程內最後一個課堂完了後，在顯示上會排到最底，並在課程名後標示（已完成）
+      // 檢查規則1：每個課程內最後一個課堂完了後，在顯示上會排到最底
       classesData.sort((a, b) => {
         const aDates = Object.keys(a.sessions || {}).sort();
         const bDates = Object.keys(b.sessions || {}).sort();
-        const aLast = aDates.length > 0 ? aDates[aDates.length - 1] : '';
-        const bLast = bDates.length > 0 ? bDates[bDates.length - 1] : '';
+        const aLast = aDates.length > 0 ? new Date(aDates[aDates.length - 1]) : new Date(0);
+        const bLast = bDates.length > 0 ? new Date(bDates[bDates.length - 1]) : new Date(0);
         
-        const aFinished = aLast && new Date(aLast + 'T23:59:59') < now;
-        const bFinished = bLast && new Date(bLast + 'T23:59:59') < now;
+        const aCompleted = now > aLast;
+        const bCompleted = now > bLast;
 
-        if (aFinished !== bFinished) {
-          return aFinished ? 1 : -1;
+        if (aCompleted !== bCompleted) {
+          return aCompleted ? 1 : -1; // 已完成的排到最底
         }
         return 0;
       });
@@ -1287,9 +1281,14 @@
       const dateKeys = Object.keys(sessions).sort();
       const isSettled = !!c.settlementResult;
 
-      const lastDate = dateKeys.length > 0 ? dateKeys[dateKeys.length - 1] : '';
-      const isFinished = lastDate && new Date(lastDate + 'T23:59:59') < now;
-      const displayName = isFinished ? `${c.name}<span style="color: #9ca3af; font-size: 0.7em;">（已完成）</span>` : c.name;
+      // 檢查是否已完成（最後一個課堂完了後）
+      let isCompleted = false;
+      if (dateKeys.length > 0) {
+        const lastDate = new Date(dateKeys[dateKeys.length - 1]);
+        if (now > lastDate) {
+          isCompleted = true;
+        }
+      }
 
       const sessionsHtml = dateKeys.map(dateStr => {
         const sess = sessions[dateStr];
@@ -1346,6 +1345,9 @@
       const classTypeBadge = (c.accessType === 'specific') 
         ? `<span class="class-type-badge-public">🔒 私人班</span>`
         : `<span class="class-type-badge-public">🌐 公開班</span>`;
+
+      // 已完成標示：淺灰色，font size比課程名細約30%
+      const completedBadgeHtml = isCompleted ? `<span style="color: #9ca3af; font-size: 70%; margin-left: 6px; font-weight: normal;">（已完成）</span>` : '';
 
       const cleanedLeaderNote = c.leaderNote ? c.leaderNote.trim() : '';
       const leaderNoteHtml = cleanedLeaderNote ? `
@@ -1458,7 +1460,7 @@
             <td style="padding:4px; border:1px solid var(--pojai-border); font-size:11px;">
               <div class="flex between" style="align-items:center;">
                 <span>$${roundedShare}</span>
-                {(!isSettled && canManage) ? `<button onclick="deleteMiscItem('${c.id}', ${idx})" style="width:auto; margin:0; padding:1px 4px; font-size:12px; background:transparent; color:#be123c; border:none; box-shadow:none;">❌</button>` : ''}
+                ${(!isSettled && canManage) ? `<button onclick="deleteMiscItem('${c.id}', ${idx})" style="width:auto; margin:0; padding:1px 4px; font-size:12px; background:transparent; color:#be123c; border:none; box-shadow:none;">❌</button>` : ''}
               </div>
             </td>
           </tr>
@@ -1516,7 +1518,7 @@
           
           <div class="course-card-header">
             <div>
-              <strong style="font-size: 17px; color:#831843;">${displayName}</strong> 
+              <strong style="font-size: 17px; color:#831843;">${c.name}</strong>${completedBadgeHtml}
               <div style="margin-top: 6px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
                 <span class="badge-leader">👑 班長: ${c.leaderName}</span>
                 ${classTypeBadge}
@@ -1643,7 +1645,6 @@
       if (bodyEl) bodyEl.classList.remove('hidden');
       if (btnEl) btnEl.classList.add('expanded');
       
-      // 若該課程目前處於 admin tab，確保重新渲染表格與用戶清單
       if (activeTabState[classId] === 'admin') {
         renderEditUsersList(classId);
         renderTableRows(classId);
@@ -1696,7 +1697,6 @@
       pojaiContent.className = "tab-content";
       if (adminContent) adminContent.className = "tab-content active-content";
 
-      // 載入管理區塊資料
       const querySnapshot = await getDocs(collection(db, "users"));
       allUsersList = [];
       querySnapshot.forEach(docSnap => {
@@ -2188,6 +2188,15 @@
       }
     }
   }
+
+  window.copyEntireCode = () => {
+    const code = document.documentElement.outerHTML;
+    navigator.clipboard.writeText(code).then(() => {
+      alert("已成功複製完整程式碼！");
+    }).catch(err => {
+      alert("複製失敗: " + err);
+    });
+  };
 </script>
 
 </body>
