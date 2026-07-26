@@ -315,12 +315,32 @@
       transform: rotate(180deg);
     }
 
-    /* 班長的話指定配色與設計 (黃色風格) */
+    /* 班長的話按鈕與卡片設計 */
+    .leader-note-toggle-btn {
+      background: #e5e7eb;
+      color: #374151;
+      border: 1px solid #d1d5db;
+      border-radius: 4px;
+      padding: 3px 8px;
+      font-size: 11px;
+      font-weight: bold;
+      cursor: pointer;
+      width: auto;
+      margin: 4px 0 0 0;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .leader-note-toggle-btn:hover {
+      background: #d1d5db;
+    }
+
     .leader-note-card {
       background: #fefce8;
       border: 1px solid #fef08a;
       border-radius: 6px;
       padding: 10px;
+      margin-top: 6px;
       margin-bottom: 10px;
       font-size: 12px;
       color: #713f12;
@@ -390,6 +410,14 @@
       margin: 0;
       transition: all 0.2s;
     }
+    /* 「課程」Tab 專屬淺粉紅色風格 */
+    .tab-btn.active-tab-course {
+      background: #fdf2f8;
+      color: #be123c;
+      border-color: #fbcfe8;
+      border-bottom: 2px solid #fdf2f8;
+      margin-bottom: -2px;
+    }
     .tab-btn.active-tab-pojai {
       background: var(--pojai-bg);
       color: var(--pojai-text);
@@ -410,6 +438,15 @@
     }
     .tab-content.active-content {
       display: block;
+    }
+
+    /* 「課程」Tab 內容區塊淺粉紅色外框風格 */
+    .course-tab-content-box {
+      margin-top: 0;
+      padding: 10px;
+      background: #fdf2f8;
+      border-radius: 8px;
+      border: 1px solid #fbcfe8;
     }
 
     .closed-tag {
@@ -1240,7 +1277,8 @@
 
       const cleanedLeaderNote = c.leaderNote ? c.leaderNote.trim() : '';
       const leaderNoteHtml = cleanedLeaderNote ? `
-        <div class="leader-note-card">
+        <button onclick="toggleLeaderNote('${c.id}')" id="leader-note-btn-${c.id}" class="leader-note-toggle-btn">💬 班長的話</button>
+        <div id="leader-note-box-${c.id}" class="leader-note-card hidden">
           <div class="note-title">💬 班長的話</div>
           <div class="note-content">${cleanedLeaderNote}</div>
         </div>
@@ -1410,9 +1448,12 @@
           <div class="course-card-header">
             <div>
               <strong style="font-size: 17px; color:#831843;">${c.name}</strong> 
-              <div style="margin-top: 6px; display: flex; gap: 6px; align-items: center;">
+              <div style="margin-top: 6px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
                 <span class="badge-leader">👑 班長: ${c.leaderName}</span>
                 ${classTypeBadge}
+              </div>
+              <div>
+                ${leaderNoteHtml}
               </div>
             </div>
             <button onclick="toggleCourseBody('${c.id}')" id="collapse-btn-${c.id}" class="collapse-toggle-btn" title="展開/收藏課程資料">
@@ -1421,20 +1462,25 @@
           </div>
 
           <div id="course-body-${c.id}" class="hidden">
-            ${leaderNoteHtml}
-
-            <div style="margin-top: 8px;">
-              ${sessionsHtml || '<p style="font-size:12px; color:#6b7280;">暫無上堂日期</p>'}
-            </div>
 
             <!-- Tab 切換按鈕列 -->
             <div class="tab-header">
-              <button onclick="switchTab('${c.id}', 'pojai')" id="tab-btn-pojai-${c.id}" class="tab-btn active-tab-pojai">👵🏼 婆仔數</button>
+              <button onclick="switchTab('${c.id}', 'course')" id="tab-btn-course-${c.id}" class="tab-btn active-tab-course">📚 課程</button>
+              <button onclick="switchTab('${c.id}', 'pojai')" id="tab-btn-pojai-${c.id}" class="tab-btn">👵🏼 婆仔數</button>
               ${canManage ? `<button onclick="switchTab('${c.id}', 'admin')" id="tab-btn-admin-${c.id}" class="tab-btn">🛠️ 班長管理</button>` : ''}
             </div>
 
-            <!-- 1) 婆仔數 Tab 內容 -->
-            <div id="tab-content-pojai-${c.id}" class="tab-content active-content">
+            <!-- 1) 課程 Tab 內容 (淺粉紅色風格) -->
+            <div id="tab-content-course-${c.id}" class="tab-content active-content">
+              <div class="course-tab-content-box">
+                <div style="margin-top: 0;">
+                  ${sessionsHtml || '<p style="font-size:12px; color:#6b7280;">暫無上堂日期</p>'}
+                </div>
+              </div>
+            </div>
+
+            <!-- 2) 婆仔數 Tab 內容 -->
+            <div id="tab-content-pojai-${c.id}" class="tab-content">
               <div class="pojai-box" style="margin-top:0;">
                 ${pojaiSummaryHtml}
                 
@@ -1452,7 +1498,7 @@
               </div>
             </div>
 
-            <!-- 2) 班長管理 Tab 內容 -->
+            <!-- 3) 班長管理 Tab 內容 -->
             ${canManage ? `
               <div id="tab-content-admin-${c.id}" class="tab-content">
                 <div class="admin-edit-box" style="margin-top:0;">
@@ -1530,21 +1576,46 @@
     });
   }
 
+  // 班長的話開關控制
+  window.toggleLeaderNote = (classId) => {
+    const box = document.getElementById(`leader-note-box-${classId}`);
+    if (box) {
+      box.classList.toggle('hidden');
+    }
+  };
+
   // Tab 切換邏輯
   window.switchTab = async (classId, tabName) => {
+    const courseBtn = document.getElementById(`tab-btn-course-${classId}`);
     const pojaiBtn = document.getElementById(`tab-btn-pojai-${classId}`);
     const adminBtn = document.getElementById(`tab-btn-admin-${classId}`);
+    
+    const courseContent = document.getElementById(`tab-content-course-${classId}`);
     const pojaiContent = document.getElementById(`tab-content-pojai-${classId}`);
     const adminContent = document.getElementById(`tab-content-admin-${classId}`);
 
-    if (tabName === 'pojai') {
+    if (tabName === 'course') {
+      courseBtn.className = "tab-btn active-tab-course";
+      pojaiBtn.className = "tab-btn";
+      if (adminBtn) adminBtn.className = "tab-btn";
+
+      courseContent.className = "tab-content active-content";
+      pojaiContent.className = "tab-content";
+      if (adminContent) adminContent.className = "tab-content";
+    } else if (tabName === 'pojai') {
+      courseBtn.className = "tab-btn";
       pojaiBtn.className = "tab-btn active-tab-pojai";
       if (adminBtn) adminBtn.className = "tab-btn";
+
+      courseContent.className = "tab-content";
       pojaiContent.className = "tab-content active-content";
       if (adminContent) adminContent.className = "tab-content";
     } else if (tabName === 'admin') {
+      courseBtn.className = "tab-btn";
       pojaiBtn.className = "tab-btn";
       if (adminBtn) adminBtn.className = "tab-btn active-tab-admin";
+
+      courseContent.className = "tab-content";
       pojaiContent.className = "tab-content";
       if (adminContent) adminContent.className = "tab-content active-content";
 
