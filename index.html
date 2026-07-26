@@ -1279,31 +1279,65 @@
           `;
         }).join('');
 
-      // 雜費項目列表渲染
-      let miscListHtml = miscExpenses.map((item, idx) => `
-        <div style="font-size:11px; color:var(--pojai-text); margin-bottom:2px; display:flex; justify-content:space-between; align-items:center;">
-          <span>🔹 <b>${item.name}</b>：$${item.amount} (付款人: ${item.payer}，邊個有份: ${item.participants.join(', ') || '無'})</span>
-          ${canManage ? `<button onclick="deleteMiscItem('${c.id}', ${idx})" class="btn-danger" style="width:auto; margin:0; padding:1px 4px; font-size:10px;">刪除</button>` : ''}
+      // 取得所有可能參與的人員名單 (由班長、已報名學生、allowedUsers、allUsers合併去重)
+      const eligibleNamesSet = new Set([c.leaderName]);
+      dateKeys.forEach(d => {
+        (sessions[d].students || []).forEach(s => eligibleNamesSet.add(s.name));
+      });
+      if (c.accessType === 'specific' && c.allowedUsers) {
+        c.allowedUsers.forEach(uid => {
+          const uObj = allUsersList.find(u => u.uid === uid);
+          if (uObj) eligibleNamesSet.add(uObj.name || uObj.email);
+        });
+      }
+      allUsersList.forEach(u => eligibleNamesSet.add(u.name || u.email));
+      const eligibleNames = Array.from(eligibleNamesSet);
+
+      const payerOptions = eligibleNames.map(name => `<option value="${name}">${name}</option>`).join('');
+
+      // 雜費 5欄位表格渲染
+      let miscTableRowsHtml = miscExpenses.map((item, idx) => {
+        const partCount = (item.participants || []).length;
+        const sharePerPerson = partCount > 0 ? (Number(item.amount) || 0) / partCount : 0;
+        const roundedShare = Math.round(sharePerPerson * 100) / 100;
+
+        return `
+          <tr>
+            <td style="padding:4px; border:1px solid var(--pojai-border); font-size:11px;">${item.name}</td>
+            <td style="padding:4px; border:1px solid var(--pojai-border); font-size:11px;">$${item.amount}</td>
+            <td style="padding:4px; border:1px solid var(--pojai-border); font-size:11px;">${item.payer}</td>
+            <td style="padding:4px; border:1px solid var(--pojai-border); font-size:11px;">${(item.participants || []).join(', ') || '無'}</td>
+            <td style="padding:4px; border:1px solid var(--pojai-border); font-size:11px;">
+              <div class="flex between" style="align-items:center;">
+                <span>$${roundedShare}</span>
+                ${canManage ? `<button onclick="deleteMiscItem('${c.id}', ${idx})" class="btn-danger" style="width:auto; margin:0; padding:1px 4px; font-size:10px;">刪除</button>` : ''}
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      let miscTableHtml = `
+        <div class="table-container" style="background:#fff; margin-top:4px; margin-bottom:6px;">
+          <table style="width:100%; border-collapse:collapse; font-size:11px;">
+            <thead>
+              <tr style="background:#fef08a; color:var(--pojai-text);">
+                <th style="padding:4px; border:1px solid var(--pojai-border); text-align:left;">項目</th>
+                <th style="padding:4px; border:1px solid var(--pojai-border); text-align:left;">總額</th>
+                <th style="padding:4px; border:1px solid var(--pojai-border); text-align:left;">付款人</th>
+                <th style="padding:4px; border:1px solid var(--pojai-border); text-align:left;">邊個有份</th>
+                <th style="padding:4px; border:1px solid var(--pojai-border); text-align:left;">每人幾錢</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${miscTableRowsHtml || `<tr><td colspan="5" style="padding:6px; text-align:center; color:#6b7280; border:1px solid var(--pojai-border);">暫無雜費記錄</td></tr>`}
+            </tbody>
+          </table>
         </div>
-      `).join('') || `<p style="font-size:11px; color:#6b7280; margin:2px 0;">暫無雜費記錄</p>`;
+      `;
 
       let addMiscFormHtml = '';
       if (canManage) {
-        // 取得該課程所有可能參與的人員名單 (由班長、已報名學生、allowedUsers、allUsers合併去重)
-        const eligibleNamesSet = new Set([c.leaderName]);
-        dateKeys.forEach(d => {
-          (sessions[d].students || []).forEach(s => eligibleNamesSet.add(s.name));
-        });
-        if (c.accessType === 'specific' && c.allowedUsers) {
-          c.allowedUsers.forEach(uid => {
-            const uObj = allUsersList.find(u => u.uid === uid);
-            if (uObj) eligibleNamesSet.add(uObj.name || uObj.email);
-          });
-        }
-        allUsersList.forEach(u => eligibleNamesSet.add(u.name || u.email));
-        const eligibleNames = Array.from(eligibleNamesSet);
-
-        const payerOptions = eligibleNames.map(name => `<option value="${name}">${name}</option>`).join('');
         const participantsCheckboxes = eligibleNames.map(name => `
           <label style="font-size:11px; display:inline-flex; align-items:center; gap:2px; margin-right:6px; cursor:pointer;">
             <input type="checkbox" value="${name}" class="misc-part-cb-${c.id}" checked style="margin:0; width:auto;"> ${name}
@@ -1315,7 +1349,7 @@
             <div style="font-size:11px; font-weight:bold; color:var(--pojai-text); margin-bottom:4px;">➕ 新增雜費項目</div>
             <input type="text" id="misc-name-${c.id}" placeholder="項目名稱 (例如: 買水 / 道具)" style="margin:2px 0 4px 0; font-size:11px; padding:4px;">
             <div class="flex" style="gap:4px; margin-bottom:4px;">
-              <input type="number" id="misc-amount-${c.id}" placeholder="每人幾錢/總金額? 其實係輸入總金額定每人? (請輸入總金額)" style="margin:0; font-size:11px; padding:4px;" title="請輸入該項目的總金額">
+              <input type="number" id="misc-amount-${c.id}" placeholder="總金額 ($)" style="margin:0; font-size:11px; padding:4px;" title="請輸入該項目的總金額">
               <select id="misc-payer-${c.id}" style="margin:0; font-size:11px; padding:4px;">
                 ${payerOptions}
               </select>
@@ -1386,7 +1420,7 @@
                   </div>
 
                   <div class="flex between" style="align-items:center;">
-                    <label style="font-size:11px; font-weight:bold; color:#0369a1;">📅 編輯堂數、封盤狀態、時間、地點與付款人：</label>
+                    <label style="font-size:11px; font-weight:bold; color:#0369a1;">📅 編輯堂數、封盤狀態、時間, 地點與付款人：</label>
                     <span style="font-size:10px; color:#0284c7; font-weight:bold;">💡 橫向滑動查看 ➔</span>
                   </div>
 
@@ -1431,7 +1465,7 @@
                 ${pojaiSummaryHtml}
                 <hr style="border: none; border-top: 1px solid var(--pojai-border); margin: 8px 0;">
                 <div style="font-weight:bold; color:var(--pojai-text); font-size:12px; margin-bottom:4px;">🪬雜費</div>
-                ${miscListHtml}
+                ${miscTableHtml}
                 ${addMiscFormHtml}
               </div>
             </div>
@@ -1743,7 +1777,7 @@
     const participants = Array.from(partCbs).map(cb => cb.value);
 
     if (!name) return alert("請輸入雜費項目名稱");
-    if (amount <= 0) return alert("請輸入有效的金額");
+    if (amount <= 0) return alert("請輸入有效的總金額");
     if (participants.length === 0) return alert("請至少選擇一個有份的成員");
 
     const classObj = classesData.find(c => c.id === classId);
