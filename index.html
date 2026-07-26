@@ -38,8 +38,9 @@
       --pojai-bg: #fefce8;          /* 淺黃色背景 */
       --pojai-border: #fef08a;      /* 黃色邊框 */
       --pojai-text: #713f12;        /* 深棕黃色文字 */
-      --pojai-btn-bg: #d97706;      /* 橙棕色按鈕 */
-      --pojai-btn-hover: #b45309;
+      --pojai-btn-bg: #fae16c;      /* 橙棕色按鈕調淺約 20% (原本 #d97706) */
+      --pojai-btn-hover: #facc15;
+      --pojai-btn-text: #713f12;
     }
     * {
       box-sizing: border-box;
@@ -339,7 +340,7 @@
       border: 1px solid var(--admin-box-border);
     }
 
-    /* 婆仔數區塊專屬樣式（對應附圖黃色系風格） */
+    /* 婆仔數區塊專屬樣式（按鈕底色已調淺 20%） */
     .pojai-box {
       margin-top: 12px;
       padding: 10px;
@@ -349,7 +350,7 @@
     }
     .btn-pojai {
       background: var(--pojai-btn-bg);
-      color: white;
+      color: var(--pojai-btn-text);
       width: auto;
       margin: 0;
       padding: 6px 12px;
@@ -1205,41 +1206,36 @@
         </div>
       ` : '';
 
-      // 計算各成員的收支總計（婆仔數邏輯）
-      const userFinancials = {};
+      // 3 & 4) 盆數：收集全課程所有出現過的成員名單，並依據規則計算總學費與總場租
+      const memberMap = {};
       dateKeys.forEach(dateStr => {
         const sess = sessions[dateStr];
         const students = sess.students || [];
         const feeVal = Number(sess.fee !== undefined ? sess.fee : c.price) || 0;
         const rentVal = Number(sess.rent || 0);
+        const enrolledCount = students.length;
 
-        const feePayer = sess.feePayerName || c.leaderName;
-        const rentPayer = sess.rentPayerName || c.leaderName;
-
-        // 每個學生需付學費給 feePayer
         students.forEach(s => {
-          if (!userFinancials[s.name]) userFinancials[s.name] = { income: 0, expense: 0 };
-          // 學生付學費 -> 增加該學費收款人的收入 (若自己付給自己可略過，此處以計入收款人總收入為主)
+          if (!memberMap[s.name]) {
+            memberMap[s.name] = { totalTuition: 0, totalCourtFee: 0, totalPaid: 0 };
+          }
+          // 3) 總學費：該成員在全個課程中，有報名的課堂的學費總數
+          memberMap[s.name].totalTuition += feeVal;
+
+          // 4) 總場租：成員有報名之課堂，場租錢除以該堂的總報名人數的價錢總和
+          if (enrolledCount > 0) {
+            memberMap[s.name].totalCourtFee += (rentVal / enrolledCount);
+          }
         });
-
-        // 處理學費收入總計歸屬
-        if (!userFinancials[feePayer]) userFinancials[feePayer] = { income: 0, expense: 0 };
-        userFinancials[feePayer].income += (students.length * feeVal);
-
-        // 處理場租支出歸屬
-        if (rentVal > 0) {
-          if (!userFinancials[rentPayer]) userFinancials[rentPayer] = { income: 0, expense: 0 };
-          userFinancials[rentPayer].expense += rentVal;
-        }
       });
 
-      let pojaiSummaryHtml = Object.keys(userFinancials).length === 0 ? 
-        `<p style="font-size:12px; color:#6b7280; margin:4px 0 0 0;">暫無財務數據</p>` :
-        Object.entries(userFinancials).map(([name, data]) => {
-          const net = data.income - data.expense;
+      let pojaiSummaryHtml = Object.keys(memberMap).length === 0 ? 
+        `<p style="font-size:12px; color:#6b7280; margin:4px 0 0 0;">暫無成員報名數據</p>` :
+        Object.entries(memberMap).map(([name, data]) => {
+          const roundedCourtFee = Math.round(data.totalCourtFee * 100) / 100;
           return `
             <div style="font-size:12px; color:var(--pojai-text); margin-bottom:4px;">
-              👤 <b>${name}</b>：總收學費 <span style="color:#15803d; font-weight:bold;">+$${data.income}</span>｜總付場租 <span style="color:#be123c; font-weight:bold;">-$${data.expense}</span>｜淨計：<b style="color:${net >= 0 ? '#15803d' : '#be123c'};">${net >= 0 ? '+' : ''}$${net}</b>
+              👤 <b>${name}</b>：總學費 $${data.totalTuition} ｜總場租 $${roundedCourtFee} | 已付 $${data.totalPaid}
             </div>
           `;
         }).join('');
@@ -1336,7 +1332,7 @@
               </div>
             ` : ''}
 
-            <!-- 新增：👵🏼婆仔數區塊（所有成員皆可按） -->
+            <!-- 👵🏼婆仔數區塊（所有成員皆可按，按鈕底色已調淺 20%） -->
             <div class="pojai-box">
               <div class="flex between">
                 <span style="font-weight:bold; color:var(--pojai-text); font-size:13px;">👵🏼 婆仔數</span>
