@@ -1295,7 +1295,7 @@
 
       const payerOptions = eligibleNames.map(name => `<option value="${name}">${name}</option>`).join('');
 
-      // 雜費 5欄位表格渲染
+      // 雜費 5欄位表格渲染 (刪除掣改用符號❌，無須底色)
       let miscTableRowsHtml = miscExpenses.map((item, idx) => {
         const partCount = (item.participants || []).length;
         const sharePerPerson = partCount > 0 ? (Number(item.amount) || 0) / partCount : 0;
@@ -1449,7 +1449,7 @@
                   <div class="flex" style="margin-top: 8px; gap:4px;">
                     <button onclick="addTableRow('${c.id}')" class="btn-blue-action" style="width:auto; margin:0; padding:6px 10px; font-size:11px;">➕ 加開一堂</button>
                     <button onclick="saveTableChanges('${c.id}')" class="btn-blue-action" style="width:auto; margin:0; padding:6px 10px; font-size:11px;">💾 儲存變更</button>
-                    <button onclick="deleteClass('${c.id}')" class="btn-danger" style="width:auto; margin:0; margin-left:auto; padding:6px 10px; font-size:11px;">❌</button>
+                    <button onclick="deleteClass('${c.id}')" class="btn-danger" style="width:auto; margin:0; margin-left:auto; padding:6px 10px; font-size:11px;">刪除全課</button>
                   </div>
                 </div>
               </div>
