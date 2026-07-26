@@ -755,6 +755,9 @@
   let classesData = [];
   let allUsersList = [];
   let selectedDates = [];
+  
+  // 記錄每個課程當前啟用的 tab
+  let activeTabState = {};
 
   document.getElementById('toggle-create-btn').addEventListener('click', () => {
     document.getElementById('create-class-form').classList.toggle('hidden');
@@ -1277,7 +1280,7 @@
 
       const cleanedLeaderNote = c.leaderNote ? c.leaderNote.trim() : '';
       const leaderNoteHtml = cleanedLeaderNote ? `
-        <button onclick="toggleLeaderNote('${c.id}')" id="leader-note-btn-${c.id}" class="leader-note-toggle-btn">班長的話</button>
+        <button onclick="toggleLeaderNote('${c.id}')" id="leader-note-btn-${c.id}" class="leader-note-toggle-btn">💬班長的話</button>
         <div id="leader-note-box-${c.id}" class="leader-note-card hidden">
           <div class="note-content">${cleanedLeaderNote}</div>
         </div>
@@ -1351,8 +1354,8 @@
           const roundedMisc = Math.round((data.totalMisc || 0) * 100) / 100;
           let miscText = roundedMisc > 0 ? ` | 雜費 $${roundedMisc}` : '';
           return `
-            <div style="font-size:12px; color:var(--pojai-text); margin-bottom:4px;">
-              👤 <b>${name}</b>：總學費 $${data.totalTuition} ｜總場租 $${roundedCourtFee}${miscText} | 已付 $${data.totalPaid}
+            <div style="font-size:12px; color:var(--pojai-text); margin-bottom:6px;">
+              👤 <b>${name}</b>：總學費 $${data.totalTuition} ｜總場租 $${roundedCourtFee}${miscText}<br><span style="display:inline-block; width:14px;"></span>已付 $${data.totalPaid}
             </div>
           `;
         }).join('');
@@ -1438,6 +1441,9 @@
         </div>
       `;
 
+      // 檢查當前課程預設或記錄的 active tab，預設為 'course'
+      const currentTab = activeTabState[c.id] || 'course';
+
       return `
         <div class="course-card">
           
@@ -1461,13 +1467,13 @@
 
             <!-- Tab 切換按鈕列 -->
             <div class="tab-header">
-              <button onclick="switchTab('${c.id}', 'course')" id="tab-btn-course-${c.id}" class="tab-btn active-tab-course">📚 課程</button>
-              <button onclick="switchTab('${c.id}', 'pojai')" id="tab-btn-pojai-${c.id}" class="tab-btn">👵🏼 婆仔數</button>
-              ${canManage ? `<button onclick="switchTab('${c.id}', 'admin')" id="tab-btn-admin-${c.id}" class="tab-btn">🛠️ 班長管理</button>` : ''}
+              <button onclick="switchTab('${c.id}', 'course')" id="tab-btn-course-${c.id}" class="tab-btn ${currentTab === 'course' ? 'active-tab-course' : ''}">📚 課程</button>
+              <button onclick="switchTab('${c.id}', 'pojai')" id="tab-btn-pojai-${c.id}" class="tab-btn ${currentTab === 'pojai' ? 'active-tab-pojai' : ''}">👵🏼 婆仔數</button>
+              ${canManage ? `<button onclick="switchTab('${c.id}', 'admin')" id="tab-btn-admin-${c.id}" class="tab-btn ${currentTab === 'admin' ? 'active-tab-admin' : ''}">🛠️ 班長管理</button>` : ''}
             </div>
 
             <!-- 1) 課程 Tab 內容 (淺粉紅色風格) -->
-            <div id="tab-content-course-${c.id}" class="tab-content active-content">
+            <div id="tab-content-course-${c.id}" class="tab-content ${currentTab === 'course' ? 'active-content' : ''}">
               <div class="course-tab-content-box">
                 <div style="margin-top: 0;">
                   ${sessionsHtml || '<p style="font-size:12px; color:#6b7280;">暫無上堂日期</p>'}
@@ -1476,7 +1482,7 @@
             </div>
 
             <!-- 2) 婆仔數 Tab 內容 -->
-            <div id="tab-content-pojai-${c.id}" class="tab-content">
+            <div id="tab-content-pojai-${c.id}" class="tab-content ${currentTab === 'pojai' ? 'active-content' : ''}">
               <div class="pojai-box" style="margin-top:0;">
                 ${pojaiSummaryHtml}
                 
@@ -1496,7 +1502,7 @@
 
             <!-- 3) 班長管理 Tab 內容 -->
             ${canManage ? `
-              <div id="tab-content-admin-${c.id}" class="tab-content">
+              <div id="tab-content-admin-${c.id}" class="tab-content ${currentTab === 'admin' ? 'active-content' : ''}">
                 <div class="admin-edit-box" style="margin-top:0;">
                   <div style="background:#fff; padding:8px; border-radius:8px; border:1px solid #bae6fd; margin-bottom:8px;">
                     <label style="font-size:11px; font-weight:bold; color:#0369a1;">📝 修改課程名稱：</label>
@@ -1569,6 +1575,12 @@
       const btnEl = document.getElementById(`collapse-btn-${classId}`);
       if (bodyEl) bodyEl.classList.remove('hidden');
       if (btnEl) btnEl.classList.add('expanded');
+      
+      // 若該課程目前處於 admin tab，確保重新渲染表格與用戶清單
+      if (activeTabState[classId] === 'admin') {
+        renderEditUsersList(classId);
+        renderTableRows(classId);
+      }
     });
   }
 
@@ -1582,6 +1594,8 @@
 
   // Tab 切換邏輯
   window.switchTab = async (classId, tabName) => {
+    activeTabState[classId] = tabName;
+
     const courseBtn = document.getElementById(`tab-btn-course-${classId}`);
     const pojaiBtn = document.getElementById(`tab-btn-pojai-${classId}`);
     const adminBtn = document.getElementById(`tab-btn-admin-${classId}`);
@@ -1881,6 +1895,7 @@
   };
 
   window.addMiscItem = async (classId) => {
+    activeTabState[classId] = 'pojai';
     const nameInput = document.getElementById(`misc-name-${classId}`);
     const amountInput = document.getElementById(`misc-amount-${classId}`);
     const payerSelect = document.getElementById(`misc-payer-${classId}`);
@@ -1910,6 +1925,7 @@
   };
 
   window.deleteMiscItem = async (classId, index) => {
+    activeTabState[classId] = 'pojai';
     if (!confirm("確定要刪除此雜費項目嗎？")) return;
     const classObj = classesData.find(c => c.id === classId);
     if (!classObj) return;
@@ -1926,6 +1942,7 @@
   };
 
   window.calculateSettlement = (classId) => {
+    activeTabState[classId] = 'pojai';
     const classObj = classesData.find(c => c.id === classId);
     if (!classObj) return;
 
@@ -2034,6 +2051,7 @@
   };
 
   window.toggleSessionJoin = async (classId, dateStr, isJoining) => {
+    activeTabState[classId] = 'course';
     const classObj = classesData.find(c => c.id === classId);
     if(!classObj) return;
 
