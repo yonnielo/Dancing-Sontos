@@ -1464,7 +1464,12 @@
               <div id="pojai-body-${c.id}" class="hidden" style="margin-top: 8px; border-top: 1px dashed var(--pojai-border); padding-top: 6px;">
                 ${pojaiSummaryHtml}
                 
-                <!-- 分隔線與置中的「🧮 埋數」掣 -->
+                <hr style="border: none; border-top: 1px solid var(--pojai-border); margin: 8px 0;">
+                <div style="font-weight:bold; color:var(--pojai-text); font-size:12px; margin-bottom:4px;">🪬雜費</div>
+                ${miscTableHtml}
+                ${addMiscFormHtml}
+
+                <!-- 分隔線與置中的「🧮 埋數」掣 (放在雜費方塊之下) -->
                 <hr style="border: none; border-top: 1px solid var(--pojai-border); margin: 10px 0;">
                 <div style="text-align: center; margin-bottom: 8px;">
                   <button onclick="calculateSettlement('${c.id}')" class="btn-pojai" style="padding: 6px 16px; font-size: 13px;">🧮 埋數</button>
@@ -1472,11 +1477,6 @@
                 
                 <!-- 埋數結果顯示區 -->
                 <div id="settlement-result-${c.id}" class="hidden" style="background: #fff; padding: 8px; border-radius: 6px; border: 1px solid var(--pojai-border); margin-top: 8px; font-size: 12px; color: var(--pojai-text);"></div>
-
-                <hr style="border: none; border-top: 1px solid var(--pojai-border); margin: 8px 0;">
-                <div style="font-weight:bold; color:var(--pojai-text); font-size:12px; margin-bottom:4px;">🪬雜費</div>
-                ${miscTableHtml}
-                ${addMiscFormHtml}
               </div>
             </div>
 
@@ -1820,7 +1820,7 @@
     }
   };
 
-  // 🧮 埋數與最少 transactions 計算邏輯
+  // 🧮 埋數與每人總開支、最少 transactions 計算邏輯
   window.calculateSettlement = (classId) => {
     const classObj = classesData.find(c => c.id === classId);
     if (!classObj) return;
@@ -1828,9 +1828,8 @@
     const sessions = classObj.sessions || {};
     const dateKeys = Object.keys(sessions);
 
-    // 1. 計算每日總開支與每個人的淨結餘（應付 - 已付）
-    const balances = {}; // name -> net amount (正數代表應付他人，負數代表應收他人)
-    const dailyExpenses = {}; // dateStr -> total amount
+    // 1. 計算每位成員的總開支 (Cost) 與已付金額 (Paid)
+    const balances = {}; // name -> { paid, cost }
 
     dateKeys.forEach(dateStr => {
       const sess = sessions[dateStr];
@@ -1842,10 +1841,6 @@
       const feePayerName = sess.feePayerName || classObj.leaderName;
       const rentPayerName = sess.rentPayerName || classObj.leaderName;
 
-      // 日總開支 = 總學費 (fee * count) + 場租
-      const sessionTotal = (feeVal * enrolledCount) + rentVal;
-      dailyExpenses[dateStr] = sessionTotal;
-
       // 累計已付金額 (Paid)
       if (!balances[feePayerName]) balances[feePayerName] = { paid: 0, cost: 0 };
       if (!balances[rentPayerName]) balances[rentPayerName] = { paid: 0, cost: 0 };
@@ -1853,7 +1848,7 @@
       balances[feePayerName].paid += (feeVal * enrolledCount);
       balances[rentPayerName].paid += rentVal;
 
-      // 累計應付成本 (Cost)
+      // 累計應付成本 (Cost = 總學費 + 總場租分攤)
       students.forEach(s => {
         if (!balances[s.name]) balances[s.name] = { paid: 0, cost: 0 };
         balances[s.name].cost += feeVal;
@@ -1883,10 +1878,18 @@
       }
     });
 
-    // 計算 net = cost - paid (正數代表欠錢需要付給別人，負數代表溢付需要收錢)
+    // 產生每人總開支清單
+    const memberCostSummary = [];
     const netList = [];
+
     Object.keys(balances).forEach(name => {
-      const net = balances[name].cost - balances[name].paid;
+      const data = balances[name];
+      const totalCost = Math.round((data.cost || 0) * 100) / 100;
+      if (totalCost > 0 || data.paid > 0) {
+        memberCostSummary.push(`👤 <b>${name}</b>：總開支 $${totalCost}`);
+      }
+
+      const net = data.cost - data.paid; // 正數代表欠錢(應付)，負數代表溢付(應收)
       if (Math.abs(net) > 0.01) {
         netList.push({ name, net: Math.round(net * 100) / 100 });
       }
@@ -1918,15 +1921,15 @@
       if (Math.abs(creditor.net) < 0.01) j++;
     }
 
-    // 3. 組合顯示內容
-    let dailyHtml = Object.entries(dailyExpenses).map(([d, amt]) => `📅 ${d} 總開支：$${amt}`).join('<br>');
+    // 3. 組合顯示內容 (每人總開支 + 找數方案)
+    let costHtml = memberCostSummary.length > 0 ? memberCostSummary.join('<br>') : '暫無開支記錄';
     let txHtml = transactions.length > 0 ? transactions.join('<br>') : '🎉 盤數清訖，無需轉帳！';
 
     const resultContainer = document.getElementById(`settlement-result-${classId}`);
     resultContainer.classList.remove('hidden');
     resultContainer.innerHTML = `
-      <div style="font-weight:bold; margin-bottom:4px; color:#9d174d;">📊 每日總開支：</div>
-      ${dailyHtml || '暫無資料'}
+      <div style="font-weight:bold; margin-bottom:4px; color:#9d174d;">📊 每人總開支：</div>
+      ${costHtml}
       <hr style="border:none; border-top:1px dashed var(--pojai-border); margin:6px 0;">
       <div style="font-weight:bold; margin-bottom:4px; color:#9d174d;">💡 最少交易次數找數方案 (Transactions)：</div>
       ${txHtml}
