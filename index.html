@@ -95,10 +95,9 @@
     .btn-cancel:hover { background: var(--btn-cancel-hover); }
 
     .btn-danger { background: var(--btn-cancel); }
-    .btn-secondary { background: #38bdf8; color: white; } /* 粉藍按鈕 */
     .btn-warning { background: #f472b6; color: white; }
     
-    /* 修改點 3：與登出按鈕一樣的顏色配搭 (預設灰白) */
+    /* 與登出按鈕、查看班長的話一樣的顏色配搭 (預設灰白) */
     .btn-gray-action {
       background: #f3f4f6;
       color: #374151;
@@ -202,7 +201,6 @@
       color: #16a34a !important;
     }
 
-    /* 修改點 2：班長tag及私人班tag，改用公開班tag的顏色配搭 */
     .badge-leader {
       background: #fdf2f8;
       color: #be123c;
@@ -258,6 +256,7 @@
       margin-bottom: 10px;
     }
 
+    /* 修改點 1：文字框內的預設文字靠左拍齊及置於頂行 */
     .leader-note-box {
       background: #fff;
       border: 1px solid #fbcfe8;
@@ -266,6 +265,7 @@
       margin-top: 8px;
       font-size: 12px;
       color: #831843;
+      text-align: left;
       white-space: pre-wrap;
     }
 
@@ -500,10 +500,8 @@
       </div>
     </div>
 
-    <!-- 月曆區塊 -->
     <div class="card">
       <div class="flex between" style="margin-bottom: 8px;">
-        <!-- 修改點 1：課程月曆後的文字改成（綠色：已報名） -->
         <h3 style="margin:0; font-size:16px; color:#1f2937;">📅 課程月曆 <small style="font-size:10px; font-weight:normal; color:#6b7280;">（綠色：已報名）</small></h3>
         <div style="display:flex; align-items:center; gap:4px;">
           <button id="prev-month" style="width:auto; padding: 2px 8px; margin:0;">&lt;</button>
@@ -967,9 +965,10 @@
         if (sess.isClosed) {
           actionBtnHtml = `<span class="closed-tag">🔒 已封盤</span>`;
         } else {
+          /* 修改點 2：按鈕文字改成「我要報名」 */
           actionBtnHtml = isJoined ? 
             `<button onclick="toggleSessionJoin('${c.id}', '${dateStr}', false)" class="btn-cancel" style="width:auto; margin:0; padding:4px 8px; font-size:11px;">取消報名</button>` : 
-            `<button onclick="toggleSessionJoin('${c.id}', '${dateStr}', true)" class="btn-signup" style="width:auto; margin:0; padding:4px 8px; font-size:11px;">報名</button>`;
+            `<button onclick="toggleSessionJoin('${c.id}', '${dateStr}', true)" class="btn-signup" style="width:auto; margin:0; padding:4px 8px; font-size:11px;">我要報名</button>`;
         }
 
         return `
@@ -1006,12 +1005,10 @@
         `;
       }).join('');
 
-      // 修改點 2：私人班 tag 改用公開班 tag 的顏色配搭 (class-type-badge-public)
       const classTypeBadge = (c.accessType === 'specific') 
         ? `<span class="class-type-badge-public">🔒 私人班</span>`
         : `<span class="class-type-badge-public">🌐 公開班</span>`;
 
-      // 修改點 3：「💬查看班長的話」掣，不論點擊前或點擊後，都改用同「登出」掣一樣的顏色配搭 (.btn-gray-action)
       const leaderNoteHtml = c.leaderNote ? `
         <div style="margin-top: 6px;">
           <button onclick="toggleLeaderNote('${c.id}')" class="btn-gray-action" style="width:auto; margin:0; padding:2px 6px; font-size:11px; border-radius:4px;">💬 查看班長的話</button>
@@ -1043,8 +1040,7 @@
             <div class="admin-edit-box">
               <div class="flex between">
                 <small style="font-weight:bold; color:#0369a1;">🛠️ ${isAdmin ? 'Admin' : '班長'} 管理功能：</small>
-                <!-- 修改點 4：「✏️管理課程與堂數細節」掣，文字改成「✏️管理及修改課程」 -->
-                <button onclick="toggleTableEdit('${c.id}')" class="btn-secondary" style="width:auto; margin:0; padding:4px 8px; font-size:11px;">✏️ 管理及修改課程</button>
+                <button onclick="toggleTableEdit('${c.id}')" class="btn-gray-action" style="width:auto; margin:0; padding:4px 8px; font-size:11px; border-radius:4px;">✏️ 管理及修改課程</button>
               </div>
 
               <div id="table-editor-${c.id}" class="hidden" style="margin-top: 10px;">
