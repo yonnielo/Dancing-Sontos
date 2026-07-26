@@ -1494,7 +1494,7 @@
                   <button onclick="calculateSettlement('${c.id}')" class="btn-pojai" style="padding: 6px 16px; font-size: 13px; ${!isLeader ? 'background: #d1d5db; color: #4b5563; cursor: not-allowed;' : ''}">🧮 埋數</button>
                 </div>
                 
-                <div id="settlement-result-${c.id}" class="hidden" style="background: #fff; padding: 8px; border-radius: 6px; border: 1px solid var(--pojai-border); margin-top: 8px; font-size: 12px; color: var(--pojai-text);"></div>
+                <div id="settlement-result-${c.id}" class="${c.settlementResult ? '' : 'hidden'}" style="background: #fff; padding: 8px; border-radius: 6px; border: 1px solid var(--pojai-border); margin-top: 8px; font-size: 12px; color: var(--pojai-text);">${c.settlementResult || ''}</div>
               </div>
             </div>
 
@@ -1955,17 +1955,10 @@
 
     activeTabState[classId] = 'pojai';
 
-    // 3）當班長按下埋數之後，全個課程每一堂的「封盆」都會變成on的狀態
     const sessions = classObj.sessions || {};
     Object.keys(sessions).forEach(dateStr => {
       sessions[dateStr].isClosed = true;
     });
-
-    try {
-      await updateDoc(doc(db, "classes", classId), { sessions });
-    } catch(e) {
-      console.error("自動封盤更新失敗: ", e);
-    }
 
     const dateKeys = Object.keys(sessions);
     const balances = {}; 
@@ -2063,16 +2056,23 @@
     let costHtml = memberCostSummary.length > 0 ? memberCostSummary.join('<br>') : '暫無開支記錄';
     let txHtml = transactions.length > 0 ? transactions.join('') : '🎉 盤數清訖，無需轉帳！';
 
-    const resultContainer = document.getElementById(`settlement-result-${classId}`);
-    resultContainer.classList.remove('hidden');
-    resultContainer.innerHTML = `
+    const settlementResultHTML = `
       <div style="font-weight:bold; margin-bottom:4px; color:#9d174d;"> 每人總開支：</div>
       ${costHtml}
       <hr style="border:none; border-top:1px dashed var(--pojai-border); margin:6px 0;">
       <div style="font-weight:bold; margin-bottom:4px; color:#9d174d;"> 找數方案 ：</div>
       ${txHtml}
     `;
-    loadClasses();
+
+    try {
+      await updateDoc(doc(db, "classes", classId), { 
+        sessions, 
+        settlementResult: settlementResultHTML 
+      });
+      loadClasses();
+    } catch(e) {
+      alert("埋數儲存失敗: " + e.message);
+    }
   };
 
   window.toggleSessionJoin = async (classId, dateStr, isJoining) => {
