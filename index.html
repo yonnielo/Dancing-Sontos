@@ -265,7 +265,7 @@
       margin-bottom: 10px;
     }
 
-    /* 確保班長的話文字靠左對齊且開頭不帶多餘留白 */
+    /* 確保班長的話文字靠左且靠頂對齊，不帶多餘空行 */
     .leader-note-box {
       background: #fff;
       border: 1px solid #fbcfe8;
@@ -1018,8 +1018,8 @@
         ? `<span class="class-type-badge-public">🔒 私人班</span>`
         : `<span class="class-type-badge-public">🌐 公開班</span>`;
 
-      // 班長的話內容去除開頭可能帶有的多餘空白/換行
-      const cleanedLeaderNote = c.leaderNote ? c.leaderNote.trim() : '';
+      // 班長的話內容去除開頭多餘空白與換行，完美靠頂靠左
+      const cleanedLeaderNote = c.leaderNote ? c.leaderNote.replace(/^\s+/, '') : '';
       const leaderNoteHtml = cleanedLeaderNote ? `
         <div style="margin-top: 6px;">
           <button onclick="toggleLeaderNote('${c.id}')" class="btn-gray-action" style="width:auto; margin:0; padding:2px 6px; font-size:11px; border-radius:4px;">💬 查看班長的話</button>
