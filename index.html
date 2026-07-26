@@ -574,6 +574,7 @@
     <button id="auth-main-btn">登入</button>
     <div style="display:flex; justify-content:space-between; margin-top: 10px;">
       <a href="#" id="toggle-auth-mode" style="font-size:13px; color:#be123c;">沒有帳號？點此註冊</a>
+      <a href="#" id="forgot-password-link" style="font-size:13px; color:#be123c;">忘記密碼？</a>
     </div>
 
     <div style="margin-top: 15px; text-align: center;">
@@ -770,6 +771,7 @@
   });
 
   const toggleAuthModeBtn = document.getElementById('toggle-auth-mode');
+  const forgotPasswordLink = document.getElementById('forgot-password-link');
   const registerExtra = document.getElementById('register-extra');
   const authMainBtn = document.getElementById('auth-main-btn');
   const logoutBtn = document.getElementById('logout-btn');
@@ -784,6 +786,18 @@
     authMainBtn.innerText = isRegisterMode ? "註冊" : "登入";
     registerExtra.classList.toggle('hidden', !isRegisterMode);
     toggleAuthModeBtn.innerText = isRegisterMode ? "已有帳號？登入" : "沒有帳號？註冊";
+  });
+
+  forgotPasswordLink.addEventListener('click', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('auth-email').value.trim();
+    if(!email) return alert("請先在上方輸入您的電子郵件信箱！");
+    try {
+      await sendPasswordResetEmail(auth, email);
+      alert("重設密碼信已成功發送至您的電郵，請查收！");
+    } catch(err) {
+      alert("發送失敗: " + err.message);
+    }
   });
 
   authMainBtn.addEventListener('click', async () => {
@@ -1129,13 +1143,44 @@
     try {
       const querySnapshot = await getDocs(collection(db, "classes"));
       classesData = [];
-      querySnapshot.forEach((docSnap) => {
+      const now = new Date();
+      
+      for (const docSnap of querySnapshot.docs) {
         const data = docSnap.data();
+        
+        // 檢查是否超過90日需自動刪除
+        const createdAt = data.createdAt ? (data.createdAt.toDate ? data.createdAt.toDate() : new Date(data.createdAt)) : null;
+        if (createdAt) {
+          const diffTime = now - createdAt;
+          const diffDays = diffTime / (1000 * 60 * 60 * 24);
+          if (diffDays > 90) {
+            await deleteDoc(doc(db, "classes", docSnap.id));
+            continue;
+          }
+        }
+
         if(!isAdmin && data.accessType === 'specific' && (!data.allowedUsers || !data.allowedUsers.includes(currentUser.uid))) {
-          return;
+          continue;
         }
         classesData.push({ id: docSnap.id, ...data });
+      }
+
+      // 每個課程內最後一個課堂完了後，在顯示上會排到最底，並在課程名後標示（已完成）
+      classesData.sort((a, b) => {
+        const aDates = Object.keys(a.sessions || {}).sort();
+        const bDates = Object.keys(b.sessions || {}).sort();
+        const aLast = aDates.length > 0 ? aDates[aDates.length - 1] : '';
+        const bLast = bDates.length > 0 ? bDates[bDates.length - 1] : '';
+        
+        const aFinished = aLast && new Date(aLast + 'T23:59:59') < now;
+        const bFinished = bLast && new Date(bLast + 'T23:59:59') < now;
+
+        if (aFinished !== bFinished) {
+          return aFinished ? 1 : -1;
+        }
+        return 0;
       });
+
       renderCalendar();
       renderClassList();
     } catch(e) {
@@ -1216,12 +1261,18 @@
       return;
     }
 
+    const now = new Date();
+
     listEl.innerHTML = classesData.map(c => {
       const isLeader = c.leaderId === currentUser.uid;
       const canManage = isLeader || isAdmin;
       const sessions = c.sessions || {};
       const dateKeys = Object.keys(sessions).sort();
       const isSettled = !!c.settlementResult;
+
+      const lastDate = dateKeys.length > 0 ? dateKeys[dateKeys.length - 1] : '';
+      const isFinished = lastDate && new Date(lastDate + 'T23:59:59') < now;
+      const displayName = isFinished ? `${c.name}（已完成）` : c.name;
 
       const sessionsHtml = dateKeys.map(dateStr => {
         const sess = sessions[dateStr];
@@ -1448,7 +1499,7 @@
           
           <div class="course-card-header">
             <div>
-              <strong style="font-size: 17px; color:#831843;">${c.name}</strong> 
+              <strong style="font-size: 17px; color:#831843;">${displayName}</strong> 
               <div style="margin-top: 6px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
                 <span class="badge-leader">👑 班長: ${c.leaderName}</span>
                 ${classTypeBadge}
