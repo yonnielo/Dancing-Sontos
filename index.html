@@ -1351,11 +1351,9 @@
         `<p style="font-size:12px; color:#6b7280; margin:4px 0 0 0;">暫無成員報名數據</p>` :
         Object.entries(memberMap).map(([name, data]) => {
           const roundedCourtFee = Math.round(data.totalCourtFee * 100) / 100;
-          const roundedMisc = Math.round((data.totalMisc || 0) * 100) / 100;
-          let miscText = roundedMisc > 0 ? ` | 雜費 $${roundedMisc}` : '';
           return `
             <div style="font-size:12px; color:var(--pojai-text); margin-bottom:6px;">
-              👤 <b>${name}</b>：總學費 $${data.totalTuition} ｜總場租 $${roundedCourtFee}${miscText}<br><span style="display:inline-block; width:14px;"></span>雜費及已付費：$${data.totalPaid}
+              👤 <b>${name}</b>：總學費 $${data.totalTuition} ｜ 總場租 $${roundedCourtFee} ｜ 墊付 $${data.totalPaid}
             </div>
           `;
         }).join('');
@@ -1489,11 +1487,11 @@
                 <hr style="border: none; border-top: 1px solid var(--pojai-border); margin: 8px 0;">
                 <div style="font-weight:bold; color:var(--pojai-text); font-size:12px; margin-bottom:4px;">🪬雜費</div>
                 ${miscTableHtml}
-                ${addMiscFormHtml}
+                ${isLeader ? addMiscFormHtml : ''}
 
                 <hr style="border: none; border-top: 1px solid var(--pojai-border); margin: 10px 0;">
                 <div style="text-align: center; margin-bottom: 8px;">
-                  <button onclick="calculateSettlement('${c.id}')" class="btn-pojai" style="padding: 6px 16px; font-size: 13px;">🧮 埋數</button>
+                  <button onclick="calculateSettlement('${c.id}')" class="btn-pojai" style="padding: 6px 16px; font-size: 13px; ${!isLeader ? 'background: #d1d5db; color: #4b5563; cursor: not-allowed;' : ''}">🧮 埋數</button>
                 </div>
                 
                 <div id="settlement-result-${c.id}" class="hidden" style="background: #fff; padding: 8px; border-radius: 6px; border: 1px solid var(--pojai-border); margin-top: 8px; font-size: 12px; color: var(--pojai-text);"></div>
@@ -1895,6 +1893,10 @@
   };
 
   window.addMiscItem = async (classId) => {
+    const classObj = classesData.find(c => c.id === classId);
+    if (!classObj) return;
+    if (classObj.leaderId !== currentUser.uid) return alert("只有班長才可以新增雜費！");
+
     activeTabState[classId] = 'pojai';
     const nameInput = document.getElementById(`misc-name-${classId}`);
     const amountInput = document.getElementById(`misc-amount-${classId}`);
@@ -1909,9 +1911,6 @@
     if (!name) return alert("請輸入雜費項目名稱");
     if (amount <= 0) return alert("請輸入有效的總金額");
     if (participants.length === 0) return alert("請至少選擇一個有份的成員");
-
-    const classObj = classesData.find(c => c.id === classId);
-    if (!classObj) return;
 
     const miscExpenses = classObj.miscExpenses || [];
     miscExpenses.push({ name, amount, payer, participants });
@@ -1949,14 +1948,26 @@
     }
   };
 
-  window.calculateSettlement = (classId) => {
-    activeTabState[classId] = 'pojai';
+  window.calculateSettlement = async (classId) => {
     const classObj = classesData.find(c => c.id === classId);
     if (!classObj) return;
+    if (classObj.leaderId !== currentUser.uid) return alert("只有班長才可以按埋數！");
 
+    activeTabState[classId] = 'pojai';
+
+    // 3）當班長按下埋數之後，全個課程每一堂的「封盆」都會變成on的狀態
     const sessions = classObj.sessions || {};
-    const dateKeys = Object.keys(sessions);
+    Object.keys(sessions).forEach(dateStr => {
+      sessions[dateStr].isClosed = true;
+    });
 
+    try {
+      await updateDoc(doc(db, "classes", classId), { sessions });
+    } catch(e) {
+      console.error("自動封盤更新失敗: ", e);
+    }
+
+    const dateKeys = Object.keys(sessions);
     const balances = {}; 
 
     dateKeys.forEach(dateStr => {
@@ -2061,6 +2072,7 @@
       <div style="font-weight:bold; margin-bottom:4px; color:#9d174d;"> 找數方案 ：</div>
       ${txHtml}
     `;
+    loadClasses();
   };
 
   window.toggleSessionJoin = async (classId, dateStr, isJoining) => {
