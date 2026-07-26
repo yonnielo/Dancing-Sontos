@@ -267,18 +267,17 @@
       font-size: 12px;
     }
 
-    /* 修改 2：取消粉紅邊外框，改為無外框並擴闊內容範圍 */
     .course-card {
       background: #ffffff;
-      border: none;
+      border: 1px solid #fbcfe8;
       border-radius: 8px;
-      padding: 16px;
+      padding: 12px;
       margin-bottom: 20px;
       box-shadow: 0 1px 3px rgba(0,0,0,0.05);
     }
     .course-card-header {
       background: #fdf2f8;
-      padding: 12px;
+      padding: 10px;
       border-radius: 6px;
       border-left: 4px solid #f472b6;
       margin-bottom: 10px;
@@ -336,17 +335,24 @@
       background: #d1d5db;
     }
 
-    /* 修改 1：「班長的話」文字框外框改深灰色，框內填滿改成非常淺灰色，且拿掉框內的標題 */
     .leader-note-card {
-      background: #f3f4f6;
-      border: 1px solid #4b5563;
+      background: #fefce8;
+      border: 1px solid #fef08a;
       border-radius: 6px;
       padding: 10px;
       margin-top: 6px;
       margin-bottom: 10px;
       font-size: 12px;
-      color: #374151;
+      color: #713f12;
       text-align: left;
+    }
+    .leader-note-card .note-title {
+      font-weight: bold;
+      color: #713f12;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
     }
     .leader-note-card .note-content {
       white-space: pre-line;
@@ -1231,34 +1237,33 @@
             `<button onclick="toggleSessionJoin('${c.id}', '${dateStr}', true)" class="btn-signup" style="width:auto; margin:0; padding:4px 8px; font-size:11px;">我要報名</button>`;
         }
 
-        /* 修改 3：將上堂日期及時間縮細文字與調整間距，使之在一個橫行內顯示 */
         return `
           <div class="session-box">
-            <div class="flex between" style="align-items: center;">
-              <div style="width:100%; display: flex; align-items: center; flex-wrap: nowrap; gap: 8px; overflow-x: auto;">
-                <div class="session-line" style="margin-bottom:0; white-space: nowrap; font-size: 11px;">
+            <div class="flex between" style="align-items: flex-start;">
+              <div style="width:100%;">
+                <div class="session-line">
                   <strong>📅 ${dateStr}</strong> 
-                  <span style="color:#0284c7; font-weight:600; margin-left:3px; font-size: 11px;">⏰ ${startTime}${endTime}</span>
+                  <span style="color:#0284c7; font-weight:600; margin-left:6px;">⏰ ${startTime}${endTime}</span>
                 </div>
                 
-                <div class="session-line" style="color:#374151; margin-bottom:0; white-space: nowrap; font-size: 11px;">
+                <div class="session-line" style="color:#374151;">
                   📍 ${sess.location || '未定地點'}
                 </div>
 
-                <div class="session-line" style="color:#be123c; margin-bottom:0; white-space: nowrap; font-size: 11px;">
-                  💵 $${feeVal} (${sess.feePayerName || c.leaderName})
+                <div class="session-line" style="color:#be123c;">
+                  💵 學費: $${feeVal}/人 (付款人: ${sess.feePayerName || c.leaderName})
                 </div>
 
-                <div class="session-line" style="color:#be123c; margin-bottom:0; white-space: nowrap; font-size: 11px;">
-                  🏷️ 場租:$${sess.rent || 0}
+                <div class="session-line" style="color:#be123c;">
+                  🏷️ 場租: $${sess.rent || 0} (付款人: ${sess.rentPayerName || c.leaderName})
                 </div>
 
-                <div class="session-line" style="color:#6b7280; margin-bottom:0; white-space: nowrap; font-size: 11px;">
-                  👶🏻(${students.length}): ${students.map(s => s.name).join(', ') || '暫無'}
+                <div class="session-line" style="color:#6b7280; margin-bottom:0;">
+                  👶🏻出席 (${students.length}人): ${students.map(s => s.name).join(', ') || '暫無'}
                 </div>
               </div>
 
-              <div style="margin-left: 10px; white-space:nowrap; flex-shrink: 0;">
+              <div style="margin-left: 10px; white-space:nowrap;">
                 ${actionBtnHtml}
               </div>
             </div>
@@ -1271,10 +1276,10 @@
         : `<span class="class-type-badge-public">🌐 公開班</span>`;
 
       const cleanedLeaderNote = c.leaderNote ? c.leaderNote.trim() : '';
-      /* 修改 1：取消「💬 班長的話」按鈕和卡片內的重複標題 */
       const leaderNoteHtml = cleanedLeaderNote ? `
         <button onclick="toggleLeaderNote('${c.id}')" id="leader-note-btn-${c.id}" class="leader-note-toggle-btn">💬 班長的話</button>
         <div id="leader-note-box-${c.id}" class="leader-note-card hidden">
+          <div class="note-title">💬 班長的話</div>
           <div class="note-content">${cleanedLeaderNote}</div>
         </div>
       ` : '';
