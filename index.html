@@ -582,7 +582,7 @@
                             </div>
                         </div>
 
-                        <!-- 底部按鈕區 -->
+                        <!-- 底部按鈕區：👀 睇吓盆數掣，加返深啡色外框 -->
                         <div class="flex justify-between items-center pt-2 border-t border-gray-100">
                             ${joinBtnHtml}
                             <button onclick="togglePoonSee('${cls.id}')" class="px-3 py-1.5 bg-white hover:bg-amber-50 text-amber-800 text-xs font-bold rounded-xl border border-amber-900 shadow-xs transition flex items-center space-x-1">
@@ -592,7 +592,7 @@
                         </div>
 
                         <!-- 隱藏的單堂盆數明細區 -->
-                        <div id="poonsee-${cls.id}" class="hidden mt-3 pt-3 border-t border-dashed border-amber-200 bg-amber-50/40 p-3 rounded-xl text-xs space-y-2 fade-in">
+                        <div id="poonsee-${cls.id}" class="hidden mt-3 pt-3 border-t border-dashed border-amber-200 bg-amber-50/40 p-3 rounded-xl text-xs space-y-1.5 fade-in">
                             <div class="font-bold text-amber-900 mb-1 flex items-center space-x-1">
                                 <i class="fa-solid fa-receipt"></i>
                                 <span>[${cls.title}] 盆數明細：</span>
@@ -607,45 +607,6 @@
                             <div class="text-gray-700">
                                 • 場租總額：<strong class="text-brand-dark">$${cls.rent}</strong> 
                                 ${cls.rentPayer ? `(付款人：<strong>${cls.rentPayer}</strong> 已付)` : ''}
-                            </div>
-
-                            <!-- 1. 加返分隔線 -->
-                            <hr class="border-amber-200 my-2">
-
-                            <!-- 2. 加「🪬雜費」文字 -->
-                            <div class="font-bold text-amber-900 flex items-center space-x-1 pt-1">
-                                <span>🪬雜費</span>
-                            </div>
-
-                            <!-- 3. 加個細嘅輸入 Table（項目、付款人、邊個有份、每人幾錢） -->
-                            <div class="overflow-x-auto pt-1">
-                                <table class="w-full text-[11px] text-left border-collapse">
-                                    <thead>
-                                        <tr class="bg-amber-100/70 text-amber-900">
-                                            <th class="p-1 rounded-l-md font-bold">項目</th>
-                                            <th class="p-1 font-bold">付款人</th>
-                                            <th class="p-1 font-bold">有份成員</th>
-                                            <th class="p-1 rounded-r-md font-bold text-right">每人($)</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody class="divide-y divide-amber-200/50">
-                                        <tr>
-                                            <td class="p-1"><input type="text" placeholder="例如：飲品" class="w-full px-1.5 py-1 bg-white border border-amber-200 rounded text-[10px]"></td>
-                                            <td class="p-1">
-                                                <select class="w-full px-1 py-1 bg-white border border-amber-200 rounded text-[10px]">
-                                                    <option value="">選擇付款人</option>
-                                                    ${members.map(m => `<option value="${m.name}">${m.name}</option>`).join('')}
-                                                </select>
-                                            </td>
-                                            <td class="p-1">
-                                                <select class="w-full px-1 py-1 bg-white border border-amber-200 rounded text-[10px]">
-                                                    <option value="all">全部 (${members.length}人)</option>
-                                                </select>
-                                            </td>
-                                            <td class="p-1 text-right"><input type="number" placeholder="0" class="w-14 px-1 py-1 bg-white border border-amber-200 rounded text-[10px] text-right"></td>
-                                        </tr>
-                                    </tbody>
-                                </table>
                             </div>
                         </div>
                     </div>
@@ -682,9 +643,14 @@
         }
 
         // 渲染整體「婆仔數」財務統計
+        // 規則 2、3、4 實現：
+        // 2) 如果課堂的學費付款人係成員A，咁成員A便已付了該課堂的（學費價錢乘以該堂的報名人數）咁多錢
+        // 3) 如果場租付款人係成員A，咁成員A便已付了該堂場租咁多錢
+        // 4) 最後在睇吓盆數時，成員A已付的總數，就係上面第二第三點的價錢總和
         function renderFinance() {
             const container = document.getElementById('finance-summary-container');
             
+            // 初始化每位成員的財務統計
             let stats = {};
             members.forEach(m => {
                 stats[m.name] = {
@@ -693,16 +659,19 @@
                 };
             });
 
+            // 計算各堂課的付款金額
             classes.forEach(cls => {
                 const headCount = cls.attendees.length;
                 const totalFeeAmount = cls.fee * headCount;
                 const rentAmount = Number(cls.rent);
 
+                // 學費付款人累計
                 if (cls.feePayer && stats[cls.feePayer]) {
                     stats[cls.feePayer].totalPaid += totalFeeAmount;
                     stats[cls.feePayer].details.push(`《${cls.title}》學費：$${totalFeeAmount} (${cls.fee}×${headCount}人)`);
                 }
 
+                // 場租付款人累計
                 if (cls.rentPayer && stats[cls.rentPayer]) {
                     stats[cls.rentPayer].totalPaid += rentAmount;
                     stats[cls.rentPayer].details.push(`《${cls.title}》場租：$${rentAmount}`);
@@ -710,9 +679,11 @@
             });
 
             container.innerHTML = '';
+            let hasAnyPaid = false;
 
             members.forEach(m => {
                 const data = stats[m.name];
+                hasAnyPaid = true;
 
                 let detailsHtml = data.details.map(d => `<li class="text-[11px] text-gray-500">• ${d}</li>`).join('');
                 if (data.details.length === 0) {
@@ -778,6 +749,7 @@
             const titleEl = document.getElementById('class-modal-title');
             const form = document.getElementById('class-form');
             
+            // 填充付款人下拉選單
             const feePayerSelect = document.getElementById('input-fee-payer');
             const rentPayerSelect = document.getElementById('input-rent-payer');
             
@@ -808,6 +780,7 @@
                 }
             } else {
                 titleEl.textContent = '新增課堂';
+                // 預設日期為今日
                 document.getElementById('input-date').value = new Date().toISOString().split('T')[0];
             }
 
