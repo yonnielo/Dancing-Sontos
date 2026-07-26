@@ -20,7 +20,7 @@
       --btn-cancel: #be123c;        /* 深粉紅色 (取消報名) */
       --btn-cancel-hover: #9f1239;
 
-      /* 月曆標籤 (修改點 2：未報名課堂由淺藍改為淺粉紅色) */
+      /* 月曆標籤 */
       --tag-normal-bg: #fdf2f8;     /* 淺粉紅色 (未報名課堂) */
       --tag-normal-border: #fbcfe8;
       --tag-normal-text: #be123c;
@@ -97,6 +97,17 @@
     .btn-danger { background: var(--btn-cancel); }
     .btn-secondary { background: #38bdf8; color: white; } /* 粉藍按鈕 */
     .btn-warning { background: #f472b6; color: white; }
+    
+    /* 修改點 3：與登出按鈕一樣的顏色配搭 (預設灰白) */
+    .btn-gray-action {
+      background: #f3f4f6;
+      color: #374151;
+      border: 1px solid #d1d5db;
+    }
+    .btn-gray-action:hover {
+      background: #e5e7eb;
+    }
+
     .hidden { display: none !important; }
 
     .date-picker-grid {
@@ -148,7 +159,6 @@
       margin-bottom: 4px;
       color: #9d174d;
     }
-    /* 月曆格子：粉色邊框 */
     .day-cell {
       border: 1px solid var(--border);
       min-height: 70px;
@@ -159,7 +169,6 @@
       overflow: hidden;
     }
 
-    /* 月曆標籤配色調整 */
     .class-tag {
       background: var(--tag-normal-bg);
       color: var(--tag-normal-text);
@@ -184,7 +193,6 @@
       text-overflow: ellipsis;
       white-space: nowrap;
     }
-    /* 報名後標籤：淺粉綠色 */
     .class-tag.joined-tag {
       background-color: var(--tag-joined-bg) !important;
       border: 1px solid var(--tag-joined-border) !important;
@@ -194,13 +202,15 @@
       color: #16a34a !important;
     }
 
+    /* 修改點 2：班長tag及私人班tag，改用公開班tag的顏色配搭 */
     .badge-leader {
-      background: #e0f2fe;
-      color: #0369a1;
+      background: #fdf2f8;
+      color: #be123c;
       font-size: 10px;
       padding: 2px 6px;
       border-radius: 4px;
       font-weight: bold;
+      border: 1px solid #fbcfe8;
     }
     .badge-admin {
       background: #fecdd3;
@@ -209,6 +219,15 @@
       padding: 2px 6px;
       border-radius: 4px;
       font-weight: bold;
+    }
+    .class-type-badge-public {
+      font-size: 10px; 
+      background: #fdf2f8; 
+      color: #be123c; 
+      padding: 2px 6px; 
+      border-radius: 4px; 
+      font-weight: bold; 
+      border: 1px solid #fbcfe8;
     }
 
     .session-box {
@@ -250,7 +269,6 @@
       white-space: pre-wrap;
     }
 
-    /* 管理面板 (粉藍系列) */
     .admin-edit-box {
       margin-top: 12px;
       padding: 10px;
@@ -364,7 +382,6 @@
   <div class="card flex between">
     <div>
       <h2 style="margin:0; font-size:18px; color:#9d174d;">💃 Dancing-Sontos</h2>
-      <!-- 修改點 1：左上角用戶名稱前由 💃 改為 👶🏻 -->
       <span id="user-status" style="font-size: 11px; color: #6b7280;">未登入</span>
     </div>
     <div id="user-action-btns" class="hidden flex" style="gap:4px;">
@@ -390,7 +407,6 @@
 
   <div id="app-section" class="hidden">
     
-    <!-- 最高管理面板 (粉藍系列) -->
     <div id="admin-panel" class="card card-admin hidden">
       <h3 style="color:#0369a1; margin-top:0;">👑 Admin 全系統最高管理面板</h3>
       
@@ -484,10 +500,11 @@
       </div>
     </div>
 
-    <!-- 月曆區塊 (粉色框線) -->
+    <!-- 月曆區塊 -->
     <div class="card">
       <div class="flex between" style="margin-bottom: 8px;">
-        <h3 style="margin:0; font-size:16px; color:#1f2937;">📅 課程月曆 <small style="font-size:10px; font-weight:normal; color:#6b7280;">(淺粉紅: 課堂 / 淺粉綠: 已報名)</small></h3>
+        <!-- 修改點 1：課程月曆後的文字改成（綠色：已報名） -->
+        <h3 style="margin:0; font-size:16px; color:#1f2937;">📅 課程月曆 <small style="font-size:10px; font-weight:normal; color:#6b7280;">（綠色：已報名）</small></h3>
         <div style="display:flex; align-items:center; gap:4px;">
           <button id="prev-month" style="width:auto; padding: 2px 8px; margin:0;">&lt;</button>
           <span id="current-month-display" style="font-weight:bold; font-size:13px; color:#1f2937;"></span>
@@ -509,7 +526,6 @@
       </div>
     </div>
 
-    <!-- 所有課程區塊 -->
     <div class="card">
       <h3 style="margin-top:0; font-size:16px; margin-bottom:12px; color:#1f2937;">所有課程</h3>
       <div id="class-list">載入中...</div>
@@ -636,7 +652,6 @@
         adminPanel.classList.remove('hidden');
         loadAdminUsers();
       } else {
-        // 修改點 1：登入後的狀態列前面改為 👶🏻
         userStatus.innerText = `👶🏻 ${currentUserProfile.name}`;
         adminPanel.classList.add('hidden');
       }
@@ -903,7 +918,6 @@
           const showTime = sess.startTime || sess.time || '';
 
           const tag = document.createElement('div');
-          // 報名為 joined-tag (淺粉綠)，未報名則使用修改後的淺粉紅色
           tag.className = `class-tag ${isJoined ? 'joined-tag' : ''}`;
           
           tag.innerHTML = `
@@ -979,7 +993,6 @@
                   🏷️ 場租: $${sess.rent || 0} (付款人: ${sess.rentPayerName || c.leaderName})
                 </div>
 
-                <!-- 修改點 3：在每一個課堂顯示出席人數前加上 👶🏻 -->
                 <div class="session-line" style="color:#6b7280; margin-bottom:0;">
                   👶🏻出席 (${students.length}人): ${students.map(s => s.name).join(', ') || '暫無'}
                 </div>
@@ -993,13 +1006,15 @@
         `;
       }).join('');
 
+      // 修改點 2：私人班 tag 改用公開班 tag 的顏色配搭 (class-type-badge-public)
       const classTypeBadge = (c.accessType === 'specific') 
-        ? `<span style="font-size:10px; background:#e0f2fe; color:#0369a1; padding:2px 6px; border-radius:4px; font-weight:bold; border:1px solid #bae6fd;">🔒 私人班</span>`
-        : `<span style="font-size:10px; background:#fdf2f8; color:#be123c; padding:2px 6px; border-radius:4px; font-weight:bold; border:1px solid #fbcfe8;">🌐 公開班</span>`;
+        ? `<span class="class-type-badge-public">🔒 私人班</span>`
+        : `<span class="class-type-badge-public">🌐 公開班</span>`;
 
+      // 修改點 3：「💬查看班長的話」掣，不論點擊前或點擊後，都改用同「登出」掣一樣的顏色配搭 (.btn-gray-action)
       const leaderNoteHtml = c.leaderNote ? `
         <div style="margin-top: 6px;">
-          <button onclick="toggleLeaderNote('${c.id}')" class="btn-secondary" style="width:auto; margin:0; padding:2px 6px; font-size:11px;">💬 查看班長的話</button>
+          <button onclick="toggleLeaderNote('${c.id}')" class="btn-gray-action" style="width:auto; margin:0; padding:2px 6px; font-size:11px; border-radius:4px;">💬 查看班長的話</button>
           <div id="note-box-${c.id}" class="leader-note-box hidden">
             <strong>💬 班長的話：</strong><br>${c.leaderNote}
           </div>
@@ -1028,7 +1043,8 @@
             <div class="admin-edit-box">
               <div class="flex between">
                 <small style="font-weight:bold; color:#0369a1;">🛠️ ${isAdmin ? 'Admin' : '班長'} 管理功能：</small>
-                <button onclick="toggleTableEdit('${c.id}')" class="btn-secondary" style="width:auto; margin:0; padding:4px 8px; font-size:11px;">✏️ 管理課程與堂數細節</button>
+                <!-- 修改點 4：「✏️管理課程與堂數細節」掣，文字改成「✏️管理及修改課程」 -->
+                <button onclick="toggleTableEdit('${c.id}')" class="btn-secondary" style="width:auto; margin:0; padding:4px 8px; font-size:11px;">✏️ 管理及修改課程</button>
               </div>
 
               <div id="table-editor-${c.id}" class="hidden" style="margin-top: 10px;">
