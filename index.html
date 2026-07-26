@@ -463,6 +463,29 @@
           <input type="date" id="single-date-picker" style="margin:0;">
           <button id="add-date-btn" type="button" style="width: 100px; margin:0; padding:6px;">加入日期</button>
         </div>
+
+        <div style="margin-top: 8px;">
+          <div class="flex between" style="margin-bottom: 4px;">
+            <span style="font-size:11px; font-weight:bold; color:#374151;">📅 選擇月曆日期（可多選）：</span>
+            <div style="display:flex; align-items:center; gap:4px;">
+              <button id="create-prev-month" type="button" style="width:auto; padding: 2px 6px; margin:0; font-size:11px;">&lt;</button>
+              <span id="create-current-month-display" style="font-weight:bold; font-size:12px; color:#1f2937;"></span>
+              <button id="create-next-month" type="button" style="width:auto; padding: 2px 6px; margin:0; font-size:11px;">&gt;</button>
+            </div>
+          </div>
+          <div class="calendar-container" style="border: 1px solid #e5e7eb; border-radius: 6px; padding: 6px; background: #fff;">
+            <div class="calendar-grid" id="create-calendar-header">
+              <div class="day-header" style="font-size:11px; padding:3px 0;">日</div>
+              <div class="day-header" style="font-size:11px; padding:3px 0;">一</div>
+              <div class="day-header" style="font-size:11px; padding:3px 0;">二</div>
+              <div class="day-header" style="font-size:11px; padding:3px 0;">三</div>
+              <div class="day-header" style="font-size:11px; padding:3px 0;">四</div>
+              <div class="day-header" style="font-size:11px; padding:3px 0;">五</div>
+              <div class="day-header" style="font-size:11px; padding:3px 0;">六</div>
+            </div>
+            <div class="calendar-grid" id="create-calendar-days" style="margin-top:2px;"></div>
+          </div>
+        </div>
         
         <div id="selected-dates-container" class="date-picker-grid" style="margin-top: 10px;">
           <span style="font-size:12px; color:#6b7280;">尚未選擇日期</span>
@@ -571,6 +594,7 @@
   let isAdmin = false;
   let isRegisterMode = false;
   let currentDate = new Date();
+  let createCalendarDate = new Date();
   let classesData = [];
   let allUsersList = [];
   let selectedDates = [];
@@ -578,6 +602,7 @@
   document.getElementById('toggle-create-btn').addEventListener('click', () => {
     document.getElementById('create-class-form').classList.toggle('hidden');
     loadAllUsers();
+    renderCreateCalendar();
   });
 
   document.getElementById('access-type').addEventListener('change', (e) => {
@@ -784,7 +809,76 @@
       selectedDates.push(val);
       selectedDates.sort();
       renderSelectedDates();
+      renderCreateCalendar();
     }
+  });
+
+  function renderCreateCalendar() {
+    const calendarDays = document.getElementById('create-calendar-days');
+    if (!calendarDays) return;
+    calendarDays.innerHTML = '';
+
+    const year = createCalendarDate.getFullYear();
+    const month = createCalendarDate.getMonth();
+
+    const monthDisplay = document.getElementById('create-current-month-display');
+    if (monthDisplay) {
+      monthDisplay.innerText = `${year}年 ${month + 1}月`;
+    }
+
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    for (let i = 0; i < firstDay; i++) {
+      const emptyCell = document.createElement('div');
+      emptyCell.className = 'day-cell';
+      emptyCell.style.background = '#f9fafb';
+      emptyCell.style.minHeight = '45px';
+      calendarDays.appendChild(emptyCell);
+    }
+
+    for (let day = 1; day <= daysInMonth; day++) {
+      const cell = document.createElement('div');
+      cell.className = 'day-cell';
+      cell.style.minHeight = '45px';
+      cell.style.padding = '2px';
+      cell.style.cursor = 'pointer';
+
+      const monthStr = String(month + 1).padStart(2, '0');
+      const dayStr = String(day).padStart(2, '0');
+      const dateStr = `${year}-${monthStr}-${dayStr}`;
+
+      const isSelected = selectedDates.includes(dateStr);
+      if (isSelected) {
+        cell.style.background = 'var(--primary)';
+        cell.style.color = 'white';
+        cell.style.borderColor = 'var(--primary)';
+      }
+
+      cell.innerHTML = `<strong style="font-size:11px;">${day}</strong>`;
+      
+      cell.addEventListener('click', () => {
+        if (selectedDates.includes(dateStr)) {
+          selectedDates = selectedDates.filter(d => d !== dateStr);
+        } else {
+          selectedDates.push(dateStr);
+          selectedDates.sort();
+        }
+        renderSelectedDates();
+        renderCreateCalendar();
+      });
+
+      calendarDays.appendChild(cell);
+    }
+  }
+
+  document.getElementById('create-prev-month').addEventListener('click', () => {
+    createCalendarDate.setMonth(createCalendarDate.getMonth() - 1);
+    renderCreateCalendar();
+  });
+  document.getElementById('create-next-month').addEventListener('click', () => {
+    createCalendarDate.setMonth(createCalendarDate.getMonth() + 1);
+    renderCreateCalendar();
   });
 
   function renderSelectedDates() {
@@ -803,6 +897,7 @@
   window.removeDate = (d) => {
     selectedDates = selectedDates.filter(item => item !== d);
     renderSelectedDates();
+    renderCreateCalendar();
   };
 
   document.getElementById('add-class-btn').addEventListener('click', async () => {
@@ -870,6 +965,7 @@
       document.getElementById('class-leader-note').value = '';
       selectedDates = [];
       renderSelectedDates();
+      renderCreateCalendar();
       document.getElementById('create-class-form').classList.add('hidden');
       
       loadClasses();
