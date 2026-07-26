@@ -720,7 +720,7 @@
     </div>
 
     <div class="card">
-      <h3 style="margin-top:0; font-size:16px; margin-bottom:12px; color:#1f2937;">所有課程</h3>
+      <h3 style="margin-top:0; font-size:16px; margin-bottom:12px; color:#1f2937;">👱🏻‍♂️所有課程</h3>
       <div id="class-list">載入中...</div>
     </div>
 
@@ -1159,6 +1159,23 @@
           }
         }
 
+        // 3）每個課堂的日子過了7日後，亦會自動將該課堂「封盤」status變成on
+        let sessionsUpdated = false;
+        const sessions = data.sessions || {};
+        Object.keys(sessions).forEach(dateStr => {
+          const sessionDate = new Date(dateStr + 'T23:59:59');
+          const diffDays = (now - sessionDate) / (1000 * 60 * 60 * 24);
+          if (diffDays > 7 && !sessions[dateStr].isClosed) {
+            sessions[dateStr].isClosed = true;
+            sessionsUpdated = true;
+          }
+        });
+
+        if (sessionsUpdated) {
+          await updateDoc(doc(db, "classes", docSnap.id), { sessions });
+          data.sessions = sessions;
+        }
+
         if(!isAdmin && data.accessType === 'specific' && (!data.allowedUsers || !data.allowedUsers.includes(currentUser.uid))) {
           continue;
         }
@@ -1272,7 +1289,7 @@
 
       const lastDate = dateKeys.length > 0 ? dateKeys[dateKeys.length - 1] : '';
       const isFinished = lastDate && new Date(lastDate + 'T23:59:59') < now;
-      const displayName = isFinished ? `${c.name}（已完成）` : c.name;
+      const displayName = isFinished ? `${c.name}<span style="color: #9ca3af; font-size: 0.7em;">（已完成）</span>` : c.name;
 
       const sessionsHtml = dateKeys.map(dateStr => {
         const sess = sessions[dateStr];
@@ -1441,7 +1458,7 @@
             <td style="padding:4px; border:1px solid var(--pojai-border); font-size:11px;">
               <div class="flex between" style="align-items:center;">
                 <span>$${roundedShare}</span>
-                ${(!isSettled && canManage) ? `<button onclick="deleteMiscItem('${c.id}', ${idx})" style="width:auto; margin:0; padding:1px 4px; font-size:12px; background:transparent; color:#be123c; border:none; box-shadow:none;">❌</button>` : ''}
+                {(!isSettled && canManage) ? `<button onclick="deleteMiscItem('${c.id}', ${idx})" style="width:auto; margin:0; padding:1px 4px; font-size:12px; background:transparent; color:#be123c; border:none; box-shadow:none;">❌</button>` : ''}
               </div>
             </td>
           </tr>
