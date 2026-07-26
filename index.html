@@ -211,7 +211,7 @@
       font-weight: bold;
       display: block;
       color: #db2777;
-      font-size: 8.5px;
+      font-size: 9px;
     }
     .class-tag .tag-name {
       display: block;
@@ -336,7 +336,7 @@
     }
 
     .leader-note-card {
-      background: #f9fafb;
+      background: #fbfbfb;
       border: 1px solid #4b5563;
       border-radius: 6px;
       padding: 10px;
@@ -1241,9 +1241,9 @@
           <div class="session-box">
             <div class="flex between" style="align-items: flex-start;">
               <div style="width:100%;">
-                <div class="session-line" style="word-spacing: -1px; white-space: nowrap;">
+                <div class="session-line" style="white-space: nowrap;">
                   <strong>📅 ${dateStr}</strong> 
-                  <span style="color:#0284c7; font-weight:600; margin-left:6px; font-size: 11px;">⏰ ${startTime}${endTime}</span>
+                  <span style="color:#0284c7; font-weight:600; margin-left:6px; font-size: 9.5pt;">⏰ ${startTime}${endTime}</span>
                 </div>
                 
                 <div class="session-line" style="color:#374151;">
@@ -1279,7 +1279,6 @@
       const leaderNoteHtml = cleanedLeaderNote ? `
         <button onclick="toggleLeaderNote('${c.id}')" id="leader-note-btn-${c.id}" class="leader-note-toggle-btn">班長的話</button>
         <div id="leader-note-box-${c.id}" class="leader-note-card hidden">
-          <div class="note-title">班長的話</div>
           <div class="note-content">${cleanedLeaderNote}</div>
         </div>
       ` : '';
@@ -1415,32 +1414,29 @@
         </div>
       `;
 
-      let addMiscFormHtml = '';
-      if (canManage) {
-        const participantsCheckboxes = eligibleNames.map(name => `
-          <label style="font-size:11px; display:inline-flex; align-items:center; gap:2px; margin-right:6px; cursor:pointer;">
-            <input type="checkbox" value="${name}" class="misc-part-cb-${c.id}" checked style="margin:0; width:auto;"> ${name}
-          </label>
-        `).join('');
+      const participantsCheckboxes = eligibleNames.map(name => `
+        <label style="font-size:11px; display:inline-flex; align-items:center; gap:2px; margin-right:6px; cursor:pointer;">
+          <input type="checkbox" value="${name}" class="misc-part-cb-${c.id}" checked style="margin:0; width:auto;"> ${name}
+        </label>
+      `).join('');
 
-        addMiscFormHtml = `
-          <div style="margin-top: 6px; padding: 6px; background: #fff; border: 1px dashed var(--pojai-border); border-radius: 4px;">
-            <div style="font-size:11px; font-weight:bold; color:var(--pojai-text); margin-bottom:4px;">➕ 新增雜費項目</div>
-            <input type="text" id="misc-name-${c.id}" placeholder="項目名稱 (例如: 買水 / 道具)" style="margin:2px 0 4px 0; font-size:11px; padding:4px;">
-            <div class="flex" style="gap:4px; margin-bottom:4px;">
-              <input type="number" id="misc-amount-${c.id}" placeholder="總金額 ($)" style="margin:0; font-size:11px; padding:4px;" title="請輸入該項目的總金額">
-              <select id="misc-payer-${c.id}" style="margin:0; font-size:11px; padding:4px;">
-                ${payerOptions}
-              </select>
-            </div>
-            <div style="font-size:11px; color:var(--pojai-text); margin-bottom:4px;">邊個有份：</div>
-            <div style="max-height:80px; overflow-y:auto; background:#f9fafb; padding:4px; border:1px solid #e5e7eb; border-radius:4px; margin-bottom:4px;">
-              ${participantsCheckboxes}
-            </div>
-            <button onclick="addMiscItem('${c.id}')" class="btn-pojai" style="padding:3px 8px; font-size:11px;">新增雜費</button>
+      let addMiscFormHtml = `
+        <div style="margin-top: 6px; padding: 6px; background: #fff; border: 1px dashed var(--pojai-border); border-radius: 4px;">
+          <div style="font-size:11px; font-weight:bold; color:var(--pojai-text); margin-bottom:4px;">➕ 新增雜費項目</div>
+          <input type="text" id="misc-name-${c.id}" placeholder="項目名稱 (例如: 買水 / 道具)" style="margin:2px 0 4px 0; font-size:11px; padding:4px;">
+          <div class="flex" style="gap:4px; margin-bottom:4px;">
+            <input type="number" id="misc-amount-${c.id}" placeholder="總金額 ($)" style="margin:0; font-size:11px; padding:4px;" title="請輸入該項目的總金額">
+            <select id="misc-payer-${c.id}" style="margin:0; font-size:11px; padding:4px;">
+              ${payerOptions}
+            </select>
           </div>
-        `;
-      }
+          <div style="font-size:11px; color:var(--pojai-text); margin-bottom:4px;">邊個有份：</div>
+          <div style="max-height:80px; overflow-y:auto; background:#f9fafb; padding:4px; border:1px solid #e5e7eb; border-radius:4px; margin-bottom:4px;">
+            ${participantsCheckboxes}
+          </div>
+          <button onclick="addMiscItem('${c.id}')" class="btn-pojai" style="padding:3px 8px; font-size:11px;">新增雜費</button>
+        </div>
+      `;
 
       return `
         <div class="course-card">
