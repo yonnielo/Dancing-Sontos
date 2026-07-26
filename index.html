@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
@@ -1207,7 +1206,6 @@
       ` : '';
 
       // 婆仔數精確計算：
-      // 1) 收集所有參與過堂數的成員名稱/ID，確保完整對應
       const memberMap = {};
       
       dateKeys.forEach(dateStr => {
@@ -1217,7 +1215,6 @@
         const rentVal = Number(sess.rent || 0);
         const enrolledCount = students.length;
 
-        // 確保學費付款人與場租付款人也存在於 memberMap 中（即使他們當堂沒有報名成為學生）
         const feePayerName = sess.feePayerName || c.leaderName;
         const rentPayerName = sess.rentPayerName || c.leaderName;
 
@@ -1232,33 +1229,105 @@
           if (!memberMap[s.name]) {
             memberMap[s.name] = { totalTuition: 0, totalCourtFee: 0, totalPaid: 0 };
           }
-          // 每個學員應付的學費總數累積
           memberMap[s.name].totalTuition += feeVal;
 
-          // 場租按人數平分
           if (enrolledCount > 0) {
             memberMap[s.name].totalCourtFee += (rentVal / enrolledCount);
           }
         });
 
-        // 2) 學費付款人已付了該堂所有報名人的學費 (該堂總學費 = feeVal * enrolledCount)
         const totalSessionTuition = feeVal * enrolledCount;
         memberMap[feePayerName].totalPaid += totalSessionTuition;
-
-        // 3) 場租付款人已付了該堂的場租總額 (rentVal)
         memberMap[rentPayerName].totalPaid += rentVal;
+      });
+
+      // 雜費計算與總結
+      const miscExpenses = c.miscExpenses || [];
+      miscExpenses.forEach(item => {
+        const amount = Number(item.amount) || 0;
+        const payer = item.payer || c.leaderName;
+        const participants = item.participants || [];
+
+        if (!memberMap[payer]) {
+          memberMap[payer] = { totalTuition: 0, totalCourtFee: 0, totalPaid: 0 };
+        }
+        memberMap[payer].totalPaid += amount;
+
+        const partCount = participants.length;
+        if (partCount > 0) {
+          const sharePerPerson = amount / partCount;
+          participants.forEach(pName => {
+            if (!memberMap[pName]) {
+              memberMap[pName] = { totalTuition: 0, totalCourtFee: 0, totalPaid: 0 };
+            }
+            if (!memberMap[pName].totalMisc) memberMap[pName].totalMisc = 0;
+            memberMap[pName].totalMisc += sharePerPerson;
+          });
+        }
       });
 
       let pojaiSummaryHtml = Object.keys(memberMap).length === 0 ? 
         `<p style="font-size:12px; color:#6b7280; margin:4px 0 0 0;">暫無成員報名數據</p>` :
         Object.entries(memberMap).map(([name, data]) => {
           const roundedCourtFee = Math.round(data.totalCourtFee * 100) / 100;
+          const roundedMisc = Math.round((data.totalMisc || 0) * 100) / 100;
+          let miscText = roundedMisc > 0 ? ` | 雜費 $${roundedMisc}` : '';
           return `
             <div style="font-size:12px; color:var(--pojai-text); margin-bottom:4px;">
-              👤 <b>${name}</b>：總學費 $${data.totalTuition} ｜總場租 $${roundedCourtFee} | 已付 $${data.totalPaid}
+              👤 <b>${name}</b>：總學費 $${data.totalTuition} ｜總場租 $${roundedCourtFee}${miscText} | 已付 $${data.totalPaid}
             </div>
           `;
         }).join('');
+
+      // 雜費項目列表渲染
+      let miscListHtml = miscExpenses.map((item, idx) => `
+        <div style="font-size:11px; color:var(--pojai-text); margin-bottom:2px; display:flex; justify-content:space-between; align-items:center;">
+          <span>🔹 <b>${item.name}</b>：$${item.amount} (付款人: ${item.payer}，邊個有份: ${item.participants.join(', ') || '無'})</span>
+          ${canManage ? `<button onclick="deleteMiscItem('${c.id}', ${idx})" class="btn-danger" style="width:auto; margin:0; padding:1px 4px; font-size:10px;">刪除</button>` : ''}
+        </div>
+      `).join('') || `<p style="font-size:11px; color:#6b7280; margin:2px 0;">暫無雜費記錄</p>`;
+
+      let addMiscFormHtml = '';
+      if (canManage) {
+        // 取得該課程所有可能參與的人員名單 (由班長、已報名學生、allowedUsers、allUsers合併去重)
+        const eligibleNamesSet = new Set([c.leaderName]);
+        dateKeys.forEach(d => {
+          (sessions[d].students || []).forEach(s => eligibleNamesSet.add(s.name));
+        });
+        if (c.accessType === 'specific' && c.allowedUsers) {
+          c.allowedUsers.forEach(uid => {
+            const uObj = allUsersList.find(u => u.uid === uid);
+            if (uObj) eligibleNamesSet.add(uObj.name || uObj.email);
+          });
+        }
+        allUsersList.forEach(u => eligibleNamesSet.add(u.name || u.email));
+        const eligibleNames = Array.from(eligibleNamesSet);
+
+        const payerOptions = eligibleNames.map(name => `<option value="${name}">${name}</option>`).join('');
+        const participantsCheckboxes = eligibleNames.map(name => `
+          <label style="font-size:11px; display:inline-flex; align-items:center; gap:2px; margin-right:6px; cursor:pointer;">
+            <input type="checkbox" value="${name}" class="misc-part-cb-${c.id}" checked style="margin:0; width:auto;"> ${name}
+          </label>
+        `).join('');
+
+        addMiscFormHtml = `
+          <div style="margin-top: 6px; padding: 6px; background: #fff; border: 1px dashed var(--pojai-border); border-radius: 4px;">
+            <div style="font-size:11px; font-weight:bold; color:var(--pojai-text); margin-bottom:4px;">➕ 新增雜費項目</div>
+            <input type="text" id="misc-name-${c.id}" placeholder="項目名稱 (例如: 買水 / 道具)" style="margin:2px 0 4px 0; font-size:11px; padding:4px;">
+            <div class="flex" style="gap:4px; margin-bottom:4px;">
+              <input type="number" id="misc-amount-${c.id}" placeholder="每人幾錢/總金額? 其實係輸入總金額定每人? (請輸入總金額)" style="margin:0; font-size:11px; padding:4px;" title="請輸入該項目的總金額">
+              <select id="misc-payer-${c.id}" style="margin:0; font-size:11px; padding:4px;">
+                ${payerOptions}
+              </select>
+            </div>
+            <div style="font-size:11px; color:var(--pojai-text); margin-bottom:4px;">邊個有份：</div>
+            <div style="max-height:80px; overflow-y:auto; background:#f9fafb; padding:4px; border:1px solid #e5e7eb; border-radius:4px; margin-bottom:4px;">
+              ${participantsCheckboxes}
+            </div>
+            <button onclick="addMiscItem('${c.id}')" class="btn-pojai" style="padding:3px 8px; font-size:11px;">新增雜費</button>
+          </div>
+        `;
+      }
 
       return `
         <div class="course-card">
@@ -1352,7 +1421,7 @@
               </div>
             ` : ''}
 
-            <!-- 👵🏼婆仔數區塊（所有成員皆可按，按鈕底色已調淺 20%） -->
+            <!-- 👵🏼婆仔數區塊 -->
             <div class="pojai-box">
               <div class="flex between">
                 <span style="font-weight:bold; color:var(--pojai-text); font-size:13px;">👵🏼 婆仔數</span>
@@ -1360,6 +1429,10 @@
               </div>
               <div id="pojai-body-${c.id}" class="hidden" style="margin-top: 8px; border-top: 1px dashed var(--pojai-border); padding-top: 6px;">
                 ${pojaiSummaryHtml}
+                <hr style="border: none; border-top: 1px solid var(--pojai-border); margin: 8px 0;">
+                <div style="font-weight:bold; color:var(--pojai-text); font-size:12px; margin-bottom:4px;">🪬雜費</div>
+                ${miscListHtml}
+                ${addMiscFormHtml}
               </div>
             </div>
 
@@ -1655,6 +1728,51 @@
       loadClasses();
     } catch(e) {
       alert("儲存失敗: " + e.message);
+    }
+  };
+
+  window.addMiscItem = async (classId) => {
+    const nameInput = document.getElementById(`misc-name-${classId}`);
+    const amountInput = document.getElementById(`misc-amount-${classId}`);
+    const payerSelect = document.getElementById(`misc-payer-${classId}`);
+    const partCbs = document.querySelectorAll(`.misc-part-cb-${classId}:checked`);
+
+    const name = nameInput.value.trim();
+    const amount = Number(amountInput.value) || 0;
+    const payer = payerSelect.value;
+    const participants = Array.from(partCbs).map(cb => cb.value);
+
+    if (!name) return alert("請輸入雜費項目名稱");
+    if (amount <= 0) return alert("請輸入有效的金額");
+    if (participants.length === 0) return alert("請至少選擇一個有份的成員");
+
+    const classObj = classesData.find(c => c.id === classId);
+    if (!classObj) return;
+
+    const miscExpenses = classObj.miscExpenses || [];
+    miscExpenses.push({ name, amount, payer, participants });
+
+    try {
+      await updateDoc(doc(db, "classes", classId), { miscExpenses });
+      loadClasses();
+    } catch(e) {
+      alert("新增雜費失敗: " + e.message);
+    }
+  };
+
+  window.deleteMiscItem = async (classId, index) => {
+    if (!confirm("確定要刪除此雜費項目嗎？")) return;
+    const classObj = classesData.find(c => c.id === classId);
+    if (!classObj) return;
+
+    const miscExpenses = classObj.miscExpenses || [];
+    miscExpenses.splice(index, 1);
+
+    try {
+      await updateDoc(doc(db, "classes", classId), { miscExpenses });
+      loadClasses();
+    } catch(e) {
+      alert("刪除雜費失敗: " + e.message);
     }
   };
 
