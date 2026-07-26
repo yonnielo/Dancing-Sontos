@@ -33,6 +33,13 @@
       --admin-box-bg: #f0f9ff;      /* 淺粉藍背景 */
       --admin-box-border: #bae6fd;   /* 粉藍邊框 */
       --admin-header-text: #0369a1;  /* 粉藍標題字 */
+
+      /* 婆仔數區塊配色 (依附圖黃色系) */
+      --pojai-bg: #fefce8;          /* 淺黃色背景 */
+      --pojai-border: #fef08a;      /* 黃色邊框 */
+      --pojai-text: #713f12;        /* 深棕黃色文字 */
+      --pojai-btn-bg: #d97706;      /* 橙棕色按鈕 */
+      --pojai-btn-hover: #b45309;
     }
     * {
       box-sizing: border-box;
@@ -59,13 +66,10 @@
       background: var(--admin-box-bg);
       border: 1px solid var(--admin-box-border);
     }
-    /* 會員登入頁面改為很淺的粉紅色背景 */
     #auth-section {
       background: #fdf2f8;
       border: 1px solid #fbcfe8;
     }
-    
-    /* 頂部標題方塊與Dancing-Sontos方塊底色改為與登入方塊一樣的淺粉紅色背景與邊框 */
     #header-section {
       background: #fdf2f8;
       border: 1px solid #fbcfe8;
@@ -93,7 +97,6 @@
     }
     button:hover { background: var(--primary-hover); }
 
-    /* 特殊按鈕設定 */
     .btn-signup {
       background: var(--btn-signup);
       color: var(--btn-signup-text);
@@ -155,7 +158,6 @@
       border-color: var(--primary);
     }
 
-    /* 月曆 7 欄與粉色邊框鎖定 */
     .calendar-container {
       width: 100%;
       overflow: hidden;
@@ -283,7 +285,6 @@
       align-items: center;
     }
 
-    /* 小正方形內含小倒三角形按鈕 */
     .collapse-toggle-btn {
       width: 26px;
       height: 26px;
@@ -336,6 +337,27 @@
       background: var(--admin-box-bg);
       border-radius: 8px;
       border: 1px solid var(--admin-box-border);
+    }
+
+    /* 婆仔數區塊專屬樣式（對應附圖黃色系風格） */
+    .pojai-box {
+      margin-top: 12px;
+      padding: 10px;
+      background: var(--pojai-bg);
+      border-radius: 8px;
+      border: 1px solid var(--pojai-border);
+    }
+    .btn-pojai {
+      background: var(--pojai-btn-bg);
+      color: white;
+      width: auto;
+      margin: 0;
+      padding: 6px 12px;
+      font-size: 12px;
+      border-radius: 6px;
+    }
+    .btn-pojai:hover {
+      background: var(--pojai-btn-hover);
     }
 
     .closed-tag {
@@ -465,7 +487,6 @@
       <a href="#" id="toggle-auth-mode" style="font-size:13px; color:#be123c;">沒有帳號？點此註冊</a>
     </div>
 
-    <!-- 在登入頁面最底下加入附圖，opacity 60% -->
     <div style="margin-top: 15px; text-align: center;">
       <img src="IMG_4823.jpeg" alt="Dancing Photo" style="width: 100%; object-fit: cover; border-radius: 6px; opacity: 0.6;">
     </div>
@@ -510,7 +531,6 @@
         <label style="font-size: 12px; font-weight: bold;">預設上堂地點 / Studio 名稱：</label>
         <input type="text" id="class-default-location" placeholder="例如: 旺角 ABC Studio A房">
 
-        <!-- 內嵌多選月曆區域 -->
         <div style="margin-top: 10px;">
           <div class="flex between" style="margin-bottom: 6px;">
             <span style="font-size: 13px; font-weight: bold; color: #9d174d;" id="form-calendar-title">📅 選擇上堂日期（可多選）：</span>
@@ -585,7 +605,6 @@
       </div>
     </div>
 
-    <!-- 首頁總課程月曆區塊 -->
     <div class="card">
       <div class="flex between" style="margin-bottom: 8px;">
         <h3 style="margin:0; font-size:16px; color:#1f2937;">📅 課程月曆 <small style="font-size:10px; font-weight:normal; color:#6b7280;">（綠色：已報名）</small></h3>
@@ -850,7 +869,6 @@
     }
   }
 
-  // 內嵌開班多選月曆邏輯
   document.getElementById('form-prev-month').addEventListener('click', () => {
     formCalendarDate.setMonth(formCalendarDate.getMonth() - 1);
     renderFormCalendar();
@@ -1092,12 +1110,20 @@
   });
 
   function renderClassList() {
-    // 【修改】記錄目前哪些課程是展開狀態
     const expandedIds = [];
     document.querySelectorAll('[id^="course-body-"]').forEach(el => {
       if (!el.classList.contains('hidden')) {
         const classId = el.id.replace('course-body-', '');
         expandedIds.push(classId);
+      }
+    });
+
+    // 額外記錄「婆仔數」區塊的展開狀態
+    const expandedPojaiIds = [];
+    document.querySelectorAll('[id^="pojai-body-"]').forEach(el => {
+      if (!el.classList.contains('hidden')) {
+        const classId = el.id.replace('pojai-body-', '');
+        expandedPojaiIds.push(classId);
       }
     });
 
@@ -1179,6 +1205,45 @@
         </div>
       ` : '';
 
+      // 計算各成員的收支總計（婆仔數邏輯）
+      const userFinancials = {};
+      dateKeys.forEach(dateStr => {
+        const sess = sessions[dateStr];
+        const students = sess.students || [];
+        const feeVal = Number(sess.fee !== undefined ? sess.fee : c.price) || 0;
+        const rentVal = Number(sess.rent || 0);
+
+        const feePayer = sess.feePayerName || c.leaderName;
+        const rentPayer = sess.rentPayerName || c.leaderName;
+
+        // 每個學生需付學費給 feePayer
+        students.forEach(s => {
+          if (!userFinancials[s.name]) userFinancials[s.name] = { income: 0, expense: 0 };
+          // 學生付學費 -> 增加該學費收款人的收入 (若自己付給自己可略過，此處以計入收款人總收入為主)
+        });
+
+        // 處理學費收入總計歸屬
+        if (!userFinancials[feePayer]) userFinancials[feePayer] = { income: 0, expense: 0 };
+        userFinancials[feePayer].income += (students.length * feeVal);
+
+        // 處理場租支出歸屬
+        if (rentVal > 0) {
+          if (!userFinancials[rentPayer]) userFinancials[rentPayer] = { income: 0, expense: 0 };
+          userFinancials[rentPayer].expense += rentVal;
+        }
+      });
+
+      let pojaiSummaryHtml = Object.keys(userFinancials).length === 0 ? 
+        `<p style="font-size:12px; color:#6b7280; margin:4px 0 0 0;">暫無財務數據</p>` :
+        Object.entries(userFinancials).map(([name, data]) => {
+          const net = data.income - data.expense;
+          return `
+            <div style="font-size:12px; color:var(--pojai-text); margin-bottom:4px;">
+              👤 <b>${name}</b>：總收學費 <span style="color:#15803d; font-weight:bold;">+$${data.income}</span>｜總付場租 <span style="color:#be123c; font-weight:bold;">-$${data.expense}</span>｜淨計：<b style="color:${net >= 0 ? '#15803d' : '#be123c'};">${net >= 0 ? '+' : ''}$${net}</b>
+            </div>
+          `;
+        }).join('');
+
       return `
         <div class="course-card">
           
@@ -1195,7 +1260,6 @@
             </button>
           </div>
 
-          <!-- 預設 hidden (預設為全部收藏) -->
           <div id="course-body-${c.id}" class="hidden">
             ${leaderNoteHtml}
 
@@ -1271,27 +1335,47 @@
                 </div>
               </div>
             ` : ''}
+
+            <!-- 新增：👵🏼婆仔數區塊（所有成員皆可按） -->
+            <div class="pojai-box">
+              <div class="flex between">
+                <span style="font-weight:bold; color:var(--pojai-text); font-size:13px;">👵🏼 婆仔數</span>
+                <button onclick="togglePojai('${c.id}')" class="btn-pojai">👀 睇吓盆數</button>
+              </div>
+              <div id="pojai-body-${c.id}" class="hidden" style="margin-top: 8px; border-top: 1px dashed var(--pojai-border); padding-top: 6px;">
+                ${pojaiSummaryHtml}
+              </div>
+            </div>
+
           </div>
 
         </div>
       `;
     }).join('');
 
-    // 【修改】重新渲染後，恢復原本已展開的課程狀態
     expandedIds.forEach(classId => {
       const bodyEl = document.getElementById(`course-body-${classId}`);
       const btnEl = document.getElementById(`collapse-btn-${classId}`);
       if (bodyEl) bodyEl.classList.remove('hidden');
       if (btnEl) btnEl.classList.add('expanded');
     });
+
+    expandedPojaiIds.forEach(classId => {
+      const pojaiEl = document.getElementById(`pojai-body-${classId}`);
+      if (pojaiEl) pojaiEl.classList.remove('hidden');
+    });
   }
 
-  // 切換課程詳細資料展開/收藏
   window.toggleCourseBody = (classId) => {
     const bodyEl = document.getElementById(`course-body-${classId}`);
     const btnEl = document.getElementById(`collapse-btn-${classId}`);
     bodyEl.classList.toggle('hidden');
     btnEl.classList.toggle('expanded');
+  };
+
+  window.togglePojai = (classId) => {
+    const pojaiEl = document.getElementById(`pojai-body-${classId}`);
+    if (pojaiEl) pojaiEl.classList.toggle('hidden');
   };
 
   window.toggleLeaderNote = (classId) => {
