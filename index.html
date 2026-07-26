@@ -64,6 +64,12 @@
       background: #fdf2f8;
       border: 1px solid #fbcfe8;
     }
+    
+    /* 頂部標題方塊改為與登入方塊一樣的淺粉紅色背景與邊框 */
+    #header-section {
+      background: #fdf2f8;
+      border: 1px solid #fbcfe8;
+    }
 
     .flex { display: flex; gap: 8px; }
     .between { justify-content: space-between; align-items: center; }
@@ -434,7 +440,7 @@
 
 <div class="container">
   
-  <div class="card flex between">
+  <div id="header-section" class="card flex between">
     <div>
       <h2 style="margin:0; font-size:18px; color:#9d174d;"> 💃 Dancing-Sontos</h2>
       <span id="user-status" style="font-size: 11px; color: #6b7280;">未登入</span>
