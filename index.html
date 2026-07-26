@@ -8,7 +8,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- 引入 FontAwesome 圖標 -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- 引入 Google Fonts: 圓體/Noto Sans -->
+    <!-- 引入 Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
     <script>
         tailwind.config = {
@@ -16,10 +16,10 @@
                 extend: {
                     colors: {
                         brand: {
-                            light: '#FFF0F5', // 淺粉紅
-                            DEFAULT: '#FF69B4', // 粉紅
-                            dark: '#C71585', // 深粉紅
-                            accent: '#FFB6C1'
+                            light: '#FDF2F8', 
+                            DEFAULT: '#EC4899', // 經典粉紅
+                            dark: '#BE185D', 
+                            accent: '#FBCFE8'
                         }
                     },
                     fontFamily: {
@@ -32,28 +32,28 @@
     <style>
         body {
             font-family: 'Noto Sans TC', sans-serif;
-            background-color: #FFF5F7;
-            color: #333333;
+            background-color: #F9FAFB;
+            color: #1F2937;
         }
         .fade-in {
-            animation: fadeIn 0.3s ease-in-out;
+            animation: fadeIn 0.25s ease-in-out;
         }
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(6px); }
+            from { opacity: 0; transform: translateY(4px); }
             to { opacity: 1; transform: translateY(0); }
         }
     </style>
 </head>
-<body class="bg-brand-light min-h-screen flex flex-col text-gray-800">
+<body class="bg-gray-50 min-h-screen flex flex-col text-gray-800">
 
     <!-- 頂部導航列 -->
-    <header class="bg-white shadow-sm sticky top-0 z-50 border-b border-pink-100">
+    <header class="bg-white shadow-xs sticky top-0 z-50 border-b border-gray-100">
         <div class="max-w-md mx-auto px-4 py-3 flex justify-between items-center">
             <div class="flex items-center space-x-2">
-                <div class="w-9 h-9 bg-brand text-white rounded-full flex items-center justify-center shadow-md">
-                    <i class="fa-solid fa-heart-dance"></i>
+                <div class="w-8 h-8 bg-brand text-white rounded-lg flex items-center justify-center shadow-xs">
+                    <i class="fa-solid fa-masks-theater text-sm"></i>
                 </div>
-                <h1 class="text-lg font-bold tracking-wider text-gray-800">Dancing-Sontos</h1>
+                <h1 class="text-base font-bold tracking-wide text-gray-800">Dancing-Sontos</h1>
             </div>
             <div id="user-info-section" class="flex items-center space-x-2">
                 <!-- 動態登入狀態 -->
@@ -62,24 +62,23 @@
     </header>
 
     <!-- 主要內容容器 -->
-    <main class="max-w-md mx-auto w-full p-4 flex-grow mb-20">
+    <main class="max-w-md mx-auto w-full p-4 flex-grow mb-16">
         
         <!-- 登入/歡迎區塊 -->
-        <div id="view-auth" class="bg-white rounded-2xl p-6 shadow-sm border border-pink-100 mb-4 hidden">
-            <div class="text-center mb-6">
-                <h2 class="text-xl font-bold text-gray-800 mb-1">歡迎來到 Dancing-Sontos</h2>
-                <p class="text-sm text-gray-500">請登入以查看課堂及進行報名</p>
+        <div id="view-auth" class="bg-white rounded-xl p-5 shadow-xs border border-gray-100 mb-4 hidden">
+            <div class="text-center mb-5">
+                <h2 class="text-lg font-bold text-gray-800 mb-1">登入 Dancing-Sontos</h2>
+                <p class="text-xs text-gray-500">請選擇您的成員身分進入系統</p>
             </div>
-            <div class="space-y-4">
+            <div class="space-y-3">
                 <div>
-                    <label class="block text-xs font-semibold text-gray-600 mb-1">選擇您的名字 (成員)</label>
-                    <select id="auth-member-select" class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand">
-                        <option value="">-- 請選擇您的成員身分 --</option>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">成員身分</label>
+                    <select id="auth-member-select" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-brand">
+                        <option value="">-- 請選擇您的名字 --</option>
                     </select>
                 </div>
-                <button onclick="handleLogin()" class="w-full py-3 bg-brand hover:bg-brand-dark text-white font-bold rounded-xl shadow-md transition duration-200 flex items-center justify-center space-x-2">
-                    <i class="fa-solid fa-right-to-bracket"></i>
-                    <span>立即登入</span>
+                <button onclick="handleLogin()" class="w-full py-2.5 bg-brand hover:bg-brand-dark text-white font-bold rounded-lg shadow-xs transition text-sm">
+                    進入系統
                 </button>
             </div>
         </div>
@@ -88,41 +87,38 @@
         <div id="view-main" class="space-y-4 hidden">
             
             <!-- 班長的話公告欄 -->
-            <div id="announcement-card" class="bg-gradient-to-r from-pink-500 to-rose-400 text-white rounded-2xl p-4 shadow-md relative overflow-hidden hidden">
-                <div class="absolute -right-4 -bottom-4 text-white/10 text-7xl pointer-events-none">
-                    <i class="fa-solid fa-bullhorn"></i>
+            <div id="announcement-card" class="bg-gradient-to-r from-pink-500 to-rose-400 text-white rounded-xl p-3.5 shadow-xs relative overflow-hidden hidden">
+                <div class="flex items-center space-x-1.5 mb-1">
+                    <i class="fa-solid fa-bullhorn text-yellow-200 text-xs"></i>
+                    <h3 class="font-bold text-xs">班長的話</h3>
                 </div>
-                <div class="flex items-center space-x-2 mb-1">
-                    <i class="fa-solid fa-circle-exclamation text-yellow-200 animate-pulse"></i>
-                    <h3 class="font-bold text-sm tracking-wide">班長的話</h3>
-                </div>
-                <p id="announcement-text" class="text-xs text-pink-50 leading-relaxed whitespace-pre-wrap pl-5"></p>
+                <p id="announcement-text" class="text-xs text-pink-50 leading-relaxed whitespace-pre-wrap pl-4"></p>
             </div>
 
             <!-- 功能分頁切換列 -->
-            <div class="flex bg-white p-1 rounded-xl shadow-sm border border-pink-100">
-                <button onclick="switchTab('classes')" id="tab-classes-btn" class="flex-1 py-2 text-xs font-bold rounded-lg transition text-brand bg-pink-50 shadow-xs flex items-center justify-center space-x-1.5">
-                    <i class="fa-solid fa-calendar-days"></i>
+            <div class="flex bg-white p-1 rounded-xl shadow-xs border border-gray-100">
+                <button onclick="switchTab('classes')" id="tab-classes-btn" class="flex-1 py-2 text-xs font-bold rounded-lg transition text-brand bg-pink-50 shadow-xs flex items-center justify-center space-x-1">
+                    <i class="fa-solid fa-calendar"></i>
                     <span>課堂列表</span>
                 </button>
-                <button onclick="switchTab('finance')" id="tab-finance-btn" class="flex-1 py-2 text-xs font-bold rounded-lg transition text-gray-500 hover:text-gray-800 flex items-center justify-center space-x-1.5">
-                    <i class="fa-solid fa-calculator"></i>
-                    <span>婆仔數 (財務)</span>
+                <button onclick="switchTab('finance')" id="tab-finance-btn" class="flex-1 py-2 text-xs font-bold rounded-lg transition text-gray-500 hover:text-gray-800 flex items-center justify-center space-x-1">
+                    <i class="fa-solid fa-wallet"></i>
+                    <span>婆仔數</span>
                 </button>
-                <button onclick="switchTab('members')" id="tab-members-btn" class="flex-1 py-2 text-xs font-bold rounded-lg transition text-gray-500 hover:text-gray-800 flex items-center justify-center space-x-1.5">
+                <button onclick="switchTab('members')" id="tab-members-btn" class="flex-1 py-2 text-xs font-bold rounded-lg transition text-gray-500 hover:text-gray-800 flex items-center justify-center space-x-1">
                     <i class="fa-solid fa-users"></i>
-                    <span>成員名單</span>
+                    <span>成員</span>
                 </button>
             </div>
 
             <!-- 管理員專用控制列 -->
-            <div id="admin-controls" class="hidden flex justify-between items-center bg-white p-3 rounded-xl border border-dashed border-brand shadow-xs">
-                <div class="flex items-center space-x-1.5 text-xs font-bold text-brand-dark">
+            <div id="admin-controls" class="hidden flex justify-between items-center bg-pink-50/60 p-2.5 rounded-xl border border-pink-100 text-xs">
+                <span class="font-bold text-brand-dark flex items-center space-x-1">
                     <i class="fa-solid fa-shield-halved"></i>
                     <span>管理員模式</span>
-                </div>
-                <button onclick="openClassModal()" class="px-3 py-1.5 bg-brand text-white text-xs font-bold rounded-lg shadow-xs hover:bg-brand-dark transition flex items-center space-x-1">
-                    <i class="fa-solid fa-plus"></i>
+                </span>
+                <button onclick="openClassModal()" class="px-2.5 py-1 bg-brand text-white font-bold rounded-lg shadow-xs hover:bg-brand-dark transition flex items-center space-x-1">
+                    <i class="fa-solid fa-plus text-[10px]"></i>
                     <span>新增課堂</span>
                 </button>
             </div>
@@ -130,11 +126,8 @@
             <!-- 分頁 1：課堂列表 -->
             <div id="section-classes" class="space-y-3">
                 <div class="flex justify-between items-center px-1">
-                    <h2 class="text-sm font-bold text-gray-700 flex items-center space-x-1.5">
-                        <i class="fa-solid fa-list text-brand"></i>
-                        <span>近期舞蹈課堂</span>
-                    </h2>
-                    <span id="class-count-badge" class="text-xs bg-pink-100 text-brand-dark px-2 py-0.5 rounded-full font-bold">0 堂</span>
+                    <h2 class="text-xs font-bold text-gray-500 uppercase tracking-wider">所有課堂</h2>
+                    <span id="class-count-badge" class="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full font-bold">0 堂</span>
                 </div>
                 <div id="class-list-container" class="space-y-3">
                     <!-- 動態載入課堂列表 -->
@@ -143,13 +136,10 @@
 
             <!-- 分頁 2：婆仔數 (財務統計) -->
             <div id="section-finance" class="space-y-3 hidden">
-                <div class="bg-white rounded-2xl p-4 shadow-sm border border-pink-100">
+                <div class="bg-white rounded-xl p-4 shadow-xs border border-gray-100">
                     <div class="flex justify-between items-center mb-3 pb-2 border-b border-gray-100">
-                        <h2 class="text-sm font-bold text-gray-700 flex items-center space-x-1.5">
-                            <i class="fa-solid fa-calculator text-brand"></i>
-                            <span>整體收支總結 (婆仔數)</span>
-                        </h2>
-                        <span class="text-[10px] bg-pink-50 text-brand px-2 py-0.5 rounded-md font-medium">實時結算</span>
+                        <h2 class="text-xs font-bold text-gray-500 uppercase tracking-wider">成員收支總結 (婆仔數)</h2>
+                        <span class="text-[10px] bg-pink-50 text-brand px-2 py-0.5 rounded font-medium">實時結算</span>
                     </div>
                     <div id="finance-summary-container" class="space-y-2">
                         <!-- 動態結算列表 -->
@@ -159,15 +149,10 @@
 
             <!-- 分頁 3：成員名單 -->
             <div id="section-members" class="space-y-3 hidden">
-                <div class="bg-white rounded-2xl p-4 shadow-sm border border-pink-100">
+                <div class="bg-white rounded-xl p-4 shadow-xs border border-gray-100">
                     <div class="flex justify-between items-center mb-3 pb-2 border-b border-gray-100">
-                        <h2 class="text-sm font-bold text-gray-700 flex items-center space-x-1.5">
-                            <i class="fa-solid fa-users text-brand"></i>
-                            <span>所有成員名單</span>
-                        </h2>
-                        <div id="admin-member-add-btn">
-                            <!-- 管理員可新增成員按鈕 -->
-                        </div>
+                        <h2 class="text-xs font-bold text-gray-500 uppercase tracking-wider">成員名單</h2>
+                        <div id="admin-member-add-btn"></div>
                     </div>
                     <div id="member-list-container" class="divide-y divide-gray-50">
                         <!-- 動態成員名單 -->
@@ -180,114 +165,114 @@
 
     <!-- 底部版權導覽 -->
     <footer class="bg-white border-t border-gray-100 py-3 text-center text-xs text-gray-400 mt-auto">
-        <p>Dancing-Sontos Class Management System &copy; 2026</p>
+        <p>Dancing-Sontos &copy; 2026</p>
     </footer>
 
     <!-- 視窗 Modal：新增/編輯課堂 -->
-    <div id="class-modal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 hidden">
+    <div id="class-modal" class="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4 hidden">
         <div class="bg-white rounded-2xl max-w-md w-full p-5 shadow-xl fade-in max-h-[90vh] overflow-y-auto">
-            <div class="flex justify-between items-center mb-4 pb-2 border-b border-gray-100">
-                <h3 id="class-modal-title" class="font-bold text-gray-800 text-base">新增課堂</h3>
-                <button onclick="closeClassModal()" class="text-gray-400 hover:text-gray-600 p-1">
-                    <i class="fa-solid fa-xmark text-lg"></i>
+            <div class="flex justify-between items-center mb-3 pb-2 border-b border-gray-100">
+                <h3 id="class-modal-title" class="font-bold text-gray-800 text-sm">新增課堂</h3>
+                <button onclick="closeClassModal()" class="text-gray-400 hover:text-gray-600">
+                    <i class="fa-solid fa-xmark"></i>
                 </button>
             </div>
             <form id="class-form" onsubmit="saveClass(event)" class="space-y-3">
                 <input type="hidden" id="edit-class-id">
                 <div>
-                    <label class="block text-xs font-semibold text-gray-600 mb-1">課堂名稱</label>
-                    <input type="text" id="input-title" required placeholder="例如：K-Pop 舞蹈班" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand">
+                    <label class="block text-xs font-medium text-gray-600 mb-1">課堂名稱</label>
+                    <input type="text" id="input-title" required placeholder="例如：K-Pop 舞蹈班" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-brand">
                 </div>
                 <div class="grid grid-cols-2 gap-2">
                     <div>
-                        <label class="block text-xs font-semibold text-gray-600 mb-1">日期</label>
-                        <input type="date" id="input-date" required class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand">
+                        <label class="block text-xs font-medium text-gray-600 mb-1">日期</label>
+                        <input type="date" id="input-date" required class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-brand">
                     </div>
                     <div>
-                        <label class="block text-xs font-semibold text-gray-600 mb-1">時間 (開始 - 完結)</label>
-                        <input type="text" id="input-time" required placeholder="19:00 - 20:30" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand">
-                    </div>
-                </div>
-                <div class="grid grid-cols-2 gap-2">
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-600 mb-1">每人學費 ($)</label>
-                        <input type="number" id="input-fee" min="0" required placeholder="100" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-gray-600 mb-1">場租總額 ($)</label>
-                        <input type="number" id="input-rent" min="0" required placeholder="400" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand">
+                        <label class="block text-xs font-medium text-gray-600 mb-1">時間</label>
+                        <input type="text" id="input-time" required placeholder="19:00 - 20:30" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-brand">
                     </div>
                 </div>
                 <div class="grid grid-cols-2 gap-2">
                     <div>
-                        <label class="block text-xs font-semibold text-gray-600 mb-1">學費付款人</label>
-                        <select id="input-fee-payer" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand">
+                        <label class="block text-xs font-medium text-gray-600 mb-1">每人學費 ($)</label>
+                        <input type="number" id="input-fee" min="0" required placeholder="100" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-brand">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">場租總額 ($)</label>
+                        <input type="number" id="input-rent" min="0" required placeholder="400" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-brand">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">學費付款人</label>
+                        <select id="input-fee-payer" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-brand">
                             <option value="">-- 無 / 自由 --</option>
                         </select>
                     </div>
                     <div>
-                        <label class="block text-xs font-semibold text-gray-600 mb-1">場租付款人</label>
-                        <select id="input-rent-payer" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand">
+                        <label class="block text-xs font-medium text-gray-600 mb-1">場租付款人</label>
+                        <select id="input-rent-payer" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-brand">
                             <option value="">-- 無 / 自由 --</option>
                         </select>
                     </div>
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold text-gray-600 mb-1">導師 / 備註</label>
-                    <input type="text" id="input-instructor" placeholder="例如：Sonto導師" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand">
+                    <label class="block text-xs font-medium text-gray-600 mb-1">導師 / 備註</label>
+                    <input type="text" id="input-instructor" placeholder="例如：Sonto導師" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-brand">
                 </div>
                 <div class="flex items-center space-x-2 pt-1">
                     <input type="checkbox" id="input-locked" class="w-4 h-4 text-brand rounded border-gray-300 focus:ring-brand">
-                    <label for="input-locked" class="text-xs font-semibold text-gray-700">已封盤 (停止報名)</label>
+                    <label for="input-locked" class="text-xs font-medium text-gray-700">已封盤 (停止報名)</label>
                 </div>
                 <div class="flex space-x-2 pt-2">
-                    <button type="button" onclick="closeClassModal()" class="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl text-sm transition">取消</button>
-                    <button type="submit" class="flex-1 py-2.5 bg-brand hover:bg-brand-dark text-white font-bold rounded-xl text-sm shadow-md transition">儲存課堂</button>
+                    <button type="button" onclick="closeClassModal()" class="flex-1 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-lg text-xs transition">取消</button>
+                    <button type="submit" class="flex-1 py-2 bg-brand hover:bg-brand-dark text-white font-bold rounded-lg text-xs shadow-xs transition">儲存</button>
                 </div>
             </form>
         </div>
     </div>
 
     <!-- 視窗 Modal：班長的話設定 -->
-    <div id="announcement-modal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 hidden">
+    <div id="announcement-modal" class="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4 hidden">
         <div class="bg-white rounded-2xl max-w-md w-full p-5 shadow-xl fade-in">
-            <div class="flex justify-between items-center mb-4 pb-2 border-b border-gray-100">
-                <h3 class="font-bold text-gray-800 text-base">編輯「班長的話」</h3>
-                <button onclick="closeAnnouncementModal()" class="text-gray-400 hover:text-gray-600 p-1">
-                    <i class="fa-solid fa-xmark text-lg"></i>
+            <div class="flex justify-between items-center mb-3 pb-2 border-b border-gray-100">
+                <h3 class="font-bold text-gray-800 text-sm">編輯「班長的話」</h3>
+                <button onclick="closeAnnouncementModal()" class="text-gray-400 hover:text-gray-600">
+                    <i class="fa-solid fa-xmark"></i>
                 </button>
             </div>
             <div class="space-y-3">
-                <textarea id="input-announcement" rows="4" placeholder="輸入公告內容..." class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand"></textarea>
+                <textarea id="input-announcement" rows="4" placeholder="輸入公告內容..." class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-brand"></textarea>
                 <div class="flex space-x-2">
-                    <button type="button" onclick="closeAnnouncementModal()" class="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl text-sm">取消</button>
-                    <button type="button" onclick="saveAnnouncement()" class="flex-1 py-2.5 bg-brand hover:bg-brand-dark text-white font-bold rounded-xl text-sm shadow-md">發布公告</button>
+                    <button type="button" onclick="closeAnnouncementModal()" class="flex-1 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-lg text-xs">取消</button>
+                    <button type="button" onclick="saveAnnouncement()" class="flex-1 py-2 bg-brand hover:bg-brand-dark text-white font-bold rounded-lg text-xs shadow-xs">發布</button>
                 </div>
             </div>
         </div>
     </div>
 
     <!-- 視窗 Modal：新增成員 -->
-    <div id="member-modal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-white rounded-2xl max-w-sm w-full p-5 shadow-xl fade-in">
-            <div class="flex justify-between items-center mb-4 pb-2 border-b border-gray-100">
-                <h3 class="font-bold text-gray-800 text-base">新增成員</h3>
-                <button onclick="closeMemberModal()" class="text-gray-400 hover:text-gray-600 p-1">
-                    <i class="fa-solid fa-xmark text-lg"></i>
+    <div id="member-modal" class="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-2xl max-w-xs w-full p-5 shadow-xl fade-in">
+            <div class="flex justify-between items-center mb-3 pb-2 border-b border-gray-100">
+                <h3 class="font-bold text-gray-800 text-sm">新增成員</h3>
+                <button onclick="closeMemberModal()" class="text-gray-400 hover:text-gray-600">
+                    <i class="fa-solid fa-xmark"></i>
                 </button>
             </div>
             <div class="space-y-3">
                 <div>
-                    <label class="block text-xs font-semibold text-gray-600 mb-1">成員名稱</label>
-                    <input type="text" id="input-new-member-name" placeholder="輸入成員名字" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand">
+                    <label class="block text-xs font-medium text-gray-600 mb-1">成員名字</label>
+                    <input type="text" id="input-new-member-name" placeholder="輸入名字" class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-brand">
                 </div>
                 <div class="flex items-center space-x-2">
                     <input type="checkbox" id="input-new-member-admin" class="w-4 h-4 text-brand rounded border-gray-300 focus:ring-brand">
-                    <label for="input-new-member-admin" class="text-xs font-semibold text-gray-700">設為管理員 (Admin/班長)</label>
+                    <label for="input-new-member-admin" class="text-xs font-medium text-gray-700">設為管理員 (Admin)</label>
                 </div>
                 <div class="flex space-x-2 pt-2">
-                    <button type="button" onclick="closeMemberModal()" class="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl text-sm">取消</button>
-                    <button type="button" onclick="saveNewMember()" class="flex-1 py-2.5 bg-brand hover:bg-brand-dark text-white font-bold rounded-xl text-sm shadow-md">新增</button>
+                    <button type="button" onclick="closeMemberModal()" class="flex-1 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-lg text-xs">取消</button>
+                    <button type="button" onclick="saveNewMember()" class="flex-1 py-2 bg-brand hover:bg-brand-dark text-white font-bold rounded-lg text-xs shadow-xs">新增</button>
                 </div>
             </div>
         </div>
@@ -295,7 +280,6 @@
 
     <!-- JavaScript 邏輯主程式 -->
     <script>
-        // 預设初始資料
         const DEFAULT_MEMBERS = [
             { id: 'm1', name: 'Sonto', isAdmin: true },
             { id: 'm2', name: 'Amy', isAdmin: false },
@@ -333,20 +317,17 @@
             }
         ];
 
-        // 狀態變數
         let members = JSON.parse(localStorage.getItem('ds_members')) || DEFAULT_MEMBERS;
         let classes = JSON.parse(localStorage.getItem('ds_classes')) || DEFAULT_CLASSES;
         let announcement = localStorage.getItem('ds_announcement') || '歡迎來到 Dancing-Sontos！請大家記得準時上課及報名～';
         let currentUserId = localStorage.getItem('ds_currentUserId') || '';
 
-        // 初始化
         window.addEventListener('DOMContentLoaded', () => {
             initAuthSelect();
             checkAuth();
             renderAnnouncement();
         });
 
-        // 儲存至 LocalStorage
         function saveData() {
             localStorage.setItem('ds_members', JSON.stringify(members));
             localStorage.setItem('ds_classes', JSON.stringify(classes));
@@ -354,7 +335,6 @@
             localStorage.setItem('ds_currentUserId', currentUserId);
         }
 
-        // 登入狀態檢查
         function checkAuth() {
             const authView = document.getElementById('view-auth');
             const mainView = document.getElementById('view-main');
@@ -375,19 +355,16 @@
                     return;
                 }
 
-                // 頂部用戶資訊
                 userInfoSection.innerHTML = `
-                    <div class="flex items-center space-x-2 bg-pink-50 px-3 py-1.5 rounded-full border border-pink-100">
-                        <i class="fa-solid fa-user-check text-brand text-xs"></i>
+                    <div class="flex items-center space-x-2 bg-gray-50 px-2.5 py-1 rounded-full border border-gray-200">
                         <span class="text-xs font-bold text-gray-700">${currentUser.name}</span>
-                        ${currentUser.isAdmin ? '<span class="bg-brand text-white text-[9px] px-1.5 py-0.2 rounded-full">Admin</span>' : ''}
-                        <button onclick="handleLogout()" class="text-gray-400 hover:text-red-500 ml-1 text-xs" title="登出">
+                        ${currentUser.isAdmin ? '<span class="bg-brand text-white text-[9px] px-1.5 py-0.2 rounded font-medium">Admin</span>' : ''}
+                        <button onclick="handleLogout()" class="text-gray-400 hover:text-red-500 ml-0.5 text-xs" title="登出">
                             <i class="fa-solid fa-right-from-bracket"></i>
                         </button>
                     </div>
                 `;
 
-                // 管理員權限開關
                 if (currentUser.isAdmin) {
                     adminControls.classList.remove('hidden');
                     document.getElementById('admin-member-add-btn').innerHTML = `
@@ -408,7 +385,7 @@
 
         function initAuthSelect() {
             const select = document.getElementById('auth-member-select');
-            select.innerHTML = '<option value="">-- 請選擇您的成員身分 --</option>';
+            select.innerHTML = '<option value="">-- 請選擇您的名字 --</option>';
             members.forEach(m => {
                 select.innerHTML += `<option value="${m.id}">${m.name} ${m.isAdmin ? '(Admin)' : ''}</option>`;
             });
@@ -417,7 +394,7 @@
         function handleLogin() {
             const selectId = document.getElementById('auth-member-select').value;
             if (!selectId) {
-                alert('請先選擇您的成員身分！');
+                alert('請先選擇您的名字！');
                 return;
             }
             currentUserId = selectId;
@@ -431,23 +408,20 @@
             checkAuth();
         }
 
-        // 分頁切換
         function switchTab(tabName) {
-            const tabs = ['classes', 'finance', 'members'];
-            tabs.forEach(t => {
+            ['classes', 'finance', 'members'].forEach(t => {
                 const btn = document.getElementById(`tab-${t}-btn`);
                 const section = document.getElementById(`section-${t}`);
                 if (t === tabName) {
-                    btn.className = 'flex-1 py-2 text-xs font-bold rounded-lg transition text-brand bg-pink-50 shadow-xs flex items-center justify-center space-x-1.5';
+                    btn.className = 'flex-1 py-2 text-xs font-bold rounded-lg transition text-brand bg-pink-50 shadow-xs flex items-center justify-center space-x-1';
                     section.classList.remove('hidden');
                 } else {
-                    btn.className = 'flex-1 py-2 text-xs font-bold rounded-lg transition text-gray-500 hover:text-gray-800 flex items-center justify-center space-x-1.5';
+                    btn.className = 'flex-1 py-2 text-xs font-bold rounded-lg transition text-gray-500 hover:text-gray-800 flex items-center justify-center space-x-1';
                     section.classList.add('hidden');
                 }
             });
         }
 
-        // 公告欄顯示
         function renderAnnouncement() {
             const card = document.getElementById('announcement-card');
             const txt = document.getElementById('announcement-text');
@@ -456,7 +430,6 @@
             card.classList.remove('hidden');
             txt.textContent = announcement;
 
-            // 如果是管理員，點擊可編輯公告
             if (currentUser && currentUser.isAdmin) {
                 card.classList.add('cursor-pointer', 'hover:opacity-95');
                 card.title = '點擊修改公告';
@@ -483,7 +456,6 @@
             renderAnnouncement();
         }
 
-        // 渲染課堂列表
         function renderClasses() {
             const container = document.getElementById('class-list-container');
             const countBadge = document.getElementById('class-count-badge');
@@ -492,9 +464,8 @@
             countBadge.textContent = `${classes.length} 堂`;
             if (classes.length === 0) {
                 container.innerHTML = `
-                    <div class="text-center py-8 bg-white rounded-2xl border border-pink-100">
-                        <i class="fa-solid fa-calendar-xmark text-3xl text-gray-300 mb-2"></i>
-                        <p class="text-xs text-gray-400">目前沒有任何課堂記錄</p>
+                    <div class="text-center py-10 bg-white rounded-xl border border-gray-100 text-gray-400 text-xs">
+                        目前沒有任何課堂記錄
                     </div>
                 `;
                 return;
@@ -505,53 +476,47 @@
                 const isAttending = cls.attendees.includes(currentUser.name);
                 const isCreatorOrAdmin = currentUser.isAdmin;
 
-                // 報名按鈕狀態
                 let joinBtnHtml = '';
                 if (cls.locked) {
                     if (isAttending) {
-                        joinBtnHtml = `<span class="text-xs bg-gray-100 text-gray-500 px-3 py-1.5 rounded-xl font-bold flex items-center space-x-1"><i class="fa-solid fa-lock text-[10px]"></i><span>已報名 (已封盤)</span></span>`;
+                        joinBtnHtml = `<span class="text-xs bg-gray-100 text-gray-500 px-3 py-1.5 rounded-lg font-bold flex items-center space-x-1"><i class="fa-solid fa-lock text-[10px]"></i><span>已報名 (已封盤)</span></span>`;
                     } else {
-                        joinBtnHtml = `<span class="text-xs bg-gray-100 text-gray-400 px-3 py-1.5 rounded-xl font-bold flex items-center space-x-1"><i class="fa-solid fa-lock text-[10px]"></i><span>已封盤</span></span>`;
+                        joinBtnHtml = `<span class="text-xs bg-gray-100 text-gray-400 px-3 py-1.5 rounded-lg font-bold flex items-center space-x-1"><i class="fa-solid fa-lock text-[10px]"></i><span>已封盤</span></span>`;
                     }
                 } else {
                     if (isAttending) {
-                        joinBtnHtml = `<button onclick="toggleJoin('${cls.id}')" class="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-bold rounded-xl transition flex items-center space-x-1"><i class="fa-solid fa-check"></i><span>已報名 (取消)</span></button>`;
+                        joinBtnHtml = `<button onclick="toggleJoin('${cls.id}')" class="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-bold rounded-lg transition flex items-center space-x-1"><i class="fa-solid fa-check"></i><span>已報名 (取消)</span></button>`;
                     } else {
-                        joinBtnHtml = `<button onclick="toggleJoin('${cls.id}')" class="px-3 py-1.5 bg-brand hover:bg-brand-dark text-white text-xs font-bold rounded-xl shadow-xs transition flex items-center space-x-1"><i class="fa-solid fa-user-plus"></i><span>我要報名</span></button>`;
+                        joinBtnHtml = `<button onclick="toggleJoin('${cls.id}')" class="px-3 py-1.5 bg-brand hover:bg-brand-dark text-white text-xs font-bold rounded-lg shadow-xs transition flex items-center space-x-1"><i class="fa-solid fa-user-plus"></i><span>我要報名</span></button>`;
                     }
                 }
 
-                // 管理員動作按鈕
                 let adminActionsHtml = '';
                 if (isCreatorOrAdmin) {
                     adminActionsHtml = `
                         <div class="flex items-center space-x-1 ml-auto">
-                            <button onclick="editClass('${cls.id}')" class="p-1.5 text-gray-400 hover:text-brand transition" title="編輯課堂">
+                            <button onclick="editClass('${cls.id}')" class="p-1 text-gray-400 hover:text-brand transition" title="編輯課堂">
                                 <i class="fa-solid fa-pen-to-square text-xs"></i>
                             </button>
-                            <button onclick="deleteClass('${cls.id}')" class="p-1.5 text-gray-400 hover:text-red-500 transition" title="刪除課堂">
+                            <button onclick="deleteClass('${cls.id}')" class="p-1 text-gray-400 hover:text-red-500 transition" title="刪除課堂">
                                 <i class="fa-solid fa-trash-can text-xs"></i>
                             </button>
                         </div>
                     `;
                 }
 
-                // 學員清單標籤
-                let attendeeTags = cls.attendees.map(name => `<span class="bg-pink-50 text-brand-dark text-[10px] px-2 py-0.5 rounded-md font-medium">${name}</span>`).join(' ');
+                let attendeeTags = cls.attendees.map(name => `<span class="bg-gray-100 text-gray-700 text-[10px] px-2 py-0.5 rounded font-medium">${name}</span>`).join(' ');
                 if (cls.attendees.length === 0) {
                     attendeeTags = `<span class="text-[10px] text-gray-400 italic">暫無學員報名</span>`;
                 }
 
                 const cardHtml = `
-                    <div class="bg-white rounded-2xl p-4 shadow-sm border border-pink-100 relative overflow-hidden transition hover:shadow-md">
-                        ${cls.locked ? '<div class="absolute top-0 right-0 bg-gray-400 text-white text-[9px] px-2 py-0.5 rounded-bl-lg font-bold">已封盤</div>' : ''}
+                    <div class="bg-white rounded-xl p-4 shadow-xs border border-gray-100 relative overflow-hidden transition hover:shadow-sm">
+                        ${cls.locked ? '<div class="absolute top-0 right-0 bg-gray-400 text-white text-[9px] px-2 py-0.5 rounded-bl font-bold">已封盤</div>' : ''}
                         
-                        <!-- 標題與基本資訊 -->
                         <div class="flex justify-between items-start mb-2">
                             <div>
-                                <h3 class="font-bold text-gray-800 text-sm flex items-center space-x-1.5">
-                                    <span>${cls.title}</span>
-                                </h3>
+                                <h3 class="font-bold text-gray-800 text-sm">${cls.title}</h3>
                                 <p class="text-xs text-gray-500 flex items-center space-x-2 mt-0.5">
                                     <span><i class="fa-regular fa-calendar mr-1 text-brand"></i>${cls.date}</span>
                                     <span><i class="fa-regular fa-clock mr-1 text-brand"></i>${cls.time}</span>
@@ -560,23 +525,19 @@
                             ${adminActionsHtml}
                         </div>
 
-                        <!-- 財務與付款人資訊 -->
-                        <div class="bg-pink-50/50 rounded-xl p-2.5 mb-3 text-xs grid grid-cols-2 gap-2 border border-pink-100/60">
+                        <div class="bg-gray-50 rounded-lg p-2.5 mb-3 text-xs grid grid-cols-2 gap-2 border border-gray-100">
                             <div>
                                 <span class="text-gray-400">學費:</span> <strong class="text-gray-700">$${cls.fee}/位</strong>
-                                <div class="text-[10px] text-brand-dark mt-0.5">付款人: <strong>${cls.feePayer || '未指定'}</strong></div>
+                                <div class="text-[10px] text-gray-500 mt-0.5">付款人: <strong>${cls.feePayer || '未指定'}</strong></div>
                             </div>
                             <div>
                                 <span class="text-gray-400">場租:</span> <strong class="text-gray-700">$${cls.rent}</strong>
-                                <div class="text-[10px] text-brand-dark mt-0.5">付款人: <strong>${cls.rentPayer || '未指定'}</strong></div>
+                                <div class="text-[10px] text-gray-500 mt-0.5">付款人: <strong>${cls.rentPayer || '未指定'}</strong></div>
                             </div>
                         </div>
 
-                        <!-- 報名名單 -->
                         <div class="mb-3">
-                            <div class="flex justify-between items-center text-xs text-gray-500 mb-1">
-                                <span>報名名單 (${cls.attendees.length}人):</span>
-                            </div>
+                            <div class="text-xs text-gray-400 mb-1">報名名單 (${cls.attendees.length}人):</div>
                             <div class="flex flex-wrap gap-1">
                                 ${attendeeTags}
                             </div>
@@ -585,14 +546,14 @@
                         <!-- 底部按鈕區：👀 睇吓盆數掣，加返深啡色外框 -->
                         <div class="flex justify-between items-center pt-2 border-t border-gray-100">
                             ${joinBtnHtml}
-                            <button onclick="togglePoonSee('${cls.id}')" class="px-3 py-1.5 bg-white hover:bg-amber-50 text-amber-800 text-xs font-bold rounded-xl border border-amber-900 shadow-xs transition flex items-center space-x-1">
+                            <button onclick="togglePoonSee('${cls.id}')" class="px-3 py-1.5 bg-white hover:bg-amber-50 text-amber-900 text-xs font-bold rounded-lg border border-amber-900 shadow-xs transition flex items-center space-x-1">
                                 <i class="fa-solid fa-eye text-amber-900"></i>
                                 <span>睇吓盆數</span>
                             </button>
                         </div>
 
                         <!-- 隱藏的單堂盆數明細區 -->
-                        <div id="poonsee-${cls.id}" class="hidden mt-3 pt-3 border-t border-dashed border-amber-200 bg-amber-50/40 p-3 rounded-xl text-xs space-y-1.5 fade-in">
+                        <div id="poonsee-${cls.id}" class="hidden mt-3 pt-3 border-t border-dashed border-amber-200 bg-amber-50/40 p-3 rounded-lg text-xs space-y-1.5 fade-in">
                             <div class="font-bold text-amber-900 mb-1 flex items-center space-x-1">
                                 <i class="fa-solid fa-receipt"></i>
                                 <span>[${cls.title}] 盆數明細：</span>
@@ -615,7 +576,6 @@
             });
         }
 
-        // 切換報名狀態
         function toggleJoin(classId) {
             const cls = classes.find(c => c.id === classId);
             const currentUser = members.find(m => m.id === currentUserId);
@@ -632,7 +592,6 @@
             renderFinance();
         }
 
-        // 單堂「睇吓盆數」展開/收起
         function togglePoonSee(classId) {
             const el = document.getElementById(`poonsee-${classId}`);
             if (el.classList.contains('hidden')) {
@@ -642,36 +601,23 @@
             }
         }
 
-        // 渲染整體「婆仔數」財務統計
-        // 規則 2、3、4 實現：
-        // 2) 如果課堂的學費付款人係成員A，咁成員A便已付了該課堂的（學費價錢乘以該堂的報名人數）咁多錢
-        // 3) 如果場租付款人係成員A，咁成員A便已付了該堂場租咁多錢
-        // 4) 最後在睇吓盆數時，成員A已付的總數，就係上面第二第三點的價錢總和
         function renderFinance() {
             const container = document.getElementById('finance-summary-container');
-            
-            // 初始化每位成員的財務統計
             let stats = {};
             members.forEach(m => {
-                stats[m.name] = {
-                    totalPaid: 0,
-                    details: []
-                };
+                stats[m.name] = { totalPaid: 0, details: [] };
             });
 
-            // 計算各堂課的付款金額
             classes.forEach(cls => {
                 const headCount = cls.attendees.length;
                 const totalFeeAmount = cls.fee * headCount;
                 const rentAmount = Number(cls.rent);
 
-                // 學費付款人累計
                 if (cls.feePayer && stats[cls.feePayer]) {
                     stats[cls.feePayer].totalPaid += totalFeeAmount;
                     stats[cls.feePayer].details.push(`《${cls.title}》學費：$${totalFeeAmount} (${cls.fee}×${headCount}人)`);
                 }
 
-                // 場租付款人累計
                 if (cls.rentPayer && stats[cls.rentPayer]) {
                     stats[cls.rentPayer].totalPaid += rentAmount;
                     stats[cls.rentPayer].details.push(`《${cls.title}》場租：$${rentAmount}`);
@@ -679,30 +625,26 @@
             });
 
             container.innerHTML = '';
-            let hasAnyPaid = false;
-
             members.forEach(m => {
                 const data = stats[m.name];
-                hasAnyPaid = true;
-
                 let detailsHtml = data.details.map(d => `<li class="text-[11px] text-gray-500">• ${d}</li>`).join('');
                 if (data.details.length === 0) {
                     detailsHtml = `<li class="text-[11px] text-gray-400 italic">• 暫無代付記錄</li>`;
                 }
 
                 const rowHtml = `
-                    <div class="bg-gray-50 rounded-xl p-3 border border-gray-100 mb-2">
+                    <div class="bg-gray-50 rounded-lg p-3 border border-gray-100 mb-2">
                         <div class="flex justify-between items-center mb-1">
                             <span class="font-bold text-gray-800 text-xs flex items-center space-x-1.5">
-                                <i class="fa-solid fa-user text-brand text-[10px]"></i>
+                                <i class="fa-solid fa-user text-gray-400 text-[10px]"></i>
                                 <span>${m.name}</span>
-                                ${m.isAdmin ? '<span class="text-[9px] bg-pink-100 text-brand px-1.5 py-0.2 rounded-full">Admin</span>' : ''}
+                                ${m.isAdmin ? '<span class="text-[9px] bg-pink-100 text-brand px-1.5 py-0.2 rounded font-medium">Admin</span>' : ''}
                             </span>
-                            <span class="text-xs font-extrabold text-brand-dark bg-white px-2.5 py-1 rounded-lg border border-pink-100 shadow-xs">
+                            <span class="text-xs font-bold text-brand bg-white px-2 py-0.5 rounded border border-pink-100 shadow-xs">
                                 已付總數：$${data.totalPaid}
                             </span>
                         </div>
-                        <ul class="pl-2 space-y-0.5 mt-1.5">
+                        <ul class="pl-2 space-y-0.5 mt-1">
                             ${detailsHtml}
                         </ul>
                     </div>
@@ -711,7 +653,6 @@
             });
         }
 
-        // 渲染成員名單
         function renderMembers() {
             const container = document.getElementById('member-list-container');
             const currentUser = members.find(m => m.id === currentUserId);
@@ -730,11 +671,11 @@
                 const itemHtml = `
                     <div class="py-2.5 flex justify-between items-center">
                         <div class="flex items-center space-x-2">
-                            <div class="w-7 h-7 bg-pink-100 text-brand-dark rounded-full flex items-center justify-center text-xs font-bold">
+                            <div class="w-7 h-7 bg-gray-100 text-gray-600 rounded-full flex items-center justify-center text-xs font-bold">
                                 ${m.name.charAt(0).toUpperCase()}
                             </div>
                             <span class="text-xs font-bold text-gray-700">${m.name}</span>
-                            ${m.isAdmin ? '<span class="text-[9px] bg-brand text-white px-1.5 py-0.2 rounded-full font-medium">管理員</span>' : ''}
+                            ${m.isAdmin ? '<span class="text-[9px] bg-brand text-white px-1.5 py-0.2 rounded font-medium">管理員</span>' : ''}
                         </div>
                         ${deleteBtnHtml}
                     </div>
@@ -743,13 +684,11 @@
             });
         }
 
-        // 彈出新增/編輯課堂 Modal
         function openClassModal(classId = null) {
             const modal = document.getElementById('class-modal');
             const titleEl = document.getElementById('class-modal-title');
             const form = document.getElementById('class-form');
             
-            // 填充付款人下拉選單
             const feePayerSelect = document.getElementById('input-fee-payer');
             const rentPayerSelect = document.getElementById('input-rent-payer');
             
@@ -780,7 +719,6 @@
                 }
             } else {
                 titleEl.textContent = '新增課堂';
-                // 預設日期為今日
                 document.getElementById('input-date').value = new Date().toISOString().split('T')[0];
             }
 
@@ -824,15 +762,7 @@
             } else {
                 const newCls = {
                     id: 'c_' + Date.now(),
-                    title,
-                    date,
-                    time,
-                    fee,
-                    rent,
-                    feePayer,
-                    rentPayer,
-                    instructor,
-                    locked,
+                    title, date, time, fee, rent, feePayer, rentPayer, instructor, locked,
                     attendees: []
                 };
                 classes.push(newCls);
@@ -853,7 +783,6 @@
             }
         }
 
-        // 成員相關 Modal
         function openMemberModal() {
             document.getElementById('input-new-member-name').value = '';
             document.getElementById('input-new-member-admin').checked = false;
@@ -878,13 +807,7 @@
                 return;
             }
 
-            const newMem = {
-                id: 'm_' + Date.now(),
-                name,
-                isAdmin
-            };
-
-            members.push(newMem);
+            members.push({ id: 'm_' + Date.now(), name, isAdmin });
             saveData();
             closeMemberModal();
             initAuthSelect();
@@ -899,7 +822,7 @@
             if (confirm(`確定要刪除成員 [${target.name}] 嗎？`)) {
                 members = members.filter(m => m.id !== memberId);
                 saveData();
-                initAuthSelects();
+                initAuthSelect();
                 checkAuth();
                 renderMembers();
                 renderFinance();
