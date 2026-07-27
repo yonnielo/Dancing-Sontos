@@ -770,7 +770,7 @@
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
   import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, signOut, onAuthStateChanged, deleteUser } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-  import { getFirestore, collection, addDoc, getDocs, doc, setDoc, getDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+  import { getFirestore, collection, addDoc, getDocs, doc, setDoc, getDoc, updateDoc, deleteDoc, query, where } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyB2ky_jGsp4Me5XNXVpvow5oUAV-ME6oG8",
@@ -834,7 +834,18 @@
 
     try {
       if(isRegisterMode) {
-        const name = document.getElementById('auth-name').value || "舞者";
+        const name = document.getElementById('auth-name').value.trim() || "舞者";
+        
+        // 檢查現時用戶中有冇相同的用戶暱稱
+        const usersRef = collection(db, "users");
+        const q = query(usersRef, where("name", "==", name));
+        const querySnapshot = await getDocs(q);
+        
+        if (!querySnapshot.empty) {
+          alert("此暱稱已經被使用，請改另一個名字！");
+          return;
+        }
+
         const res = await createUserWithEmailAndPassword(auth, email, password);
         await setDoc(doc(db, "users", res.user.uid), { name, email, role: "user" });
         alert("註冊成功！");
@@ -1496,7 +1507,7 @@
             <td style="padding:4px; border:1px solid var(--pojai-border); font-size:11px;">
               <div class="flex between" style="align-items:center;">
                 <span>$${roundedShare}</span>
-                ${(!isSettled && canManage) ? `<button onclick="deleteMiscItem('${c.id}', ${idx})" style="width:auto; margin:0; padding:1px 4px; font-size:12px; background:transparent; color:#be123c; border:none; box-shadow:none;">❌</button>` : ''}
+                {(!isSettled && canManage) ? `<button onclick="deleteMiscItem('${c.id}', ${idx})" style="width:auto; margin:0; padding:1px 4px; font-size:12px; background:transparent; color:#be123c; border:none; box-shadow:none;">❌</button>` : ''}
               </div>
             </td>
           </tr>
