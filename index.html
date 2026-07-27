@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
@@ -1490,7 +1491,7 @@
             <td style="padding:4px; border:1px solid var(--pojai-border); font-size:11px;">
               <div class="flex between" style="align-items:center;">
                 <span>$${roundedShare}</span>
-                {(!isSettled && canManage) ? `<button onclick="deleteMiscItem('${c.id}', ${idx})" style="width:auto; margin:0; padding:1px 4px; font-size:12px; background:transparent; color:#be123c; border:none; box-shadow:none;">❌</button>` : ''}
+                ${(!isSettled && canManage) ? `<button onclick="deleteMiscItem('${c.id}', ${idx})" style="width:auto; margin:0; padding:1px 4px; font-size:12px; background:transparent; color:#be123c; border:none; box-shadow:none;">❌</button>` : ''}
               </div>
             </td>
           </tr>
@@ -2042,7 +2043,7 @@
     }
   };
 
-  window.handlePaymentCheckboxClick = async (classId, txIndex, el) => {
+  window.handlePaymentCheckboxClick = (el) => {
     if (el.innerText === "✅") {
       return;
     }
@@ -2068,23 +2069,22 @@
       document.body.removeChild(overlay);
     });
 
-    document.getElementById('modal-pay-yes').addEventListener('click', async () => {
+    document.getElementById('modal-pay-yes').addEventListener('click', () => {
       document.body.removeChild(overlay);
       
-      const classObj = classesData.find(c => c.id === classId);
-      if (!classObj) return;
-
-      const transactions = classObj.settlementTransactions || [];
-      if (transactions[txIndex]) {
-        transactions[txIndex].paid = true;
-      }
-
-      try {
-        await updateDoc(doc(db, "classes", classId), { transactions });
-        loadClasses();
-      } catch(e) {
-        alert("儲存付款狀態失敗: " + e.message);
-      }
+      el.innerText = "✅";
+      el.style.background = "#fff";
+      el.style.cursor = "default";
+      
+      const userName = (currentUserProfile && currentUserProfile.name) ? currentUserProfile.name : '用家';
+      
+      const infoSpan = document.createElement('span');
+      infoSpan.style.fontSize = '11px';
+      infoSpan.style.marginRight = '6px';
+      infoSpan.style.color = '#713f12';
+      infoSpan.innerText = userName;
+      
+      el.parentNode.insertBefore(infoSpan, el);
     });
   };
 
@@ -2210,12 +2210,12 @@
       amount = Math.round(amount * 100) / 100;
 
       if (amount > 0) {
-        transactions.push({
-          from: debtor.name,
-          to: creditor.name,
-          amount: amount,
-          paid: false
-        });
+        transactions.push(`
+          <div style="display: flex; justify-content: flex-end; align-items: center; margin-bottom: 4px; gap: 6px;">
+            <span>👉 <b>${debtor.name}</b> 轉帳 <b>$${amount}</b> 畀 <b>${creditor.name}</b></span>
+            <div onclick="handlePaymentCheckboxClick(this)" style="width: 20px; height: 20px; border: 1px solid #d1d5db; background: #e5e7eb; border-radius: 3px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 12px; user-select: none;"></div>
+          </div>
+        `);
       }
 
       debtor.net -= amount;
@@ -2226,24 +2226,7 @@
     }
 
     let costHtml = memberCostSummary.length > 0 ? memberCostSummary.join('<br>') : '暫無開支記錄';
-    
-    let txHtml = '';
-    if (transactions.length > 0) {
-      txHtml = transactions.map((tx, idx) => {
-        const checkStatusHtml = tx.paid ? 
-          `<span style="font-size:11px; margin-right:6px; color:#713f12;">${tx.from}</span><span style="font-size:12px;">✅</span>` :
-          `<div onclick="handlePaymentCheckboxClick('${classId}', ${idx}, this)" style="width: 20px; height: 20px; border: 1px solid #d1d5db; background: #e5e7eb; border-radius: 3px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 12px; user-select: none;"></div>`;
-
-        return `
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; gap: 6px;">
-            <div style="text-align: left;">👉 <b>${tx.from}</b> 轉帳 <b>$${tx.amount}</b> 畀 <b>${tx.to}</b></div>
-            <div style="display: flex; align-items: center; gap: 4px;">${checkStatusHtml}</div>
-          </div>
-        `;
-      }).join('');
-    } else {
-      txHtml = '🎉 盤數清訖，無需轉帳！';
-    }
+    let txHtml = transactions.length > 0 ? transactions.join('') : '🎉 盤數清訖，無需轉帳！';
 
     const settlementResultHTML = `
       <div style="font-weight:bold; margin-bottom:4px; color:#9d174d;"> 每人總開支：</div>
@@ -2256,7 +2239,6 @@
     try {
       await updateDoc(doc(db, "classes", classId), { 
         sessions, 
-        settlementTransactions: transactions,
         settlementResult: settlementResultHTML 
       });
       loadClasses();
