@@ -1381,6 +1381,7 @@
       const classNameStyle = isCompleted ? 'color: #9ca3af;' : 'color: #831843;';
       const completedBadgeHtml = isCompleted ? `<span style="color: #9ca3af; font-size: 70%; margin-left: 6px; font-weight: normal;">（已完成）</span>` : '';
 
+      // 1）當課程已被定為（已完成），請將課程名稱背景方塊最左邊垂直的那條較深的粉紅色條，改成灰色
       const headerBorderColor = isCompleted ? '#9ca3af' : '#f472b6';
 
       const cleanedLeaderNote = c.leaderNote ? c.leaderNote.trim() : '';
@@ -1490,7 +1491,7 @@
             <td style="padding:4px; border:1px solid var(--pojai-border); font-size:11px;">
               <div class="flex between" style="align-items:center;">
                 <span>$${roundedShare}</span>
-                ${(!isSettled && canManage) ? `<button onclick="deleteMiscItem('${c.id}', ${idx})" style="width:auto; margin:0; padding:1px 4px; font-size:12px; background:transparent; color:#be123c; border:none; box-shadow:none;">❌</button>` : ''}
+                {(!isSettled && canManage) ? `<button onclick="deleteMiscItem('${c.id}', ${idx})" style="width:auto; margin:0; padding:1px 4px; font-size:12px; background:transparent; color:#be123c; border:none; box-shadow:none;">❌</button>` : ''}
               </div>
             </td>
           </tr>
@@ -2042,8 +2043,9 @@
     }
   };
 
+  // 修改點擊灰色小方格的互動邏輯：彈出提示窗與後續處理
   window.handlePaymentCheckboxClick = (el) => {
-    if (el.innerText === "✅") {
+    if (el.innerText.includes("✅")) {
       return;
     }
 
@@ -2071,19 +2073,16 @@
     document.getElementById('modal-pay-yes').addEventListener('click', () => {
       document.body.removeChild(overlay);
       
-      el.innerText = "✅";
-      el.style.background = "#fff";
+      const currentUserName = currentUserProfile ? (currentUserProfile.name || '用戶名') : '用戶名';
+      el.innerHTML = `${currentUserName}✅`;
+      el.style.width = "auto";
+      el.style.height = "auto";
+      el.style.border = "none";
+      el.style.background = "transparent";
       el.style.cursor = "default";
-      
-      const userName = (currentUserProfile && currentUserProfile.name) ? currentUserProfile.name : '用家';
-      
-      const infoSpan = document.createElement('span');
-      infoSpan.style.fontSize = '11px';
-      infoSpan.style.marginRight = '6px';
-      infoSpan.style.color = '#713f12';
-      infoSpan.innerText = userName;
-      
-      el.parentNode.insertBefore(infoSpan, el);
+      el.style.fontSize = "12px";
+      el.style.fontWeight = "bold";
+      el.style.color = "#713f12";
     });
   };
 
@@ -2211,8 +2210,8 @@
       if (amount > 0) {
         transactions.push(`
           <div style="display: flex; justify-content: flex-end; align-items: center; margin-bottom: 4px; gap: 6px;">
-            <span>👉 <b>${debtor.name}</b> 轉帳 <b>$${amount}</b> 畀 <b>${creditor.name}</b></span>
-            <div onclick="handlePaymentCheckboxClick(this)" style="width: 20px; height: 20px; border: 1px solid #d1d5db; background: #e5e7eb; border-radius: 3px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 12px; user-select: none;"></div>
+            <span style="text-align: left;">👉 <b>${debtor.name}</b> 轉帳 <b>$${amount}</b> 畀 <b>${creditor.name}</b></span>
+            <div onclick="handlePaymentCheckboxClick(this)" style="width: 20px; height: 20px; border: 1px solid #d1d5db; background: #e5e7eb; border-radius: 3px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 12px; user-select: none; flex-shrink: 0;"></div>
           </div>
         `);
       }
