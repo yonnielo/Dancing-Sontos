@@ -545,6 +545,46 @@
       background: #be123c;
       border-radius: 50%;
     }
+
+    /* 自定義 Confirm Modal 樣式 */
+    .custom-modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+    }
+    .custom-modal-box {
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      max-width: 320px;
+      width: 90%;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      text-align: center;
+    }
+    .custom-modal-text {
+      font-size: 14px;
+      font-weight: bold;
+      color: #1f2937;
+      margin-bottom: 15px;
+      white-space: pre-line;
+      line-height: 1.5;
+    }
+    .custom-modal-buttons {
+      display: flex;
+      gap: 10px;
+    }
+    .custom-modal-buttons button {
+      margin: 0;
+      padding: 8px;
+      font-size: 13px;
+    }
   </style>
 </head>
 <body>
@@ -681,10 +721,10 @@
         <label style="font-size: 12px; font-weight: bold;">誰能報讀 / 查看此課程：</label>
         <select id="access-type">
           <option value="all">全部人 (公開班)</option>
-          <option value="specific">指定成員 (私人小組班)</option>
+          <option value="specific" selected>指定成員 (私人小組班)</option>
         </select>
 
-        <div id="access-user-container" class="hidden" style="margin-bottom: 12px;">
+        <div id="access-user-container" style="margin-bottom: 12px;">
           <small style="color:#6b7280;">勾選可以查看與報名的成員：</small>
           <div id="all-users-checkboxes" class="user-select-list">
           </div>
@@ -759,9 +799,9 @@
   // 記錄每個課程當前啟用的 tab
   let activeTabState = {};
 
-  document.getElementById('toggle-create-btn').addEventListener('click', () => {
+  document.getElementById('toggle-create-btn').addEventListener('click', async () => {
     document.getElementById('create-class-form').classList.toggle('hidden');
-    loadAllUsers();
+    await loadAllUsers();
     renderFormCalendar();
   });
 
@@ -940,16 +980,17 @@
       const container = document.getElementById('all-users-checkboxes');
       container.innerHTML = allUsersList.map(u => {
         const userName = u.name || u.email || '未命名用戶';
+        const isSelf = currentUser && u.uid === currentUser.uid;
         return `
           <label class="user-select-item">
-            <input type="checkbox" value="${u.uid}" class="access-user-checkbox"> ${userName}
+            <input type="checkbox" value="${u.uid}" class="access-user-checkbox" ${isSelf ? 'checked' : ''}> ${userName}
           </label>
         `;
       }).join('');
 
       const optionsHtml = allUsersList.map(u => {
         const userName = u.name || u.email || '未命名用戶';
-        const isSelf = u.uid === currentUser.uid;
+        const isSelf = currentUser && u.uid === currentUser.uid;
         return `<option value="${u.uid}" ${isSelf ? 'selected' : ''}>${userName} ${isSelf ? '(班長/預設)' : ''}</option>`;
       }).join('');
 
@@ -1094,7 +1135,7 @@
         rentPayerUid: defaultRentPayerUid,
         rentPayerName: defaultRentPayerName,
         isClosed: false,
-        students: [] 
+        students: [{ uid: currentUser.uid, name: currentUserProfile.name || '班長' }] 
       };
     });
 
@@ -1557,7 +1598,7 @@
 
                 <hr style="border: none; border-top: 1px solid var(--pojai-border); margin: 10px 0;">
                 <div style="text-align: center; margin-bottom: 8px;">
-                  <button onclick="calculateSettlement('${c.id}')" class="btn-pojai" style="padding: 6px 16px; font-size: 13px; ${(!isLeader || isSettled) ? 'background: #d1d5db; color: #4b5563; cursor: not-allowed;' : ''}" ${isSettled ? 'disabled' : ''}>🧮 埋數</button>
+                  <button onclick="promptSettlement('${c.id}')" class="btn-pojai" style="padding: 6px 16px; font-size: 13px; ${(!isLeader || isSettled) ? 'background: #d1d5db; color: #4b5563; cursor: not-allowed;' : ''}" ${isSettled ? 'disabled' : ''}>🧮 埋數</button>
                 </div>
                 
                 <div id="settlement-result-${c.id}" class="${c.settlementResult ? '' : 'hidden'}" style="background: #fff; padding: 8px; border-radius: 6px; border: 1px solid var(--pojai-border); margin-top: 8px; font-size: 12px; color: var(--pojai-text);">${c.settlementResult || ''}</div>
@@ -1972,7 +2013,7 @@
     const payer = payerSelect.value;
     const participants = Array.from(partCbs).map(cb => cb.value);
 
-    if (!name) return alert("請輸入雜費項目名稱");
+    if (!name) return alert("請輸入項目名稱");
     if (amount <= 0) return alert("請輸入有效的總金額");
     if (participants.length === 0) return alert("請至少選擇一個有份的成員");
 
@@ -2014,11 +2055,43 @@
     }
   };
 
-  window.calculateSettlement = async (classId) => {
+  window.promptSettlement = (classId) => {
     const classObj = classesData.find(c => c.id === classId);
     if (!classObj) return;
     if (classObj.leaderId !== currentUser.uid) return alert("只有班長才可以按埋數！");
     if (!!classObj.settlementResult) return;
+
+    // 建立彈出視窗
+    const overlay = document.createElement('div');
+    overlay.className = 'custom-modal-overlay';
+    
+    const box = document.createElement('div');
+    box.className = 'custom-modal-box';
+    
+    box.innerHTML = `
+      <div class="custom-modal-text">🧛真係要埋數？撳咗就全部數冇得再郁，返唔到轉頭㗎啦！Sure?</div>
+      <div class="custom-modal-buttons">
+        <button id="modal-yes-btn" class="btn-pojai" style="flex:1;">是，埋數</button>
+        <button id="modal-no-btn" class="btn-gray-action" style="flex:1;">否，唔埋住</button>
+      </div>
+    `;
+    
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+
+    document.getElementById('modal-no-btn').addEventListener('click', () => {
+      document.body.removeChild(overlay);
+    });
+
+    document.getElementById('modal-yes-btn').addEventListener('click', async () => {
+      document.body.removeChild(overlay);
+      await calculateSettlement(classId);
+    });
+  };
+
+  window.calculateSettlement = async (classId) => {
+    const classObj = classesData.find(c => c.id === classId);
+    if (!classObj) return;
 
     activeTabState[classId] = 'pojai';
 
