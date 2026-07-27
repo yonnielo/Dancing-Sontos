@@ -2042,7 +2042,7 @@
     }
   };
 
-  window.handlePaymentCheckboxClick = async (el, classId, debtorName, creditorName, amount) => {
+  window.handlePaymentCheckboxClick = async (el, classId, txIndex) => {
     if (el.innerText === "✅") {
       return;
     }
@@ -2072,13 +2072,17 @@
       document.body.removeChild(overlay);
       
       const userName = (currentUserProfile && currentUserProfile.name) ? currentUserProfile.name : '用家';
-      const txKey = `${debtorName}_${creditorName}_${amount}`;
-
+      
       const classObj = classesData.find(c => c.id === classId);
       if (!classObj) return;
 
       const confirmedPayments = classObj.confirmedPayments || {};
-      confirmedPayments[txKey] = userName;
+      if (!confirmedPayments[txIndex]) {
+        confirmedPayments[txIndex] = [];
+      }
+      if (!confirmedPayments[txIndex].includes(userName)) {
+        confirmedPayments[txIndex].push(userName);
+      }
 
       try {
         await updateDoc(doc(db, "classes", classId), { confirmedPayments });
@@ -2200,7 +2204,7 @@
     let debtors = netList.filter(item => item.net > 0);   
     let creditors = netList.filter(item => item.net < 0); 
 
-    let transactions = [];
+    let transactionsData = [];
     let i = 0, j = 0;
     while (i < debtors.length && j < creditors.length) {
       let debtor = debtors[i];
@@ -2211,21 +2215,7 @@
       amount = Math.round(amount * 100) / 100;
 
       if (amount > 0) {
-        const txKey = `${debtor.name}_${creditor.name}_${amount}`;
-        const confirmedPayments = classObj.confirmedPayments || {};
-        const payerName = confirmedPayments[txKey];
-        const isPaid = !!payerName;
-
-        const rightSideHtml = isPaid ? 
-          `<span style="font-size:11px; margin-right:6px; color:#713f12;">${payerName}✅</span>` :
-          `<div onclick="handlePaymentCheckboxClick(this, '${classId}', '${debtor.name}', '${creditor.name}', ${amount})" style="width: 20px; height: 20px; border: 1px solid #d1d5db; background: #e5e7eb; border-radius: 3px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 12px; user-select: none;"></div>`;
-
-        transactions.push(`
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; gap: 6px;">
-            <div style="text-align: left;">👉 <b>${debtor.name}</b> 轉帳 <b>$${amount}</b> 畀 <b>${creditor.name}</b></div>
-            <div style="display: flex; align-items: center;">${rightSideHtml}</div>
-          </div>
-        `);
+        transactionsData.push({ debtor: debtor.name, amount, creditor: creditor.name });
       }
 
       debtor.net -= amount;
@@ -2235,26 +2225,113 @@
       if (Math.abs(creditor.net) < 0.01) j++;
     }
 
-    let costHtml = memberCostSummary.length > 0 ? memberCostSummary.join('<br>') : '暫無開支記錄';
-    let txHtml = transactions.length > 0 ? transactions.join('') : '🎉 盤數清訖，無需轉帳！';
-
-    const settlementResultHTML = `
-      <div style="font-weight:bold; margin-bottom:4px; color:#9d174d; text-align: left;"> 每人總開支：</div>
-      <div style="text-align: left;">${costHtml}</div>
-      <hr style="border:none; border-top:1px dashed var(--pojai-border); margin:6px 0;">
-      <div style="font-weight:bold; margin-bottom:4px; color:#9d174d; text-align: left;"> 找數方案 ：</div>
-      ${txHtml}
-    `;
+    const confirmedPayments = {};
 
     try {
       await updateDoc(doc(db, "classes", classId), { 
         sessions, 
-        settlementResult: settlementResultHTML 
+        transactionsData,
+        confirmedPayments,
+        settlementResult: "EXISTS" 
       });
       loadClasses();
     } catch(e) {
       alert("埋數儲存失敗: " + e.message);
     }
+  };
+
+  // 渲染埋數結果中的找數方案與小方格狀態
+  window.renderSettlementHtml = (classObj) => {
+    const memberCostSummary = [];
+    const sessions = classObj.sessions || {};
+    const dateKeys = Object.keys(sessions);
+    const balances = {}; 
+
+    dateKeys.forEach(dateStr => {
+      const sess = sessions[dateStr];
+      const students = sess.students || [];
+      const feeVal = Number(sess.fee !== undefined ? sess.fee : classObj.price) || 0;
+      const rentVal = Number(sess.rent || 0);
+      const enrolledCount = students.length;
+
+      const feePayerName = sess.feePayerName || classObj.leaderName;
+      const rentPayerName = sess.rentPayerName || classObj.leaderName;
+
+      if (!balances[feePayerName]) balances[feePayerName] = { paid: 0, cost: 0 };
+      if (!balances[rentPayerName]) balances[rentPayerName] = { paid: 0, cost: 0 };
+
+      balances[feePayerName].paid += (feeVal * enrolledCount);
+      balances[rentPayerName].paid += rentVal;
+
+      students.forEach(s => {
+        if (!balances[s.name]) balances[s.name] = { paid: 0, cost: 0 };
+        balances[s.name].cost += feeVal;
+        if (enrolledCount > 0) {
+          balances[s.name].cost += (rentVal / enrolledCount);
+        }
+      });
+    });
+
+    const miscExpenses = classObj.miscExpenses || [];
+    miscExpenses.forEach(item => {
+      const amount = Number(item.amount) || 0;
+      const payer = item.payer || classObj.leaderName;
+      const participants = item.participants || [];
+
+      if (!balances[payer]) balances[payer] = { paid: 0, cost: 0 };
+      balances[payer].paid += amount;
+
+      const partCount = participants.length;
+      if (partCount > 0) {
+        const share = amount / partCount;
+        participants.forEach(pName => {
+          if (!balances[pName]) balances[pName] = { paid: 0, cost: 0 };
+          balances[pName].cost += share;
+        });
+      }
+    });
+
+    Object.keys(balances).forEach(name => {
+      const data = balances[name];
+      const totalCost = Math.round((data.cost || 0) * 100) / 100;
+      if (totalCost > 0 || data.paid > 0) {
+        memberCostSummary.push(`👤 <b>${name}</b>：總開支 $${totalCost}`);
+      }
+    });
+
+    let costHtml = memberCostSummary.length > 0 ? memberCostSummary.join('<br>') : '暫無開支記錄';
+    const txData = classObj.transactionsData || [];
+    const confirmedPayments = classObj.confirmedPayments || {};
+
+    let transactionsHtml = txData.map((tx, idx) => {
+      const payers = confirmedPayments[idx] || [];
+      const isConfirmed = payers.length > 0;
+      let rightContent = '';
+
+      if (isConfirmed) {
+        const namesStr = payers.join(', ');
+        rightContent = `<span style="font-size:11px; color:#713f12; font-weight:bold;">${namesStr}✅</span>`;
+      } else {
+        rightContent = `<div onclick="handlePaymentCheckboxClick(this, '${classObj.id}', ${idx})" style="width: 20px; height: 20px; border: 1px solid #d1d5db; background: #e5e7eb; border-radius: 3px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 12px; user-select: none;"></div>`;
+      }
+
+      return `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; gap: 6px;">
+          <span>👉 <b>${tx.debtor}</b> 轉帳 <b>$${tx.amount}</b> 畀 <b>${tx.creditor}</b></span>
+          <div>${rightContent}</div>
+        </div>
+      `;
+    }).join('');
+
+    let txHtml = transactionsHtml || '🎉 盤數清訖，無需轉帳！';
+
+    return `
+      <div style="font-weight:bold; margin-bottom:4px; color:#9d174d;"> 每人總開支：</div>
+      ${costHtml}
+      <hr style="border:none; border-top:1px dashed var(--pojai-border); margin:6px 0;">
+      <div style="font-weight:bold; margin-bottom:4px; color:#9d174d;"> 找數方案 ：</div>
+      ${txHtml}
+    `;
   };
 
   window.toggleSessionJoin = async (classId, dateStr, isJoining) => {
