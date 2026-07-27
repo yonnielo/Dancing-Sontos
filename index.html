@@ -756,13 +756,6 @@
         </div>
         <div class="calendar-grid" id="calendar-days" style="margin-top:4px;"></div>
       </div>
-
-      <!-- 底部新增的的三個按鈕 -->
-      <div class="flex" style="margin-top: 10px; gap: 6px;">
-        <button id="filter-joined-btn" class="btn-gray-action" style="flex:1; margin:0; font-size: 12px; padding: 6px;">已報名</button>
-        <button id="filter-private-btn" class="btn-gray-action" style="flex:1; margin:0; font-size: 12px; padding: 6px;">私人班</button>
-        <button id="filter-public-btn" class="btn-gray-action" style="flex:1; margin:0; font-size: 12px; padding: 6px;">公開班</button>
-      </div>
     </div>
 
     <div class="card">
@@ -1102,20 +1095,20 @@
   document.getElementById('add-class-btn').addEventListener('click', async () => {
     const name = document.getElementById('class-name').value.trim();
     
-    // 計算課程名稱 unit (中文字佔2個unit, emoji佔3個unit，英文字佔1個unit)
-    let charWidth = 0;
-    const emojiRegex = /(\p{Extended_Pictographic}|\p{Emoji_Presentation}|\u200d)/u;
+    // 檢查課程名稱 unit：中文字 2 unit，emoji 3 unit，英文字 1 unit
+    let unitCount = 0;
+    const emojiRegex = /(\p{Extended_Pictographic}|\p{Emoji_Presentation})/u;
     for (const char of name) {
       if (/[\u4e00-\u9fa5]/.test(char)) {
-        charWidth += 2;
+        unitCount += 2;
       } else if (emojiRegex.test(char)) {
-        charWidth += 3;
+        unitCount += 3;
       } else {
-        charWidth += 1;
+        unitCount += 1;
       }
     }
-    if (charWidth > 30) {
-      return alert("課程名稱加起來超過30個unit限制，不允許繼續輸入！");
+    if (unitCount > 20) {
+      return alert("課程名太長，最多10個中文字/20個英文字");
     }
 
     const leaderNote = document.getElementById('class-leader-note').value.trim();
@@ -1338,34 +1331,6 @@
   document.getElementById('next-month').addEventListener('click', () => {
     currentDate.setMonth(currentDate.getMonth() + 1);
     renderCalendar();
-  });
-
-  // 月曆底部按鈕點擊事件處理
-  document.getElementById('filter-joined-btn').addEventListener('click', () => {
-    classesData.sort((a, b) => {
-      const aJoined = Object.values(a.sessions || {}).some(s => (s.students || []).some(st => st.uid === currentUser?.uid));
-      const bJoined = Object.values(b.sessions || {}).some(s => (s.students || []).some(st => st.uid === currentUser?.uid));
-      return (bJoined ? 1 : 0) - (aJoined ? 1 : 0);
-    });
-    renderClassList();
-  });
-
-  document.getElementById('filter-private-btn').addEventListener('click', () => {
-    classesData.sort((a, b) => {
-      const aPriv = a.accessType === 'specific' ? 1 : 0;
-      const bPriv = b.accessType === 'specific' ? 1 : 0;
-      return bPriv - aPriv;
-    });
-    renderClassList();
-  });
-
-  document.getElementById('filter-public-btn').addEventListener('click', () => {
-    classesData.sort((a, b) => {
-      const aPub = a.accessType !== 'specific' ? 1 : 0;
-      const bPub = b.accessType !== 'specific' ? 1 : 0;
-      return bPub - aPub;
-    });
-    renderClassList();
   });
 
   function renderClassList() {
@@ -1998,18 +1963,15 @@
 
     const newClassName = document.getElementById(`edit-class-name-${classId}`).value.trim();
     let charWidth = 0;
-    const emojiRegex = /(\p{Extended_Pictographic}|\p{Emoji_Presentation}|\u200d)/u;
     for (const char of newClassName) {
       if (/[\u4e00-\u9fa5]/.test(char)) {
         charWidth += 2;
-      } else if (emojiRegex.test(char)) {
-        charWidth += 3;
       } else {
         charWidth += 1;
       }
     }
     if (charWidth > 30) {
-      return alert("課程名稱加起來超過30個unit限制，不允許繼續輸入！");
+      return alert("課程名稱限制在15個中文字或30個英文字的寬度內");
     }
 
     const newLeaderNote = document.getElementById(`edit-leader-note-${classId}`).value.trim();
