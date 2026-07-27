@@ -1491,7 +1491,7 @@
             <td style="padding:4px; border:1px solid var(--pojai-border); font-size:11px;">
               <div class="flex between" style="align-items:center;">
                 <span>$${roundedShare}</span>
-                {(!isSettled && canManage) ? `<button onclick="deleteMiscItem('${c.id}', ${idx})" style="width:auto; margin:0; padding:1px 4px; font-size:12px; background:transparent; color:#be123c; border:none; box-shadow:none;">❌</button>` : ''}
+                ${(!isSettled && canManage) ? `<button onclick="deleteMiscItem('${c.id}', ${idx})" style="width:auto; margin:0; padding:1px 4px; font-size:12px; background:transparent; color:#be123c; border:none; box-shadow:none;">❌</button>` : ''}
               </div>
             </td>
           </tr>
@@ -2043,7 +2043,9 @@
     }
   };
 
+  // 2）2）修改點擊灰色小方格的互動邏輯：彈出提示窗與後續處理
   window.handlePaymentCheckboxClick = (el) => {
+    // 檢查是否已經變成 ✅，如果是則不能再變回小方格
     if (el.innerText === "✅") {
       return;
     }
@@ -2057,7 +2059,7 @@
     box.innerHTML = `
       <div class="custom-modal-text">🧟‍♀️你真係比咗錢至好撳呀，呢度唔歡迎騙子</div>
       <div class="custom-modal-buttons" style="flex-direction: column; gap: 8px;">
-        <button id="modal-pay-yes" class="btn-pojai" style="width: 100%;">真比咗🤑</button>
+        <button id="modal-pay-yes" class="btn-pojai" style="width: 100%;">信我，真比咗🤑</button>
         <button id="modal-pay-no" class="btn-gray-action" style="width: 100%;">🙈一時撳錯，未比</button>
       </div>
     `;
@@ -2072,12 +2074,14 @@
     document.getElementById('modal-pay-yes').addEventListener('click', () => {
       document.body.removeChild(overlay);
       
+      // 小方格變成 ✅
       el.innerText = "✅";
       el.style.background = "#fff";
       el.style.cursor = "default";
       
+      // 同時在✅左邊列出按掣用戶名稱及當刻日期
       const now = new Date();
-      const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+      const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate().padStart ? now.getDate() : '0' + now.getDate()).slice(-2)} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
       const userName = (currentUserProfile && currentUserProfile.name) ? currentUserProfile.name : '用家';
       
       const infoSpan = document.createElement('span');
