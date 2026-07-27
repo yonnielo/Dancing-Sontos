@@ -2042,7 +2042,7 @@
     }
   };
 
-  window.handlePaymentCheckboxClick = async (el, classId, txIndex) => {
+  window.handlePaymentCheckboxClick = async (el, classId, debtorName, creditorName, amount) => {
     if (el.innerText === "✅") {
       return;
     }
@@ -2071,16 +2071,17 @@
     document.getElementById('modal-pay-yes').addEventListener('click', async () => {
       document.body.removeChild(overlay);
       
+      const userName = (currentUserProfile && currentUserProfile.name) ? currentUserProfile.name : '用家';
+      const txKey = `${debtorName}_${creditorName}_${amount}`;
+
       const classObj = classesData.find(c => c.id === classId);
       if (!classObj) return;
 
-      const confirmedPayers = classObj.confirmedPayers || {};
-      confirmedPayers[txIndex] = {
-        name: (currentUserProfile && currentUserProfile.name) ? currentUserProfile.name : '用家'
-      };
+      const confirmedPayments = classObj.confirmedPayments || {};
+      confirmedPayments[txKey] = userName;
 
       try {
-        await updateDoc(doc(db, "classes", classId), { confirmedPayers });
+        await updateDoc(doc(db, "classes", classId), { confirmedPayments });
         loadClasses();
       } catch(e) {
         alert("更新付款狀態失敗: " + e.message);
@@ -2210,8 +2211,21 @@
       amount = Math.round(amount * 100) / 100;
 
       if (amount > 0) {
-        const txIdx = transactions.length;
-        transactions.push({ debtor: debtor.name, amount, creditor: creditor.name, txIdx });
+        const txKey = `${debtor.name}_${creditor.name}_${amount}`;
+        const confirmedPayments = classObj.confirmedPayments || {};
+        const payerName = confirmedPayments[txKey];
+        const isPaid = !!payerName;
+
+        const rightSideHtml = isPaid ? 
+          `<span style="font-size:11px; margin-right:6px; color:#713f12;">${payerName}✅</span>` :
+          `<div onclick="handlePaymentCheckboxClick(this, '${classId}', '${debtor.name}', '${creditor.name}', ${amount})" style="width: 20px; height: 20px; border: 1px solid #d1d5db; background: #e5e7eb; border-radius: 3px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 12px; user-select: none;"></div>`;
+
+        transactions.push(`
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; gap: 6px;">
+            <div style="text-align: left;">👉 <b>${debtor.name}</b> 轉帳 <b>$${amount}</b> 畀 <b>${creditor.name}</b></div>
+            <div style="display: flex; align-items: center;">${rightSideHtml}</div>
+          </div>
+        `);
       }
 
       debtor.net -= amount;
@@ -2221,12 +2235,21 @@
       if (Math.abs(creditor.net) < 0.01) j++;
     }
 
+    let costHtml = memberCostSummary.length > 0 ? memberCostSummary.join('<br>') : '暫無開支記錄';
+    let txHtml = transactions.length > 0 ? transactions.join('') : '🎉 盤數清訖，無需轉帳！';
+
+    const settlementResultHTML = `
+      <div style="font-weight:bold; margin-bottom:4px; color:#9d174d; text-align: left;"> 每人總開支：</div>
+      <div style="text-align: left;">${costHtml}</div>
+      <hr style="border:none; border-top:1px dashed var(--pojai-border); margin:6px 0;">
+      <div style="font-weight:bold; margin-bottom:4px; color:#9d174d; text-align: left;"> 找數方案 ：</div>
+      ${txHtml}
+    `;
+
     try {
       await updateDoc(doc(db, "classes", classId), { 
         sessions, 
-        settlementBalances: memberCostSummary,
-        settlementTransactions: transactions,
-        confirmedPayers: {}
+        settlementResult: settlementResultHTML 
       });
       loadClasses();
     } catch(e) {
