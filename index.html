@@ -2042,7 +2042,7 @@
     }
   };
 
-  window.handlePaymentCheckboxClick = (el) => {
+  window.handlePaymentCheckboxClick = async (el, classId, txIndex) => {
     if (el.innerText === "✅") {
       return;
     }
@@ -2068,22 +2068,23 @@
       document.body.removeChild(overlay);
     });
 
-    document.getElementById('modal-pay-yes').addEventListener('click', () => {
+    document.getElementById('modal-pay-yes').addEventListener('click', async () => {
       document.body.removeChild(overlay);
       
-      el.innerText = "✅";
-      el.style.background = "#fff";
-      el.style.cursor = "default";
-      
-      const userName = (currentUserProfile && currentUserProfile.name) ? currentUserProfile.name : '用家';
-      
-      const infoSpan = document.createElement('span');
-      infoSpan.style.fontSize = '11px';
-      infoSpan.style.marginRight = '6px';
-      infoSpan.style.color = '#713f12';
-      infoSpan.innerText = userName;
-      
-      el.parentNode.insertBefore(infoSpan, el);
+      const classObj = classesData.find(c => c.id === classId);
+      if (!classObj) return;
+
+      const confirmedPayers = classObj.confirmedPayers || {};
+      confirmedPayers[txIndex] = {
+        name: (currentUserProfile && currentUserProfile.name) ? currentUserProfile.name : '用家'
+      };
+
+      try {
+        await updateDoc(doc(db, "classes", classId), { confirmedPayers });
+        loadClasses();
+      } catch(e) {
+        alert("更新付款狀態失敗: " + e.message);
+      }
     });
   };
 
@@ -2209,12 +2210,8 @@
       amount = Math.round(amount * 100) / 100;
 
       if (amount > 0) {
-        transactions.push(`
-          <div style="display: flex; justify-content: flex-end; align-items: center; margin-bottom: 4px; gap: 6px;">
-            <span>👉 <b>${debtor.name}</b> 轉帳 <b>$${amount}</b> 畀 <b>${creditor.name}</b></span>
-            <div onclick="handlePaymentCheckboxClick(this)" style="width: 20px; height: 20px; border: 1px solid #d1d5db; background: #e5e7eb; border-radius: 3px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 12px; user-select: none;"></div>
-          </div>
-        `);
+        const txIdx = transactions.length;
+        transactions.push({ debtor: debtor.name, amount, creditor: creditor.name, txIdx });
       }
 
       debtor.net -= amount;
@@ -2224,21 +2221,12 @@
       if (Math.abs(creditor.net) < 0.01) j++;
     }
 
-    let costHtml = memberCostSummary.length > 0 ? memberCostSummary.join('<br>') : '暫無開支記錄';
-    let txHtml = transactions.length > 0 ? transactions.join('') : '🎉 盤數清訖，無需轉帳！';
-
-    const settlementResultHTML = `
-      <div style="font-weight:bold; margin-bottom:4px; color:#9d174d;"> 每人總開支：</div>
-      ${costHtml}
-      <hr style="border:none; border-top:1px dashed var(--pojai-border); margin:6px 0;">
-      <div style="font-weight:bold; margin-bottom:4px; color:#9d174d;"> 找數方案 ：</div>
-      ${txHtml}
-    `;
-
     try {
       await updateDoc(doc(db, "classes", classId), { 
         sessions, 
-        settlementResult: settlementResultHTML 
+        settlementBalances: memberCostSummary,
+        settlementTransactions: transactions,
+        confirmedPayers: {}
       });
       loadClasses();
     } catch(e) {
