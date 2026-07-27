@@ -770,7 +770,7 @@
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
   import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, signOut, onAuthStateChanged, deleteUser } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-  import { getFirestore, collection, addDoc, getDocs, doc, setDoc, getDoc, updateDoc, deleteDoc, query, where } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+  import { getFirestore, collection, addDoc, getDocs, doc, setDoc, getDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyB2ky_jGsp4Me5XNXVpvow5oUAV-ME6oG8",
@@ -837,12 +837,17 @@
         const name = document.getElementById('auth-name').value.trim() || "舞者";
         
         // 檢查現時用戶中有冇相同的用戶暱稱
-        const usersRef = collection(db, "users");
-        const q = query(usersRef, where("name", "==", name));
-        const querySnapshot = await getDocs(q);
-        
-        if (!querySnapshot.empty) {
-          alert("此暱稱已經被使用，請改另一個名字！");
+        const usersSnapshot = await getDocs(collection(db, "users"));
+        let nameExists = false;
+        usersSnapshot.forEach(docSnap => {
+          const userData = docSnap.data();
+          if(userData.name && userData.name.toLowerCase() === name.toLowerCase()) {
+            nameExists = true;
+          }
+        });
+
+        if(nameExists) {
+          alert("此暱稱已經被使用，請改用其他暱稱！");
           return;
         }
 
@@ -1542,7 +1547,7 @@
       let addMiscFormHtml = `
         <div style="margin-top: 6px; padding: 6px; background: #fff; border: 1px dashed var(--pojai-border); border-radius: 4px;">
           <div style="font-size:11px; font-weight:bold; color:var(--pojai-text); margin-bottom:4px;">➕ 新增雜費項目</div>
-          <input type="text" id="misc-name-${c.id}" placeholder="項目名稱 (例如: 買水 / 道具)" style="margin:2px 0 4px 0; font-size:11px; padding:4px;">
+          <input type="text" id="misc-name-${c.id}" placeholder="項目名稱 (例如:買水 / 道具)" style="margin:2px 0 4px 0; font-size:11px; padding:4px;">
           <div class="flex" style="gap:4px; margin-bottom:4px;">
             <input type="number" id="misc-amount-${c.id}" placeholder="總金額 ($)" style="margin:0; font-size:11px; padding:4px;" title="請輸入該項目的總金額">
             <select id="misc-payer-${c.id}" style="margin:0; font-size:11px; padding:4px;">
@@ -1585,7 +1590,7 @@
             <div class="tab-header">
               <button onclick="switchTab('${c.id}', 'course')" id="tab-btn-course-${c.id}" class="tab-btn ${currentTab === 'course' ? 'active-tab-course' : ''}">📚 課程</button>
               <button onclick="switchTab('${c.id}', 'pojai')" id="tab-btn-pojai-${c.id}" class="tab-btn ${currentTab === 'pojai' ? 'active-tab-pojai' : ''}">👵🏼 婆仔數</button>
-              ${canManage ? `<button onclick="switchTab('${c.id}', 'admin')" id="tab-btn-admin-${c.id}" class="tab-btn ${currentTab === 'admin' ? 'active-tab-admin' : ''}">🛠️ 班長管理</button>` : ''}
+              {canManage ? `<button onclick="switchTab('${c.id}', 'admin')" id="tab-btn-admin-${c.id}" class="tab-btn ${currentTab === 'admin' ? 'active-tab-admin' : ''}">🛠️ 班長管理</button>` : ''}
             </div>
 
             <!-- 1) 課程 Tab 內容 (淺粉紅色風格) -->
@@ -1605,11 +1610,11 @@
                 <hr style="border: none; border-top: 1px solid var(--pojai-border); margin: 8px 0;">
                 <div style="font-weight:bold; color:var(--pojai-text); font-size:12px; margin-bottom:4px;">🪬雜費</div>
                 ${miscTableHtml}
-                ${!isSettled ? addMiscFormHtml : ''}
+                {(!isSettled) ? addMiscFormHtml : ''}
 
                 <hr style="border: none; border-top: 1px solid var(--pojai-border); margin: 10px 0;">
                 <div style="text-align: center; margin-bottom: 8px;">
-                  <button onclick="promptSettlement('${c.id}')" class="btn-pojai" style="padding: 6px 16px; font-size: 13px; ${(!isLeader || isSettled) ? 'background: #d1d5db; color: #4b5563; cursor: not-allowed;' : ''}" ${isSettled ? 'disabled' : ''}>🧮 埋數</button>
+                  <button onclick="promptSettlement('${c.id}')" class="btn-pojai" style="padding: 6px 16px; font-size: 13px; ${isSettled ? 'background: #d1d5db !important; color: #9ca3af !important; cursor: not-allowed;' : ''}" ${isSettled ? 'disabled' : ''}>${isSettled ? '已埋數' : '🧮 埋數'}</button>
                 </div>
                 
                 <div id="settlement-result-${c.id}" class="${c.settlementResult ? '' : 'hidden'}" style="background: #fff; padding: 8px; border-radius: 6px; border: 1px solid var(--pojai-border); margin-top: 8px; font-size: 12px; color: var(--pojai-text);">${c.settlementResult || ''}</div>
@@ -1617,7 +1622,7 @@
             </div>
 
             <!-- 3) 班長管理 Tab 內容 -->
-            ${canManage ? `
+            {canManage ? `
               <div id="tab-content-admin-${c.id}" class="tab-content ${currentTab === 'admin' ? 'active-content' : ''}">
                 <div class="admin-edit-box" style="margin-top:0;">
                   <div style="background:#fff; padding:8px; border-radius:8px; border:1px solid #bae6fd; margin-bottom:8px;">
