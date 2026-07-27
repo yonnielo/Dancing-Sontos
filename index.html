@@ -652,7 +652,7 @@
       </div>
 
       <div id="create-class-form" class="hidden" style="margin-top: 15px;">
-        <input type="text" id="class-name" placeholder="課程名稱 (例如: Jazz Pop 基礎班)">
+        <input type="text" id="class-name" placeholder="課程名稱 (例如: Jazz Pop 基礎班)" maxlength="15">
         
         <label style="font-size: 12px; font-weight: bold;">💬 班長的話 (短文章/課程介紹/給學員的話)：</label>
         <textarea id="class-leader-note" rows="3" placeholder="例如：這期課程會教授基礎排舞，請大家穿著舒適運動服，帶備毛巾..."></textarea>
@@ -1094,6 +1094,7 @@
 
   document.getElementById('add-class-btn').addEventListener('click', async () => {
     const name = document.getElementById('class-name').value.trim();
+    if([...name].length > 15) return alert("課程名稱不能超過15個中文字的寬度");
     const leaderNote = document.getElementById('class-leader-note').value.trim();
     const defaultLocation = document.getElementById('class-default-location').value || '未定地點';
     
@@ -1135,7 +1136,7 @@
         rentPayerUid: defaultRentPayerUid,
         rentPayerName: defaultRentPayerName,
         isClosed: false,
-        students: [{ uid: currentUser.uid, name: currentUserProfile.name || '班長' }] 
+        students: [] 
       };
     });
 
@@ -1608,7 +1609,7 @@
                 <div class="admin-edit-box" style="margin-top:0;">
                   <div style="background:#fff; padding:8px; border-radius:8px; border:1px solid #bae6fd; margin-bottom:8px;">
                     <label style="font-size:11px; font-weight:bold; color:#0369a1;">📝 修改課程名稱：</label>
-                    <input type="text" id="edit-class-name-${c.id}" value="${c.name}" style="margin-top:4px; font-size:12px;">
+                    <input type="text" id="edit-class-name-${c.id}" value="${c.name}" maxlength="15" style="margin-top:4px; font-size:12px;">
                   </div>
 
                   <div style="background:#fff; padding:8px; border-radius:8px; border:1px solid #bae6fd; margin-bottom:8px;">
@@ -1919,6 +1920,7 @@
     const rows = tbody.querySelectorAll('.edit-session-row');
 
     const newClassName = document.getElementById(`edit-class-name-${classId}`).value.trim();
+    if([...newClassName].length > 15) return alert("課程名稱不能超過15個中文字的寬度");
     const newLeaderNote = document.getElementById(`edit-leader-note-${classId}`).value.trim();
     
     if(!newClassName) return alert("課程名稱不能為空！");
