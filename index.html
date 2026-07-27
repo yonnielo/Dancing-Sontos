@@ -2042,7 +2042,7 @@
     }
   };
 
-  window.handlePaymentCheckboxClick = async (el, classId, txIndex) => {
+  window.handlePaymentCheckboxClick = (el) => {
     if (el.innerText === "✅") {
       return;
     }
@@ -2068,28 +2068,22 @@
       document.body.removeChild(overlay);
     });
 
-    document.getElementById('modal-pay-yes').addEventListener('click', async () => {
+    document.getElementById('modal-pay-yes').addEventListener('click', () => {
       document.body.removeChild(overlay);
+      
+      el.innerText = "✅";
+      el.style.background = "#fff";
+      el.style.cursor = "default";
       
       const userName = (currentUserProfile && currentUserProfile.name) ? currentUserProfile.name : '用家';
       
-      const classObj = classesData.find(c => c.id === classId);
-      if (!classObj) return;
-
-      const confirmedPayments = classObj.confirmedPayments || {};
-      if (!confirmedPayments[txIndex]) {
-        confirmedPayments[txIndex] = [];
-      }
-      if (!confirmedPayments[txIndex].includes(userName)) {
-        confirmedPayments[txIndex].push(userName);
-      }
-
-      try {
-        await updateDoc(doc(db, "classes", classId), { confirmedPayments });
-        loadClasses();
-      } catch(e) {
-        alert("更新付款狀態失敗: " + e.message);
-      }
+      const infoSpan = document.createElement('span');
+      infoSpan.style.fontSize = '11px';
+      infoSpan.style.marginRight = '6px';
+      infoSpan.style.color = '#713f12';
+      infoSpan.innerText = userName;
+      
+      el.parentNode.insertBefore(infoSpan, el);
     });
   };
 
@@ -2204,7 +2198,7 @@
     let debtors = netList.filter(item => item.net > 0);   
     let creditors = netList.filter(item => item.net < 0); 
 
-    let transactionsData = [];
+    let transactions = [];
     let i = 0, j = 0;
     while (i < debtors.length && j < creditors.length) {
       let debtor = debtors[i];
@@ -2215,7 +2209,15 @@
       amount = Math.round(amount * 100) / 100;
 
       if (amount > 0) {
-        transactionsData.push({ debtor: debtor.name, amount, creditor: creditor.name });
+        transactions.push(`
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; gap: 6px;">
+            <div style="text-align: left;">👉 <b>${debtor.name}</b> 轉帳 <b>$${amount}</b> 畀 <b>${creditor.name}</b></div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span style="font-size: 11px; color: #713f12; display: none;" class="paid-user-name"></span>
+              <div onclick="handlePaymentCheckboxClick(this)" style="width: 20px; height: 20px; border: 1px solid #d1d5db; background: #e5e7eb; border-radius: 3px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 12px; user-select: none; flex-shrink: 0;"></div>
+            </div>
+          </div>
+        `);
       }
 
       debtor.net -= amount;
@@ -2225,113 +2227,26 @@
       if (Math.abs(creditor.net) < 0.01) j++;
     }
 
-    const confirmedPayments = {};
-
-    try {
-      await updateDoc(doc(db, "classes", classId), { 
-        sessions, 
-        transactionsData,
-        confirmedPayments,
-        settlementResult: "EXISTS" 
-      });
-      loadClasses();
-    } catch(e) {
-      alert("埋數儲存失敗: " + e.message);
-    }
-  };
-
-  // 渲染埋數結果中的找數方案與小方格狀態
-  window.renderSettlementHtml = (classObj) => {
-    const memberCostSummary = [];
-    const sessions = classObj.sessions || {};
-    const dateKeys = Object.keys(sessions);
-    const balances = {}; 
-
-    dateKeys.forEach(dateStr => {
-      const sess = sessions[dateStr];
-      const students = sess.students || [];
-      const feeVal = Number(sess.fee !== undefined ? sess.fee : classObj.price) || 0;
-      const rentVal = Number(sess.rent || 0);
-      const enrolledCount = students.length;
-
-      const feePayerName = sess.feePayerName || classObj.leaderName;
-      const rentPayerName = sess.rentPayerName || classObj.leaderName;
-
-      if (!balances[feePayerName]) balances[feePayerName] = { paid: 0, cost: 0 };
-      if (!balances[rentPayerName]) balances[rentPayerName] = { paid: 0, cost: 0 };
-
-      balances[feePayerName].paid += (feeVal * enrolledCount);
-      balances[rentPayerName].paid += rentVal;
-
-      students.forEach(s => {
-        if (!balances[s.name]) balances[s.name] = { paid: 0, cost: 0 };
-        balances[s.name].cost += feeVal;
-        if (enrolledCount > 0) {
-          balances[s.name].cost += (rentVal / enrolledCount);
-        }
-      });
-    });
-
-    const miscExpenses = classObj.miscExpenses || [];
-    miscExpenses.forEach(item => {
-      const amount = Number(item.amount) || 0;
-      const payer = item.payer || classObj.leaderName;
-      const participants = item.participants || [];
-
-      if (!balances[payer]) balances[payer] = { paid: 0, cost: 0 };
-      balances[payer].paid += amount;
-
-      const partCount = participants.length;
-      if (partCount > 0) {
-        const share = amount / partCount;
-        participants.forEach(pName => {
-          if (!balances[pName]) balances[pName] = { paid: 0, cost: 0 };
-          balances[pName].cost += share;
-        });
-      }
-    });
-
-    Object.keys(balances).forEach(name => {
-      const data = balances[name];
-      const totalCost = Math.round((data.cost || 0) * 100) / 100;
-      if (totalCost > 0 || data.paid > 0) {
-        memberCostSummary.push(`👤 <b>${name}</b>：總開支 $${totalCost}`);
-      }
-    });
-
     let costHtml = memberCostSummary.length > 0 ? memberCostSummary.join('<br>') : '暫無開支記錄';
-    const txData = classObj.transactionsData || [];
-    const confirmedPayments = classObj.confirmedPayments || {};
+    let txHtml = transactions.length > 0 ? transactions.join('') : '🎉 盤數清訖，無需轉帳！';
 
-    let transactionsHtml = txData.map((tx, idx) => {
-      const payers = confirmedPayments[idx] || [];
-      const isConfirmed = payers.length > 0;
-      let rightContent = '';
-
-      if (isConfirmed) {
-        const namesStr = payers.join(', ');
-        rightContent = `<span style="font-size:11px; color:#713f12; font-weight:bold;">${namesStr}✅</span>`;
-      } else {
-        rightContent = `<div onclick="handlePaymentCheckboxClick(this, '${classObj.id}', ${idx})" style="width: 20px; height: 20px; border: 1px solid #d1d5db; background: #e5e7eb; border-radius: 3px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 12px; user-select: none;"></div>`;
-      }
-
-      return `
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; gap: 6px;">
-          <span>👉 <b>${tx.debtor}</b> 轉帳 <b>$${tx.amount}</b> 畀 <b>${tx.creditor}</b></span>
-          <div>${rightContent}</div>
-        </div>
-      `;
-    }).join('');
-
-    let txHtml = transactionsHtml || '🎉 盤數清訖，無需轉帳！';
-
-    return `
+    const settlementResultHTML = `
       <div style="font-weight:bold; margin-bottom:4px; color:#9d174d;"> 每人總開支：</div>
       ${costHtml}
       <hr style="border:none; border-top:1px dashed var(--pojai-border); margin:6px 0;">
       <div style="font-weight:bold; margin-bottom:4px; color:#9d174d;"> 找數方案 ：</div>
       ${txHtml}
     `;
+
+    try {
+      await updateDoc(doc(db, "classes", classId), { 
+        sessions, 
+        settlementResult: settlementResultHTML 
+      });
+      loadClasses();
+    } catch(e) {
+      alert("埋數儲存失敗: " + e.message);
+    }
   };
 
   window.toggleSessionJoin = async (classId, dateStr, isJoining) => {
