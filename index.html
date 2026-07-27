@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
@@ -2043,8 +2042,8 @@
     }
   };
 
-  window.handlePaymentCheckboxClick = (el) => {
-    if (el.innerText === "✅") {
+  window.handlePaymentCheckboxClick = async (classId, txIndex, currentStatus) => {
+    if (currentStatus === "✅") {
       return;
     }
 
@@ -2069,22 +2068,108 @@
       document.body.removeChild(overlay);
     });
 
-    document.getElementById('modal-pay-yes').addEventListener('click', () => {
+    document.getElementById('modal-pay-yes').addEventListener('click', async () => {
       document.body.removeChild(overlay);
       
-      el.innerText = "✅";
-      el.style.background = "#fff";
-      el.style.cursor = "default";
+      const classObj = classesData.find(c => c.id === classId);
+      if (!classObj || !classObj.transactions) return;
+
+      classObj.transactions[txIndex].paidStatus = "✅";
+      classObj.transactions[txIndex].paidBy = (currentUserProfile && currentUserProfile.name) ? currentUserProfile.name : '用家';
+
+      const sessions = classObj.sessions || {};
+      const dateKeys = Object.keys(sessions);
+      const balances = {}; 
+
+      dateKeys.forEach(dateStr => {
+        const sess = sessions[dateStr];
+        const students = sess.students || [];
+        const feeVal = Number(sess.fee !== undefined ? sess.fee : classObj.price) || 0;
+        const rentVal = Number(sess.rent || 0);
+        const enrolledCount = students.length;
+
+        const feePayerName = sess.feePayerName || classObj.leaderName;
+        const rentPayerName = sess.rentPayerName || classObj.leaderName;
+
+        if (!balances[feePayerName]) balances[feePayerName] = { paid: 0, cost: 0 };
+        if (!balances[rentPayerName]) balances[rentPayerName] = { paid: 0, cost: 0 };
+
+        balances[feePayerName].paid += (feeVal * enrolledCount);
+        balances[rentPayerName].paid += rentVal;
+
+        students.forEach(s => {
+          if (!balances[s.name]) balances[s.name] = { paid: 0, cost: 0 };
+          balances[s.name].cost += feeVal;
+          if (enrolledCount > 0) {
+            balances[s.name].cost += (rentVal / enrolledCount);
+          }
+        });
+      });
+
+      const miscExpenses = classObj.miscExpenses || [];
+      miscExpenses.forEach(item => {
+        const amount = Number(item.amount) || 0;
+        const payer = item.payer || classObj.leaderName;
+        const participants = item.participants || [];
+
+        if (!balances[payer]) balances[payer] = { paid: 0, cost: 0 };
+        balances[payer].paid += amount;
+
+        const partCount = participants.length;
+        if (partCount > 0) {
+          const share = amount / partCount;
+          participants.forEach(pName => {
+            if (!balances[pName]) balances[pName] = { paid: 0, cost: 0 };
+            balances[pName].cost += share;
+          });
+        }
+      });
+
+      const memberCostSummary = [];
+      Object.keys(balances).forEach(name => {
+        const data = balances[name];
+        const totalCost = Math.round((data.cost || 0) * 100) / 100;
+        if (totalCost > 0 || data.paid > 0) {
+          memberCostSummary.push(`👤 <b>${name}</b>：總開支 $${totalCost}`);
+        }
+      });
+
+      let costHtml = memberCostSummary.length > 0 ? memberCostSummary.join('<br>') : '暫無開支記錄';
       
-      const userName = (currentUserProfile && currentUserProfile.name) ? currentUserProfile.name : '用家';
-      
-      const infoSpan = document.createElement('span');
-      infoSpan.style.fontSize = '11px';
-      infoSpan.style.marginRight = '6px';
-      infoSpan.style.color = '#713f12';
-      infoSpan.innerText = userName;
-      
-      el.parentNode.insertBefore(infoSpan, el);
+      let txHtml = classObj.transactions.map((tx, idx) => {
+        const pStatus = tx.paidStatus || "未";
+        const payerInfo = (pStatus === "✅" && tx.paidBy) ? `<span style="font-size:11px; margin-right:6px; color:#713f12;">${tx.paidBy}</span>` : '';
+        const boxContent = pStatus === "✅" ? "✅" : "";
+        const boxStyle = pStatus === "✅" ? "width: 20px; height: 20px; border: 1px solid #d1d5db; background: #fff; border-radius: 3px; cursor: default; display: flex; align-items: center; justify-content: center; font-size: 12px; user-select: none;" : "width: 20px; height: 20px; border: 1px solid #d1d5db; background: #e5e7eb; border-radius: 3px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 12px; user-select: none;";
+
+        return `
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+            <div style="text-align: left;">👉 <b>${tx.debtor}</b> 轉帳 <b>$${tx.amount}</b> 畀 <b>${tx.creditor}</b></div>
+            <div style="display: flex; align-items: center;">
+              ${payerInfo}
+              <div onclick="handlePaymentCheckboxClick('${classId}', ${idx}, '${pStatus}')" style="${boxStyle}">${boxContent}</div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      const updatedSettlementResultHTML = `
+        <div style="font-weight:bold; margin-bottom:4px; color:#9d174d;"> 每人總開支：</div>
+        ${costHtml}
+        <hr style="border:none; border-top:1px dashed var(--pojai-border); margin:6px 0;">
+        <div style="font-weight:bold; margin-bottom:4px; color:#9d174d;"> 找數方案 ：</div>
+        ${txHtml}
+      `;
+
+      try {
+        await updateDoc(doc(db, "classes", classId), { 
+          transactions: classObj.transactions,
+          settlementResult: updatedSettlementResultHTML 
+        });
+        loadClasses();
+      } catch(e) {
+        alert("更新付款狀態失敗: " + e.message);
+      }
     });
   };
 
@@ -2199,7 +2284,7 @@
     let debtors = netList.filter(item => item.net > 0);   
     let creditors = netList.filter(item => item.net < 0); 
 
-    let transactions = [];
+    let transactionsData = [];
     let i = 0, j = 0;
     while (i < debtors.length && j < creditors.length) {
       let debtor = debtors[i];
@@ -2210,12 +2295,13 @@
       amount = Math.round(amount * 100) / 100;
 
       if (amount > 0) {
-        transactions.push(`
-          <div style="display: flex; justify-content: flex-end; align-items: center; margin-bottom: 4px; gap: 6px;">
-            <span>👉 <b>${debtor.name}</b> 轉帳 <b>$${amount}</b> 畀 <b>${creditor.name}</b></span>
-            <div onclick="handlePaymentCheckboxClick(this)" style="width: 20px; height: 20px; border: 1px solid #d1d5db; background: #e5e7eb; border-radius: 3px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 12px; user-select: none;"></div>
-          </div>
-        `);
+        transactionsData.push({
+          debtor: debtor.name,
+          creditor: creditor.name,
+          amount: amount,
+          paidStatus: "未",
+          paidBy: ""
+        });
       }
 
       debtor.net -= amount;
@@ -2225,8 +2311,24 @@
       if (Math.abs(creditor.net) < 0.01) j++;
     }
 
+    let txHtml = transactionsData.length > 0 ? transactionsData.map((tx, idx) => {
+      const pStatus = tx.paidStatus || "未";
+      const payerInfo = (pStatus === "✅" && tx.paidBy) ? `<span style="font-size:11px; margin-right:6px; color:#713f12;">${tx.paidBy}</span>` : '';
+      const boxContent = pStatus === "✅" ? "✅" : "";
+      const boxStyle = pStatus === "✅" ? "width: 20px; height: 20px; border: 1px solid #d1d5db; background: #fff; border-radius: 3px; cursor: default; display: flex; align-items: center; justify-content: center; font-size: 12px; user-select: none;" : "width: 20px; height: 20px; border: 1px solid #d1d5db; background: #e5e7eb; border-radius: 3px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 12px; user-select: none;";
+
+      return `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+          <div style="text-align: left;">👉 <b>${tx.debtor}</b> 轉帳 <b>$${tx.amount}</b> 畀 <b>${tx.creditor}</b></div>
+          <div style="display: flex; align-items: center;">
+            ${payerInfo}
+            <div onclick="handlePaymentCheckboxClick('${classId}', ${idx}, '${pStatus}')" style="${boxStyle}">${boxContent}</div>
+          </div>
+        </div>
+      `;
+    }).join('') : '🎉 盤數清訖，無需轉帳！';
+
     let costHtml = memberCostSummary.length > 0 ? memberCostSummary.join('<br>') : '暫無開支記錄';
-    let txHtml = transactions.length > 0 ? transactions.join('') : '🎉 盤數清訖，無需轉帳！';
 
     const settlementResultHTML = `
       <div style="font-weight:bold; margin-bottom:4px; color:#9d174d;"> 每人總開支：</div>
@@ -2239,6 +2341,7 @@
     try {
       await updateDoc(doc(db, "classes", classId), { 
         sessions, 
+        transactions: transactionsData,
         settlementResult: settlementResultHTML 
       });
       loadClasses();
