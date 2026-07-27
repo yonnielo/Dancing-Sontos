@@ -756,10 +756,12 @@
         </div>
         <div class="calendar-grid" id="calendar-days" style="margin-top:4px;"></div>
       </div>
-      <div class="flex" style="gap: 6px; margin-top: 8px;">
-        <button id="filter-joined-btn" class="btn-gray-action" style="flex:1; margin:0; font-size:12px; padding:6px;">已報名</button>
-        <button id="filter-private-btn" class="btn-gray-action" style="flex:1; margin:0; font-size:12px; padding:6px;">私人班</button>
-        <button id="filter-public-btn" class="btn-gray-action" style="flex:1; margin:0; font-size:12px; padding:6px;">公開班</button>
+
+      <!-- 底部新增的的三個按鈕 -->
+      <div class="flex" style="margin-top: 10px; gap: 6px;">
+        <button id="filter-joined-btn" class="btn-gray-action" style="flex:1; margin:0; font-size: 12px; padding: 6px;">已報名</button>
+        <button id="filter-private-btn" class="btn-gray-action" style="flex:1; margin:0; font-size: 12px; padding: 6px;">私人班</button>
+        <button id="filter-public-btn" class="btn-gray-action" style="flex:1; margin:0; font-size: 12px; padding: 6px;">公開班</button>
       </div>
     </div>
 
@@ -800,7 +802,6 @@
   let classesData = [];
   let allUsersList = [];
   let selectedDates = [];
-  let currentCalendarFilter = null;
   
   // 記錄每個課程當前啟用的 tab
   let activeTabState = {};
@@ -1101,50 +1102,20 @@
   document.getElementById('add-class-btn').addEventListener('click', async () => {
     const name = document.getElementById('class-name').value.trim();
     
-    let unitCount = 0;
-    const emojiRegex = /[\p{Extended_Pictographic}]/gu;
-    let match;
-    let emojiRanges = [];
-
-    while ((match = emojiRegex.exec(name)) !== null) {
-      emojiRanges.push({ start: match.index, end: match.index + match[0].length });
-    }
-
-    for (let i = 0; i < name.length; i++) {
-      let isEmoji = emojiRanges.some(r => i >= r.start && i < r.end);
-      if (isEmoji) {
-        unitCount += 3;
-        // Skip remaining surrogate pairs or code units for this emoji
-        while (i + 1 < name.length && emojiRanges.some(r => (i + 1) >= r.start && (i + 1) < r.end) && (i + 1 < r.index + r.length || true)) {
-          // just let it advance properly
-          break;
-        }
-      } else {
-        const char = name[i];
-        if (/[\u4e00-\u9fa5]/.test(char)) {
-          unitCount += 2;
-        } else {
-          unitCount += 1;
-        }
-      }
-    }
-
-    // A simpler and robust unit parser matching the requirement:
-    // "每個中文字佔2個unit, emoji佔3個unit，英文字佔1個unit"
-    let totalUnits = 0;
-    const segmenter = Array.from(name);
-    for (const char of segmenter) {
+    // 計算課程名稱 unit (中文字佔2個unit, emoji佔3個unit，英文字佔1個unit)
+    let charWidth = 0;
+    const emojiRegex = /(\p{Extended_Pictographic}|\p{Emoji_Presentation}|\u200d)/u;
+    for (const char of name) {
       if (/[\u4e00-\u9fa5]/.test(char)) {
-        totalUnits += 2;
-      } else if (/\p{Extended_Pictographic}/u.test(char)) {
-        totalUnits += 3;
+        charWidth += 2;
+      } else if (emojiRegex.test(char)) {
+        charWidth += 3;
       } else {
-        totalUnits += 1;
+        charWidth += 1;
       }
     }
-
-    if (totalUnits > 30) {
-      return alert("課程名稱超出30個unit限制，不允許繼續輸入。");
+    if (charWidth > 30) {
+      return alert("課程名稱加起來超過30個unit限制，不允許繼續輸入！");
     }
 
     const leaderNote = document.getElementById('class-leader-note').value.trim();
@@ -1343,12 +1314,6 @@
         if(c.sessions && c.sessions[dateStr]) {
           const sess = c.sessions[dateStr];
           const isJoined = (sess.students || []).some(s => s.uid === currentUser.uid);
-          const isPrivate = c.accessType === 'specific';
-
-          if (currentCalendarFilter === 'joined' && !isJoined) return;
-          if (currentCalendarFilter === 'private' && !isPrivate) return;
-          if (currentCalendarFilter === 'public' && isPrivate) return;
-
           const showTime = sess.startTime || sess.time || '';
 
           const tag = document.createElement('div');
@@ -1375,36 +1340,33 @@
     renderCalendar();
   });
 
+  // 月曆底部按鈕點擊事件處理
   document.getElementById('filter-joined-btn').addEventListener('click', () => {
-    currentCalendarFilter = (currentCalendarFilter === 'joined') ? null : 'joined';
-    updateFilterButtonStyles();
-    renderCalendar();
+    classesData.sort((a, b) => {
+      const aJoined = Object.values(a.sessions || {}).some(s => (s.students || []).some(st => st.uid === currentUser?.uid));
+      const bJoined = Object.values(b.sessions || {}).some(s => (s.students || []).some(st => st.uid === currentUser?.uid));
+      return (bJoined ? 1 : 0) - (aJoined ? 1 : 0);
+    });
+    renderClassList();
   });
+
   document.getElementById('filter-private-btn').addEventListener('click', () => {
-    currentCalendarFilter = (currentCalendarFilter === 'private') ? null : 'private';
-    updateFilterButtonStyles();
-    renderCalendar();
+    classesData.sort((a, b) => {
+      const aPriv = a.accessType === 'specific' ? 1 : 0;
+      const bPriv = b.accessType === 'specific' ? 1 : 0;
+      return bPriv - aPriv;
+    });
+    renderClassList();
   });
+
   document.getElementById('filter-public-btn').addEventListener('click', () => {
-    currentCalendarFilter = (currentCalendarFilter === 'public') ? null : 'public';
-    updateFilterButtonStyles();
-    renderCalendar();
+    classesData.sort((a, b) => {
+      const aPub = a.accessType !== 'specific' ? 1 : 0;
+      const bPub = b.accessType !== 'specific' ? 1 : 0;
+      return bPub - aPub;
+    });
+    renderClassList();
   });
-
-  function updateFilterButtonStyles() {
-    const btnJoined = document.getElementById('filter-joined-btn');
-    const btnPrivate = document.getElementById('filter-private-btn');
-    const btnPublic = document.getElementById('filter-public-btn');
-
-    btnJoined.style.background = currentCalendarFilter === 'joined' ? 'var(--primary)' : '#f3f4f6';
-    btnJoined.style.color = currentCalendarFilter === 'joined' ? 'white' : '#374151';
-
-    btnPrivate.style.background = currentCalendarFilter === 'private' ? 'var(--primary)' : '#f3f4f6';
-    btnPrivate.style.color = currentCalendarFilter === 'private' ? 'white' : '#374151';
-
-    btnPublic.style.background = currentCalendarFilter === 'public' ? 'var(--primary)' : '#f3f4f6';
-    btnPublic.style.color = currentCalendarFilter === 'public' ? 'white' : '#374151';
-  }
 
   function renderClassList() {
     const expandedIds = [];
@@ -1606,7 +1568,7 @@
             <td style="padding:4px; border:1px solid var(--pojai-border); font-size:11px;">
               <div class="flex between" style="align-items:center;">
                 <span>$${roundedShare}</span>
-                {(!isSettled && canManage) ? `<button onclick="deleteMiscItem('${c.id}', ${idx})" style="width:auto; margin:0; padding:1px 4px; font-size:12px; background:transparent; color:#be123c; border:none; box-shadow:none;">❌</button>` : ''}
+                ${(!isSettled && canManage) ? `<button onclick="deleteMiscItem('${c.id}', ${idx})" style="width:auto; margin:0; padding:1px 4px; font-size:12px; background:transparent; color:#be123c; border:none; box-shadow:none;">❌</button>` : ''}
               </div>
             </td>
           </tr>
@@ -2035,19 +1997,19 @@
     const rows = tbody.querySelectorAll('.edit-session-row');
 
     const newClassName = document.getElementById(`edit-class-name-${classId}`).value.trim();
-    let totalUnits = 0;
-    const segmenter = Array.from(newClassName);
-    for (const char of segmenter) {
+    let charWidth = 0;
+    const emojiRegex = /(\p{Extended_Pictographic}|\p{Emoji_Presentation}|\u200d)/u;
+    for (const char of newClassName) {
       if (/[\u4e00-\u9fa5]/.test(char)) {
-        totalUnits += 2;
-      } else if (/\p{Extended_Pictographic}/u.test(char)) {
-        totalUnits += 3;
+        charWidth += 2;
+      } else if (emojiRegex.test(char)) {
+        charWidth += 3;
       } else {
-        totalUnits += 1;
+        charWidth += 1;
       }
     }
-    if (totalUnits > 30) {
-      return alert("課程名稱超出30個unit限制，不允許繼續輸入。");
+    if (charWidth > 30) {
+      return alert("課程名稱加起來超過30個unit限制，不允許繼續輸入！");
     }
 
     const newLeaderNote = document.getElementById(`edit-leader-note-${classId}`).value.trim();
