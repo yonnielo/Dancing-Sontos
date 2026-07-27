@@ -1382,7 +1382,8 @@
         ? `<span class="class-type-badge-public">🔒 私人班</span>`
         : `<span class="class-type-badge-public">🌐 公開班</span>`;
 
-      // 已完成標示：淺灰色，font size比課程名細約30%
+      // 1) 當課程已被定為（已完成），請將課程名稱轉成灰色
+      const classNameStyle = isCompleted ? 'color: #9ca3af;' : 'color: #831843;';
       const completedBadgeHtml = isCompleted ? `<span style="color: #9ca3af; font-size: 70%; margin-left: 6px; font-weight: normal;">（已完成）</span>` : '';
 
       const cleanedLeaderNote = c.leaderNote ? c.leaderNote.trim() : '';
@@ -1549,12 +1550,21 @@
       // 檢查當前課程預設或記錄的 active tab，預設為 'course'
       const currentTab = activeTabState[c.id] || 'course';
 
+      // 2) 在埋數後，埋數掣變成灰色，掣上文字變成淺灰色「班長已埋數」
+      let settlementBtnHtml = '';
+      if (isSettled) {
+        settlementBtnHtml = `<button class="btn-pojai" style="padding: 6px 16px; font-size: 13px; background: #e5e7eb; color: #9ca3af; cursor: not-allowed;" disabled>班長已埋數</button>`;
+      } else {
+        const canClickSettle = isLeader;
+        settlementBtnHtml = `<button onclick="promptSettlement('${c.id}')" class="btn-pojai" style="padding: 6px 16px; font-size: 13px; ${!canClickSettle ? 'background: #d1d5db; color: #4b5563; cursor: not-allowed;' : ''}">🧮 埋數</button>`;
+      }
+
       return `
         <div class="course-card">
           
           <div class="course-card-header">
             <div>
-              <strong style="font-size: 17px; color:#831843;">${c.name}</strong>${completedBadgeHtml}
+              <strong style="font-size: 17px; ${classNameStyle}">${c.name}</strong>${completedBadgeHtml}
               <div style="margin-top: 6px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
                 <span class="badge-leader">👑 班長: ${c.leaderName}</span>
                 ${classTypeBadge}
@@ -1598,7 +1608,7 @@
 
                 <hr style="border: none; border-top: 1px solid var(--pojai-border); margin: 10px 0;">
                 <div style="text-align: center; margin-bottom: 8px;">
-                  <button onclick="promptSettlement('${c.id}')" id="settlement-btn-${c.id}" class="btn-pojai" style="padding: 6px 16px; font-size: 13px; ${(!isLeader || isSettled) ? 'background: #e5e7eb; color: #9ca3af; cursor: not-allowed;' : ''}" ${isSettled ? 'disabled' : ''}>${isSettled ? '已埋數' : '🧮 埋數'}</button>
+                  ${settlementBtnHtml}
                 </div>
                 
                 <div id="settlement-result-${c.id}" class="${c.settlementResult ? '' : 'hidden'}" style="background: #fff; padding: 8px; border-radius: 6px; border: 1px solid var(--pojai-border); margin-top: 8px; font-size: 12px; color: var(--pojai-text);">${c.settlementResult || ''}</div>
@@ -1761,26 +1771,12 @@
 
     const container = document.getElementById(`edit-users-list-${classId}`);
     if (!container) return;
-    
-    // 統計每個暱稱出現的次數以產生帶編號的唯一顯示名稱
-    const nameCounts = {};
-    allUsersList.forEach(u => {
-      const rawName = u.name || u.email || '未命名用戶';
-      nameCounts[rawName] = (nameCounts[rawName] || 0) + 1;
-    });
-
-    const nameOccurrences = {};
     container.innerHTML = allUsersList.map(u => {
       const isChecked = allowed.includes(u.uid);
-      const rawName = u.name || u.email || '未命名用戶';
-      let displayName = rawName;
-      if (nameCounts[rawName] > 1) {
-        nameOccurrences[rawName] = (nameOccurrences[rawName] || 0) + 1;
-        displayName = `${rawName}_${String(nameOccurrences[rawName]).padStart(2, '0')}`;
-      }
+      const userName = u.name || u.email || '未命名用戶';
       return `
         <label class="user-select-item">
-          <input type="checkbox" value="${u.uid}" class="edit-user-cb-${classId}" ${isChecked ? 'checked' : ''}> ${displayName}
+          <input type="checkbox" value="${u.uid}" class="edit-user-cb-${classId}" ${isChecked ? 'checked' : ''}> ${userName}
         </label>
       `;
     }).join('');
@@ -1804,23 +1800,7 @@
         </span>
       `).join('');
 
-      // 計算各用戶暱稱出現次數以便在加人選單中加上編號
-      const nameCounts = {};
-      allUsersList.forEach(u => {
-        const rawName = u.name || u.email || '未命名用戶';
-        nameCounts[rawName] = (nameCounts[rawName] || 0) + 1;
-      });
-
-      const nameOccurrences = {};
-      const addStudentOptions = allUsersList.map(u => {
-        const rawName = u.name || u.email || '未命名用戶';
-        let displayName = rawName;
-        if (nameCounts[rawName] > 1) {
-          nameOccurrences[rawName] = (nameOccurrences[rawName] || 0) + 1;
-          displayName = `${rawName}_${String(nameOccurrences[rawName]).padStart(2, '0')}`;
-        }
-        return `<option value="${u.uid}" data-displayname="${displayName}">${displayName}</option>`;
-      }).join('');
+      const addStudentOptions = allUsersList.map(u => `<option value="${u.uid}">${u.name || u.email}</option>`).join('');
 
       const feePayerOptions = allUsersList.map(u => {
         const isSelected = u.uid === (sess.feePayerUid || classObj.leaderId);
@@ -1880,8 +1860,6 @@
     const tr = btn.closest('tr');
     const select = tr.querySelector('.add-student-select');
     const selectedUid = select.value;
-    const selectedOption = select.options[select.selectedIndex];
-    const displayName = selectedOption ? selectedOption.getAttribute('data-displayname') : '';
     const userObj = allUsersList.find(u => u.uid === selectedUid);
     if (!userObj) return;
 
@@ -1891,8 +1869,8 @@
     const chip = document.createElement('span');
     chip.className = 'student-chip';
     chip.setAttribute('data-uid', selectedUid);
-    chip.setAttribute('data-name', displayName);
-    chip.innerHTML = `${displayName} <button type="button" onclick="removeStudentFromSessionRow(this)">✕</button>`;
+    chip.setAttribute('data-name', userObj.name || userObj.email);
+    chip.innerHTML = `${userObj.name || userObj.email} <button type="button" onclick="removeStudentFromSessionRow(this)">✕</button>`;
     container.appendChild(chip);
   };
 
@@ -1905,23 +1883,7 @@
     const todayStr = new Date().toISOString().split('T')[0];
     const classObj = classesData.find(c => c.id === classId);
 
-    const nameCounts = {};
-    allUsersList.forEach(u => {
-      const rawName = u.name || u.email || '未命名用戶';
-      nameCounts[rawName] = (nameCounts[rawName] || 0) + 1;
-    });
-
-    const nameOccurrences = {};
-    const addStudentOptions = allUsersList.map(u => {
-      const rawName = u.name || u.email || '未命名用戶';
-      let displayName = rawName;
-      if (nameCounts[rawName] > 1) {
-        nameOccurrences[rawName] = (nameOccurrences[rawName] || 0) + 1;
-        displayName = `${rawName}_${String(nameOccurrences[rawName]).padStart(2, '0')}`;
-      }
-      return `<option value="${u.uid}" data-displayname="${displayName}">${displayName}</option>`;
-    }).join('');
-
+    const addStudentOptions = allUsersList.map(u => `<option value="${u.uid}">${u.name || u.email}</option>`).join('');
     const payerOptions = allUsersList.map(u => {
       const isSelected = u.uid === classObj.leaderId;
       return `<option value="${u.uid}" ${isSelected ? 'selected' : ''}>${u.name || u.email}</option>`;
@@ -2275,31 +2237,9 @@
 
     let students = sessions[dateStr].students || [];
 
-    // 取得當前用戶的顯示名稱（處理相同暱稱加上編號）
-    const nameCounts = {};
-    allUsersList.forEach(u => {
-      const rawName = u.name || u.email || '未命名用戶';
-      nameCounts[rawName] = (nameCounts[rawName] || 0) + 1;
-    });
-    
-    let myDisplayName = currentUserProfile.name || '學員';
-    if (nameCounts[myDisplayName] > 1) {
-      let occurrence = 0;
-      for (const u of allUsersList) {
-        const rawName = u.name || u.email || '未命名用戶';
-        if (rawName === myDisplayName) {
-          occurrence++;
-          if (u.uid === currentUser.uid) {
-            myDisplayName = `${rawName}_${String(occurrence).padStart(2, '0')}`;
-            break;
-          }
-        }
-      }
-    }
-
     if(isJoining) {
       if(!students.some(s => s.uid === currentUser.uid)) {
-        students.push({ uid: currentUser.uid, name: myDisplayName });
+        students.push({ uid: currentUser.uid, name: currentUserProfile.name || '學員' });
       }
     } else {
       students = students.filter(s => s.uid !== currentUser.uid);
