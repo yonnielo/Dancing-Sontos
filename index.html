@@ -609,6 +609,8 @@
     
     <div id="register-extra" class="hidden">
       <input type="text" id="auth-name" placeholder="名字/暱稱 (例如: Alex)">
+      <label style="font-size: 12px; font-weight: bold; color: #9d174d; margin-top: 6px; display: block;">上傳註冊圖片：</label>
+      <input type="file" id="auth-image" accept="image/*">
     </div>
 
     <button id="auth-main-btn">登入</button>
@@ -770,7 +772,7 @@
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
   import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, signOut, onAuthStateChanged, deleteUser } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-  import { getFirestore, collection, addDoc, getDocs, doc, setDoc, getDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+  import { getFirestore, collection, addDoc, getDocs, doc, setDoc, getDoc, updateDoc, deleteDoc, query, where } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyB2ky_jGsp4Me5XNXVpvow5oUAV-ME6oG8",
@@ -834,9 +836,43 @@
 
     try {
       if(isRegisterMode) {
-        const name = document.getElementById('auth-name').value || "舞者";
+        const name = document.getElementById('auth-name').value.trim() || "舞者";
+        const imageFile = document.getElementById('auth-image').files[0];
+        
+        // 檢查現有用戶database是否有相同電郵或用戶名稱
+        const usersRef = collection(db, "users");
+        const emailQuery = query(usersRef, where("email", "==", email));
+        const emailSnap = await getDocs(emailQuery);
+        if(!emailSnap.empty) {
+          return alert("註冊失敗：此電郵已經被註冊！");
+        }
+
+        const nameQuery = query(usersRef, where("name", "==", name));
+        const nameSnap = await getDocs(nameQuery);
+        if(!nameSnap.empty) {
+          return alert("註冊失敗：此用戶名稱已經被使用！");
+        }
+
+        let imageUrl = "";
+        if (imageFile) {
+          imageUrl = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target.result);
+            reader.onerror = (error) => reject(error);
+            reader.readAsDataURL(imageFile);
+          });
+        }
+
         const res = await createUserWithEmailAndPassword(auth, email, password);
-        await setDoc(doc(db, "users", res.user.uid), { name, email, role: "user" });
+        const registrationDate = new Date().toISOString().split('T')[0];
+        
+        await setDoc(doc(db, "users", res.user.uid), { 
+          name, 
+          email, 
+          registrationDate, 
+          image: imageUrl, 
+          role: "user" 
+        });
         alert("註冊成功！");
       } else {
         await signInWithEmailAndPassword(auth, email, password);
