@@ -1,8 +1,3 @@
-按我下面給你的程式碼修改：
-1） 在新用戶註冊時，用戶名稱設為必填項目，不要為沒填名的人改名做舞者，沒有填用戶名不能註冊，而且用戶名不接受空白格，並限制在30個字內，用戶名不能重複，否則不能註冊。
-
-按以上指示點，在原本的程式碼內修改，改好後完整一份程式碼給我，除以上指示外，其他全部不要修改
-
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
@@ -613,7 +608,7 @@
     <input type="password" id="auth-password" placeholder="密碼">
     
     <div id="register-extra" class="hidden">
-      <input type="text" id="auth-name" placeholder="名字/暱稱 (例如: Alex)">
+      <input type="text" id="auth-name" placeholder="名字/暱稱 (例如: Alex) (必填)">
       <label style="font-size: 12px; font-weight: bold; color: #9d174d; margin-top: 6px; display: block;">上傳註冊圖片：</label>
       <input type="file" id="auth-image" accept="image/*">
     </div>
@@ -841,7 +836,32 @@
 
     try {
       if(isRegisterMode) {
-        const name = document.getElementById('auth-name').value.trim() || "舞者";
+        const nameInput = document.getElementById('auth-name');
+        const name = nameInput.value.trim();
+        
+        if (!name) {
+          return alert("用戶名稱為必填項目！");
+        }
+        if (/\s/.test(name)) {
+          return alert("用戶名稱不能包含空白格！");
+        }
+        if (name.length > 30) {
+          return alert("用戶名稱不能超過30個字！");
+        }
+
+        const usersSnapshot = await getDocs(collection(db, "users"));
+        let nameExists = false;
+        usersSnapshot.forEach(docSnap => {
+          const userData = docSnap.data();
+          if (userData.name && userData.name.toLowerCase() === name.toLowerCase()) {
+            nameExists = true;
+          }
+        });
+
+        if (nameExists) {
+          return alert("此用戶名稱已被使用，請選擇其他用戶名！");
+        }
+
         const imageFile = document.getElementById('auth-image').files[0];
         
         const res = await createUserWithEmailAndPassword(auth, email, password);
@@ -857,7 +877,6 @@
           });
         }
 
-        // 修正：使用 setDoc 寫入 users collection。因為剛建立帳號，Firestore Security Rules 可能要求 auth.uid 匹配，直接用 res.user.uid 作為 doc ID。
         await setDoc(doc(db, "users", res.user.uid), { 
           name, 
           email, 
@@ -1560,7 +1579,7 @@
             <td style="padding:4px; border:1px solid var(--pojai-border); font-size:11px;">
               <div class="flex between" style="align-items:center;">
                 <span>$${roundedShare}</span>
-                ${(!isSettled && canManage) ? `<button onclick="deleteMiscItem('${c.id}', ${idx})" style="width:auto; margin:0; padding:1px 4px; font-size:12px; background:transparent; color:#be123c; border:none; box-shadow:none;">❌</button>` : ''}
+                {(!isSettled && canManage) ? `<button onclick="deleteMiscItem('${c.id}', ${idx})" style="width:auto; margin:0; padding:1px 4px; font-size:12px; background:transparent; color:#be123c; border:none; box-shadow:none;">❌</button>` : ''}
               </div>
             </td>
           </tr>
