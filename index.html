@@ -608,7 +608,7 @@
     <input type="password" id="auth-password" placeholder="密碼">
     
     <div id="register-extra" class="hidden">
-      <input type="text" id="auth-name" placeholder="名字/暱稱 (例如: Alex)">
+      <input type="text" id="auth-name" placeholder="名字/暱稱 (必填，最多30字，不可有空白)">
       <label style="font-size: 12px; font-weight: bold; color: #9d174d; margin-top: 6px; display: block;">上傳註冊圖片：</label>
       <input type="file" id="auth-image" accept="image/*">
     </div>
@@ -837,26 +837,26 @@
     try {
       if(isRegisterMode) {
         const name = document.getElementById('auth-name').value.trim();
-        
-        if (!name) return alert("用戶名稱設為必填項目，不能留空！");
-        if (/\s/.test(name)) return alert("用戶名稱不接受空白格！");
-        if (name.length > 30) return alert("用戶名稱需限制在30個字內！");
-
-        const usersSnapshot = await getDocs(collection(db, "users"));
-        let nameExists = false;
-        usersSnapshot.forEach(docSnap => {
-          const userData = docSnap.data();
-          if (userData.name === name) {
-            nameExists = true;
-          }
-        });
-
-        if (nameExists) {
-          return alert("此用戶名稱已被使用，請選擇其他用戶名！");
-        }
+        if(!name) return alert("用戶名稱為必填項目！");
+        if(/\s/.test(name)) return alert("用戶名稱不能包含空白格！");
+        if(name.length > 30) return alert("用戶名稱不能超過30個字！");
 
         const imageFile = document.getElementById('auth-image').files[0];
         
+        // 查找資料庫是否有重複的用戶名或重複的電郵
+        const usersSnapshot = await getDocs(collection(db, "users"));
+        let duplicateName = false;
+        let duplicateEmail = false;
+
+        usersSnapshot.forEach(docSnap => {
+          const data = docSnap.data();
+          if (data.name && data.name === name) duplicateName = true;
+          if (data.email && data.email === email) duplicateEmail = true;
+        });
+
+        if (duplicateName) return alert("此用戶名稱已被使用，請更換其他用戶名稱！");
+        if (duplicateEmail) return alert("此電子郵件已被註冊，請直接登入！");
+
         const res = await createUserWithEmailAndPassword(auth, email, password);
         const registrationDate = new Date().toISOString().split('T')[0];
         
