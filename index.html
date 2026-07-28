@@ -1,3 +1,8 @@
+按我下面給你的程式碼修改：
+1） 在新用戶註冊時，用戶名稱設為必填項目，不要為沒填名的人改名做舞者，沒有填用戶名不能註冊，而且用戶名不接受空白格，並限制在30個字內，用戶名不能重複，否則不能註冊。
+
+按以上指示點，在原本的程式碼內修改，改好後完整一份程式碼給我，除以上指示外，其他全部不要修改
+
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
@@ -608,8 +613,8 @@
     <input type="password" id="auth-password" placeholder="密碼">
     
     <div id="register-extra" class="hidden">
-      <input type="text" id="auth-name" placeholder="用戶名稱 (必填，最多30個字，不可有空白格)">
-      <label style="font-size:12px; color:#6b7280; display:block; margin-top:4px;">上傳圖片 (非必填)：</label>
+      <input type="text" id="auth-name" placeholder="名字/暱稱 (例如: Alex)">
+      <label style="font-size: 12px; font-weight: bold; color: #9d174d; margin-top: 6px; display: block;">上傳註冊圖片：</label>
       <input type="file" id="auth-image" accept="image/*">
     </div>
 
@@ -772,10 +777,7 @@
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
   import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, signOut, onAuthStateChanged, deleteUser } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-  import { getFirestore, collection, addDoc, getDocs, doc, setDoc, getDoc, updateDoc, deleteDoc, query, where, setLogLevel } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
-  // 啟用 Firestore Debug 日誌以便排查權限問題
-  setLogLevel('debug');
+  import { getFirestore, collection, addDoc, getDocs, doc, setDoc, getDoc, updateDoc, deleteDoc, query, where } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyB2ky_jGsp4Me5XNXVpvow5oUAV-ME6oG8",
@@ -839,41 +841,29 @@
 
     try {
       if(isRegisterMode) {
-        const name = document.getElementById('auth-name').value.trim();
+        const name = document.getElementById('auth-name').value.trim() || "舞者";
         const imageFile = document.getElementById('auth-image').files[0];
-
-        if (!name) return alert("用戶名稱為必填項目！");
-        if (/\s/.test(name)) return alert("用戶名稱不能包含空白格！");
-        if (name.length > 30) return alert("用戶名稱不能超過30個字！");
-
-        const q = query(collection(db, "users"), where("email", "==", email));
-        const emailSnap = await getDocs(q);
-        if (!emailSnap.empty) {
-          return alert("此註冊電郵已經被使用，請使用其他電郵！");
-        }
-
-        const qName = query(collection(db, "users"), where("name", "==", name));
-        const nameSnap = await getDocs(qName);
-        if (!nameSnap.empty) {
-          return alert("此用戶名稱已經被使用，請使用其他名稱！");
-        }
-
-        let imageBase64 = "";
+        
+        const res = await createUserWithEmailAndPassword(auth, email, password);
+        const registrationDate = new Date().toISOString().split('T')[0];
+        
+        let imageUrl = "";
         if (imageFile) {
-          imageBase64 = await new Promise((resolve) => {
+          imageUrl = await new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.onload = (e) => resolve(e.target.result);
+            reader.onerror = (error) => reject(error);
             reader.readAsDataURL(imageFile);
           });
         }
 
-        const res = await createUserWithEmailAndPassword(auth, email, password);
-        await setDoc(doc(db, "users", res.user.uid), {
-          name,
-          email,
-          registrationDate: new Date().toISOString().split('T')[0],
-          image: imageBase64,
-          role: "user"
+        // 修正：使用 setDoc 寫入 users collection。因為剛建立帳號，Firestore Security Rules 可能要求 auth.uid 匹配，直接用 res.user.uid 作為 doc ID。
+        await setDoc(doc(db, "users", res.user.uid), { 
+          name, 
+          email, 
+          registrationDate, 
+          image: imageUrl, 
+          role: "user" 
         });
         alert("註冊成功！");
       } else {
@@ -1133,7 +1123,6 @@
   document.getElementById('add-class-btn').addEventListener('click', async () => {
     const name = document.getElementById('class-name').value.trim();
     
-    // 檢查課程名稱 unit：中文字 2 unit，emoji 3 unit，英文字 1 unit
     let unitCount = 0;
     const emojiRegex = /(\p{Extended_Pictographic}|\p{Emoji_Presentation})/u;
     for (const char of name) {
@@ -1571,7 +1560,7 @@
             <td style="padding:4px; border:1px solid var(--pojai-border); font-size:11px;">
               <div class="flex between" style="align-items:center;">
                 <span>$${roundedShare}</span>
-                {(!isSettled && canManage) ? `<button onclick="deleteMiscItem('${c.id}', ${idx})" style="width:auto; margin:0; padding:1px 4px; font-size:12px; background:transparent; color:#be123c; border:none; box-shadow:none;">❌</button>` : ''}
+                ${(!isSettled && canManage) ? `<button onclick="deleteMiscItem('${c.id}', ${idx})" style="width:auto; margin:0; padding:1px 4px; font-size:12px; background:transparent; color:#be123c; border:none; box-shadow:none;">❌</button>` : ''}
               </div>
             </td>
           </tr>
@@ -1655,7 +1644,7 @@
             <div class="tab-header">
               <button onclick="switchTab('${c.id}', 'course')" id="tab-btn-course-${c.id}" class="tab-btn ${currentTab === 'course' ? 'active-tab-course' : ''}">📚 課程</button>
               <button onclick="switchTab('${c.id}', 'pojai')" id="tab-btn-pojai-${c.id}" class="tab-btn ${currentTab === 'pojai' ? 'active-tab-pojai' : ''}">👵🏼 婆仔數</button>
-              {canManage ? `<button onclick="switchTab('${c.id}', 'admin')" id="tab-btn-admin-${c.id}" class="tab-btn ${currentTab === 'admin' ? 'active-tab-admin' : ''}">🛠️ 班長管理</button>` : ''}
+              ${canManage ? `<button onclick="switchTab('${c.id}', 'admin')" id="tab-btn-admin-${c.id}" class="tab-btn ${currentTab === 'admin' ? 'active-tab-admin' : ''}">🛠️ 班長管理</button>` : ''}
             </div>
 
             <div id="tab-content-course-${c.id}" class="tab-content ${currentTab === 'course' ? 'active-content' : ''}">
@@ -1673,7 +1662,7 @@
                 <hr style="border: none; border-top: 1px solid var(--pojai-border); margin: 8px 0;">
                 <div style="font-weight:bold; color:var(--pojai-text); font-size:12px; margin-bottom:4px;">🪬雜費</div>
                 ${miscTableHtml}
-                {!isSettled ? addMiscFormHtml : ''}
+                ${!isSettled ? addMiscFormHtml : ''}
 
                 <hr style="border: none; border-top: 1px solid var(--pojai-border); margin: 10px 0;">
                 <div style="text-align: center; margin-bottom: 8px;">
@@ -1684,7 +1673,7 @@
               </div>
             </div>
 
-            {canManage ? `
+            ${canManage ? `
               <div id="tab-content-admin-${c.id}" class="tab-content ${currentTab === 'admin' ? 'active-content' : ''}">
                 <div class="admin-edit-box" style="margin-top:0;">
                   <div style="background:#fff; padding:8px; border-radius:8px; border:1px solid #bae6fd; margin-bottom:8px;">
