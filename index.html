@@ -839,20 +839,9 @@
         const name = document.getElementById('auth-name').value.trim() || "舞者";
         const imageFile = document.getElementById('auth-image').files[0];
         
-        // 檢查現有用戶database是否有相同電郵或用戶名稱
-        const usersRef = collection(db, "users");
-        const emailQuery = query(usersRef, where("email", "==", email));
-        const emailSnap = await getDocs(emailQuery);
-        if(!emailSnap.empty) {
-          return alert("註冊失敗：此電郵已經被註冊！");
-        }
-
-        const nameQuery = query(usersRef, where("name", "==", name));
-        const nameSnap = await getDocs(nameQuery);
-        if(!nameSnap.empty) {
-          return alert("註冊失敗：此用戶名稱已經被使用！");
-        }
-
+        const res = await createUserWithEmailAndPassword(auth, email, password);
+        const registrationDate = new Date().toISOString().split('T')[0];
+        
         let imageUrl = "";
         if (imageFile) {
           imageUrl = await new Promise((resolve, reject) => {
@@ -863,9 +852,7 @@
           });
         }
 
-        const res = await createUserWithEmailAndPassword(auth, email, password);
-        const registrationDate = new Date().toISOString().split('T')[0];
-        
+        // 修正：使用 setDoc 寫入 users collection。因為剛建立帳號，Firestore Security Rules 可能要求 auth.uid 匹配，直接用 res.user.uid 作為 doc ID。
         await setDoc(doc(db, "users", res.user.uid), { 
           name, 
           email, 
@@ -1131,7 +1118,6 @@
   document.getElementById('add-class-btn').addEventListener('click', async () => {
     const name = document.getElementById('class-name').value.trim();
     
-    // 檢查課程名稱 unit：中文字 2 unit，emoji 3 unit，英文字 1 unit
     let unitCount = 0;
     const emojiRegex = /(\p{Extended_Pictographic}|\p{Emoji_Presentation})/u;
     for (const char of name) {
