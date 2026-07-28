@@ -836,7 +836,25 @@
 
     try {
       if(isRegisterMode) {
-        const name = document.getElementById('auth-name').value.trim() || "舞者";
+        const name = document.getElementById('auth-name').value.trim();
+        
+        if (!name) return alert("用戶名稱設為必填項目，不能留空！");
+        if (/\s/.test(name)) return alert("用戶名稱不接受空白格！");
+        if (name.length > 30) return alert("用戶名稱需限制在30個字內！");
+
+        const usersSnapshot = await getDocs(collection(db, "users"));
+        let nameExists = false;
+        usersSnapshot.forEach(docSnap => {
+          const userData = docSnap.data();
+          if (userData.name === name) {
+            nameExists = true;
+          }
+        });
+
+        if (nameExists) {
+          return alert("此用戶名稱已被使用，請選擇其他用戶名！");
+        }
+
         const imageFile = document.getElementById('auth-image').files[0];
         
         const res = await createUserWithEmailAndPassword(auth, email, password);
@@ -852,7 +870,6 @@
           });
         }
 
-        // 修正：使用 setDoc 寫入 users collection。因為剛建立帳號，Firestore Security Rules 可能要求 auth.uid 匹配，直接用 res.user.uid 作為 doc ID。
         await setDoc(doc(db, "users", res.user.uid), { 
           name, 
           email, 
