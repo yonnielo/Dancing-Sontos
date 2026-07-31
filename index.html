@@ -605,12 +605,9 @@
   <div id="auth-section" class="card">
     <h3 id="auth-title" style="color:#9d174d;">會員登入</h3>
     <input type="text" id="auth-email" placeholder="電子郵件">
-    <input type="password" id="auth-password" placeholder="密碼">
+    <input type="password" id="auth-password" placeholder="密碼 [最少6個字]">
     
     <div id="register-extra" class="hidden">
-      <input type="text" id="auth-name" placeholder="名字/暱稱 (例如: Alex)">
-      <label style="font-size: 12px; font-weight: bold; color: #9d174d; margin-top: 6px; display: block;">上傳註冊圖片：</label>
-      <input type="file" id="auth-image" accept="image/*">
     </div>
 
     <button id="auth-main-btn">登入</button>
@@ -769,6 +766,25 @@
 
 </div>
 
+<!-- 註冊成功彈出小視窗 Modal -->
+<div id="profile-setup-modal" class="custom-modal-overlay hidden">
+  <div class="custom-modal-box" style="max-width: 380px; text-align: left;">
+    <div style="font-size: 16px; font-weight: bold; color: #9d174d; margin-bottom: 12px; text-align: center;">完善您的個人檔案</div>
+    
+    <label style="font-size: 12px; font-weight: bold; color: #4b5563; display: block;">a) 註冊電郵：</label>
+    <input type="text" id="modal-email" readonly style="background: #e5e7eb; color: #6b7280; cursor: not-allowed;">
+
+    <label style="font-size: 12px; font-weight: bold; color: #4b5563; display: block; margin-top: 8px;">b) 用戶名稱 (必填，最多30字，不可有空白格)：</label>
+    <input type="text" id="modal-username" placeholder="請輸入用戶名稱">
+
+    <label style="font-size: 12px; font-weight: bold; color: #4b5563; display: block; margin-top: 8px;">c) Payme QR code圖片 (Optional)：</label>
+    <input type="file" id="modal-payme-image" accept="image/*">
+    <div style="font-size: 11px; color: #6b7280; margin-bottom: 12px;">你的Payme收款QR code相片（Optional)</div>
+
+    <button id="modal-save-profile-btn" style="width: 100%; margin: 0; padding: 10px;">確定並完成註冊</button>
+  </div>
+</div>
+
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
   import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, signOut, onAuthStateChanged, deleteUser } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
@@ -836,36 +852,73 @@
 
     try {
       if(isRegisterMode) {
-        const name = document.getElementById('auth-name').value.trim() || "舞者";
-        const imageFile = document.getElementById('auth-image').files[0];
-        
         const res = await createUserWithEmailAndPassword(auth, email, password);
-        const registrationDate = new Date().toISOString().split('T')[0];
-        
-        let imageUrl = "";
-        if (imageFile) {
-          imageUrl = await new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = (e) => resolve(e.target.result);
-            reader.onerror = (error) => reject(error);
-            reader.readAsDataURL(imageFile);
-          });
-        }
-
-        // 修正：使用 setDoc 寫入 users collection。因為剛建立帳號，Firestore Security Rules 可能要求 auth.uid 匹配，直接用 res.user.uid 作為 doc ID。
-        await setDoc(doc(db, "users", res.user.uid), { 
-          name, 
-          email, 
-          registrationDate, 
-          image: imageUrl, 
-          role: "user" 
-        });
-        alert("註冊成功！");
+        // 註冊成功後彈出小視窗填寫資料
+        document.getElementById('modal-email').value = email;
+        document.getElementById('modal-username').value = "";
+        document.getElementById('modal-payme-image').value = "";
+        document.getElementById('profile-setup-modal').classList.remove('hidden');
       } else {
         await signInWithEmailAndPassword(auth, email, password);
       }
     } catch (err) {
       alert("登入/註冊失敗: " + err.message);
+    }
+  });
+
+  document.getElementById('modal-save-profile-btn').addEventListener('click', async () => {
+    if (!auth.currentUser) return;
+    const username = document.getElementById('modal-username').value.trim();
+    const paymeFile = document.getElementById('modal-payme-image').files[0];
+
+    if (!username) {
+      return alert("用戶名稱為必填項目！");
+    }
+    if (/\s/.test(username)) {
+      return alert("用戶名稱不接受空白格！");
+    }
+    if (username.length > 30) {
+      return alert("用戶名稱限制在30個字內！");
+    }
+
+    try {
+      // 檢查用戶名稱是否跟現有用戶相同
+      const usersSnap = await getDocs(collection(db, "users"));
+      let nameExists = false;
+      usersSnap.forEach(docSnap => {
+        const data = docSnap.data();
+        if (data.name === username && docSnap.id !== auth.currentUser.uid) {
+          nameExists = true;
+        }
+      });
+
+      if (nameExists) {
+        return alert("該用戶名稱已被使用，請使用其他名稱！");
+      }
+
+      let paymeUrl = "";
+      if (paymeFile) {
+        paymeUrl = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (e) => resolve(e.target.result);
+          reader.onerror = (error) => reject(error);
+          reader.readAsDataURL(paymeFile);
+        });
+      }
+
+      const registrationDate = new Date().toISOString().split('T')[0];
+      await setDoc(doc(db, "users", auth.currentUser.uid), { 
+        name: username, 
+        email: auth.currentUser.email, 
+        registrationDate, 
+        paymeQrCode: paymeUrl, 
+        role: "user" 
+      });
+
+      document.getElementById('profile-setup-modal').classList.add('hidden');
+      alert("註冊成功！");
+    } catch (err) {
+      alert("儲存用戶資料失敗: " + err.message);
     }
   });
 
@@ -1555,7 +1608,7 @@
             <td style="padding:4px; border:1px solid var(--pojai-border); font-size:11px;">
               <div class="flex between" style="align-items:center;">
                 <span>$${roundedShare}</span>
-                ${(!isSettled && canManage) ? `<button onclick="deleteMiscItem('${c.id}', ${idx})" style="width:auto; margin:0; padding:1px 4px; font-size:12px; background:transparent; color:#be123c; border:none; box-shadow:none;">❌</button>` : ''}
+                {(!isSettled && canManage) ? `<button onclick="deleteMiscItem('${c.id}', ${idx})" style="width:auto; margin:0; padding:1px 4px; font-size:12px; background:transparent; color:#be123c; border:none; box-shadow:none;">❌</button>` : ''}
               </div>
             </td>
           </tr>
