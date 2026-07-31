@@ -766,6 +766,26 @@
 
 </div>
 
+<!-- 註冊成功後的小視窗 Modal -->
+<div id="post-register-modal" class="custom-modal-overlay hidden">
+  <div class="custom-modal-box" style="max-width: 380px; text-align: left;">
+    <h3 style="margin-top: 0; color: #9d174d; text-align: center;">完善會員資料</h3>
+    
+    <label style="font-size: 12px; font-weight: bold; color: #4b5563;">a) 註冊電郵：</label>
+    <input type="text" id="modal-reg-email" disabled style="background: #e5e7eb; color: #6b7280; cursor: not-allowed;">
+
+    <label style="font-size: 12px; font-weight: bold; color: #4b5563; margin-top: 8px; display: block;">b) 用戶名稱 (必填，最多30個字，不接受空白格)：</label>
+    <input type="text" id="modal-reg-username" placeholder="請輸入用戶名稱">
+
+    <label style="font-size: 12px; font-weight: bold; color: #4b5563; margin-top: 8px; display: block;">c) 你的Payme收款QR code相片（Optional)：</label>
+    <input type="file" id="modal-reg-qrcode" accept="image/*">
+
+    <div style="margin-top: 15px; text-align: center;">
+      <button id="modal-submit-profile-btn" style="width: 100%; padding: 10px;">完成並儲存</button>
+    </div>
+  </div>
+</div>
+
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
   import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, signOut, onAuthStateChanged, deleteUser } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
@@ -794,6 +814,7 @@
   let classesData = [];
   let allUsersList = [];
   let selectedDates = [];
+  let tempRegisteredUser = null;
   
   // 記錄每個課程當前啟用的 tab
   let activeTabState = {};
@@ -830,19 +851,16 @@
     const password = document.getElementById('auth-password').value.trim();
 
     if(!email || !password) return alert("請填寫完整資訊");
+    if(isRegisterMode && password.length < 6) return alert("密碼最少需要6個字");
 
     try {
       if(isRegisterMode) {
-        const querySnapshot = await getDocs(collection(db, "users"));
-        allUsersList = [];
-        querySnapshot.forEach(docSnap => {
-          allUsersList.push({ uid: docSnap.id, ...docSnap.data() });
-        });
-
         const res = await createUserWithEmailAndPassword(auth, email, password);
-        const registrationDate = new Date().toISOString().split('T')[0];
-        
-        showRegisterModal(email, res.user.uid, registrationDate);
+        tempRegisteredUser = res.user;
+        document.getElementById('modal-reg-email').value = email;
+        document.getElementById('modal-reg-username').value = '';
+        document.getElementById('modal-reg-qrcode').value = '';
+        document.getElementById('post-register-modal').classList.remove('hidden');
       } else {
         await signInWithEmailAndPassword(auth, email, password);
       }
@@ -851,80 +869,48 @@
     }
   });
 
-  function showRegisterModal(email, uid, registrationDate) {
-    const overlay = document.createElement('div');
-    overlay.className = 'custom-modal-overlay';
-    
-    const box = document.createElement('div');
-    box.className = 'custom-modal-box';
-    box.style.maxWidth = '360px';
-    
-    box.innerHTML = `
-      <div class="custom-modal-text" style="margin-bottom:10px;">請填寫以下註冊資料</div>
-      <div style="text-align:left; font-size:12px; margin-bottom:8px;">
-        <label style="font-weight:bold; color:#6b7280; display:block; margin-bottom:2px;">a) 註冊電郵</label>
-        <input type="text" id="modal-reg-email" value="${email}" disabled style="background:#f3f4f6; color:#6b7280; margin:0; cursor:not-allowed;">
-      </div>
-      <div style="text-align:left; font-size:12px; margin-bottom:8px;">
-        <label style="font-weight:bold; color:#1f2937; display:block; margin-bottom:2px;">b) 用戶名稱 (必填，最多30個字，不接受空白格)</label>
-        <input type="text" id="modal-reg-name" placeholder="請輸入用戶名稱" style="margin:0;">
-      </div>
-      <div style="text-align:left; font-size:12px; margin-bottom:15px;">
-        <label style="font-weight:bold; color:#1f2937; display:block; margin-bottom:2px;">c) 你的Payme收款QR code相片（Optional)</label>
-        <input type="file" id="modal-reg-image" accept="image/*" style="margin:0;">
-      </div>
-      <div class="custom-modal-buttons">
-        <button id="modal-reg-submit" class="btn-pojai" style="flex:1;">完成註冊</button>
-      </div>
-    `;
-    
-    overlay.appendChild(box);
-    document.body.appendChild(overlay);
+  document.getElementById('modal-submit-profile-btn').addEventListener('click', async () => {
+    const username = document.getElementById('modal-reg-username').value.trim();
+    const qrCodeFile = document.getElementById('modal-reg-qrcode').files[0];
 
-    document.getElementById('modal-reg-submit').addEventListener('click', async () => {
-      const nameInput = document.getElementById('modal-reg-name').value.trim();
-      const imageFile = document.getElementById('modal-reg-image').files[0];
+    if (!username) return alert("用戶名稱為必填項目！");
+    if (/\s/.test(username)) return alert("用戶名稱不接受空白格！");
+    if (username.length > 30) return alert("用戶名稱限制在30個字內！");
 
-      if (!nameInput) {
-        return alert("用戶名稱為必填項目！");
-      }
-      if (/\s/.test(nameInput)) {
-        return alert("用戶名稱不接受空白格！");
-      }
-      if (nameInput.length > 30) {
-        return alert("用戶名稱限制在30個字內！");
+    try {
+      const usersSnap = await getDocs(collection(db, "users"));
+      for (const docSnap of usersSnap.docs) {
+        const data = docSnap.data();
+        if (data.name === username) {
+          return alert("此用戶名稱已被使用，請使用其他用戶名稱！");
+        }
       }
 
-      const nameExists = allUsersList.some(u => u.name === nameInput);
-      if (nameExists) {
-        return alert("此用戶名稱跟現有用戶的用戶名稱相同，請使用其他用戶名稱！");
-      }
-
-      let imageUrl = "";
-      if (imageFile) {
-        imageUrl = await new Promise((resolve, reject) => {
+      let qrCodeUrl = "";
+      if (qrCodeFile) {
+        qrCodeUrl = await new Promise((resolve, reject) => {
           const reader = new FileReader();
           reader.onload = (e) => resolve(e.target.result);
           reader.onerror = (error) => reject(error);
-          reader.readAsDataURL(imageFile);
+          reader.readAsDataURL(qrCodeFile);
         });
       }
 
-      try {
-        await setDoc(doc(db, "users", uid), { 
-          name: nameInput, 
-          email, 
-          registrationDate, 
-          image: imageUrl, 
-          role: "user" 
-        });
-        document.body.removeChild(overlay);
-        alert("註冊成功！");
-      } catch (err) {
-        alert("儲存用戶資料失敗: " + err.message);
-      }
-    });
-  }
+      const registrationDate = new Date().toISOString().split('T')[0];
+      await setDoc(doc(db, "users", tempRegisteredUser.uid), { 
+        name: username, 
+        email: tempRegisteredUser.email, 
+        registrationDate, 
+        paymeQRCode: qrCodeUrl, 
+        role: "user" 
+      });
+
+      document.getElementById('post-register-modal').classList.add('hidden');
+      alert("資料設定成功！");
+    } catch (err) {
+      alert("儲存用戶資料失敗: " + err.message);
+    }
+  });
 
   logoutBtn.addEventListener('click', () => {
     signOut(auth);
@@ -1612,7 +1598,7 @@
             <td style="padding:4px; border:1px solid var(--pojai-border); font-size:11px;">
               <div class="flex between" style="align-items:center;">
                 <span>$${roundedShare}</span>
-                ${(!isSettled && canManage) ? `<button onclick="deleteMiscItem('${c.id}', ${idx})" style="width:auto; margin:0; padding:1px 4px; font-size:12px; background:transparent; color:#be123c; border:none; box-shadow:none;">❌</button>` : ''}
+                {(!isSettled && canManage) ? `<button onclick="deleteMiscItem('${c.id}', ${idx})" style="width:auto; margin:0; padding:1px 4px; font-size:12px; background:transparent; color:#be123c; border:none; box-shadow:none;">❌</button>` : ''}
               </div>
             </td>
           </tr>
