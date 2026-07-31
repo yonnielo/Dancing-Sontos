@@ -607,6 +607,9 @@
     <input type="text" id="auth-email" placeholder="電子郵件">
     <input type="password" id="auth-password" placeholder="密碼 [最少6個字]">
     
+    <div id="register-extra" class="hidden">
+    </div>
+
     <button id="auth-main-btn">登入</button>
     <div style="display:flex; justify-content:space-between; margin-top: 10px;">
       <a href="#" id="toggle-auth-mode" style="font-size:13px; color:#be123c;">沒有帳號？點此註冊</a>
@@ -763,25 +766,6 @@
 
 </div>
 
-<!-- 註冊後補充資料小視窗 Modal -->
-<div id="register-modal" class="custom-modal-overlay hidden">
-  <div class="custom-modal-box" style="max-width: 380px; text-align: left;">
-    <div style="font-size: 16px; font-weight: bold; color: #9d174d; margin-bottom: 12px; text-align: center;">完善用戶資料</div>
-    
-    <label style="font-size: 12px; font-weight: bold; color: #6b7280; display: block; margin-bottom: 2px;">a) 註冊電郵：</label>
-    <input type="text" id="modal-email-display" readonly style="background: #f3f4f6; color: #6b7280; cursor: not-allowed; margin-top: 0;">
-
-    <label style="font-size: 12px; font-weight: bold; color: #1f2937; display: block; margin-top: 8px; margin-bottom: 2px;">b) 用戶名稱 (必填，最多30個字，不可有空白格)：</label>
-    <input type="text" id="modal-username" placeholder="請輸入用戶名稱" style="margin-top: 0;">
-
-    <label style="font-size: 12px; font-weight: bold; color: #1f2937; display: block; margin-top: 8px; margin-bottom: 2px;">c) Payme QR code圖片 (Optional)：</label>
-    <input type="file" id="modal-payme-image" accept="image/*" style="margin-top: 0;">
-    <div style="font-size: 11px; color: #6b7280; margin-bottom: 12px;">你的Payme收款QR code相片（Optional）</div>
-
-    <button id="modal-submit-btn" style="width: 100%; margin: 0; padding: 10px;">確認儲存</button>
-  </div>
-</div>
-
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
   import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, signOut, onAuthStateChanged, deleteUser } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
@@ -825,6 +809,7 @@
   });
 
   const toggleAuthModeBtn = document.getElementById('toggle-auth-mode');
+  const registerExtra = document.getElementById('register-extra');
   const authMainBtn = document.getElementById('auth-main-btn');
   const logoutBtn = document.getElementById('logout-btn');
   const deleteAccountBtn = document.getElementById('delete-account-btn');
@@ -836,6 +821,7 @@
     isRegisterMode = !isRegisterMode;
     document.getElementById('auth-title').innerText = isRegisterMode ? "註冊帳號" : "會員登入";
     authMainBtn.innerText = isRegisterMode ? "註冊" : "登入";
+    registerExtra.classList.toggle('hidden', !isRegisterMode);
     toggleAuthModeBtn.innerText = isRegisterMode ? "已有帳號？登入" : "沒有帳號？註冊";
   });
 
@@ -847,57 +833,20 @@
 
     try {
       if(isRegisterMode) {
-        if(password.length < 6) return alert("密碼最少需要6個字");
+        const name = email.split('@')[0];
         const res = await createUserWithEmailAndPassword(auth, email, password);
+        const registrationDate = new Date().toISOString().split('T')[0];
         
-        // 彈出小視窗供新用戶填寫詳細資料
-        document.getElementById('modal-email-display').value = email;
-        document.getElementById('modal-username').value = "";
-        document.getElementById('modal-payme-image').value = "";
-        document.getElementById('register-modal').classList.remove('hidden');
+        let imageUrl = "";
 
-        // 綁定小視窗確認按鈕
-        document.getElementById('modal-submit-btn').onclick = async () => {
-          const username = document.getElementById('modal-username').value.trim();
-          if(!username) return alert("用戶名稱為必填項目！");
-          if(/\s/.test(username)) return alert("用戶名稱不接受空白格！");
-          if(username.length > 30) return alert("用戶名稱必須限制在30個字內！");
-
-          // 檢查用戶名稱是否跟現有用戶相同
-          const usersSnap = await getDocs(collection(db, "users"));
-          let nameExists = false;
-          usersSnap.forEach(docSnap => {
-            const data = docSnap.data();
-            if(data.name === username) {
-              nameExists = true;
-            }
-          });
-          if(nameExists) return alert("此用戶名稱已被使用，請使用其他用戶名稱！");
-
-          const paymeFile = document.getElementById('modal-payme-image').files[0];
-          let paymeUrl = "";
-          if(paymeFile) {
-            paymeUrl = await new Promise((resolve, reject) => {
-              const reader = new FileReader();
-              reader.onload = (e) => resolve(e.target.result);
-              reader.onerror = (error) => reject(error);
-              reader.readAsDataURL(paymeFile);
-            });
-          }
-
-          const registrationDate = new Date().toISOString().split('T')[0];
-          await setDoc(doc(db, "users", res.user.uid), {
-            name: username,
-            email: email,
-            paymentImage: paymeUrl,
-            registrationDate,
-            role: "user"
-          });
-
-          document.getElementById('register-modal').classList.add('hidden');
-          alert("註冊成功！");
-        };
-
+        await setDoc(doc(db, "users", res.user.uid), { 
+          name, 
+          email, 
+          registrationDate, 
+          image: imageUrl, 
+          role: "user" 
+        });
+        alert("註冊成功！");
       } else {
         await signInWithEmailAndPassword(auth, email, password);
       }
@@ -1592,7 +1541,7 @@
             <td style="padding:4px; border:1px solid var(--pojai-border); font-size:11px;">
               <div class="flex between" style="align-items:center;">
                 <span>$${roundedShare}</span>
-                {(!isSettled && canManage) ? `<button onclick="deleteMiscItem('${c.id}', ${idx})" style="width:auto; margin:0; padding:1px 4px; font-size:12px; background:transparent; color:#be123c; border:none; box-shadow:none;">❌</button>` : ''}
+                ${(!isSettled && canManage) ? `<button onclick="deleteMiscItem('${c.id}', ${idx})" style="width:auto; margin:0; padding:1px 4px; font-size:12px; background:transparent; color:#be123c; border:none; box-shadow:none;">❌</button>` : ''}
               </div>
             </td>
           </tr>
