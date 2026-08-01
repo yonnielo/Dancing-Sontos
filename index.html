@@ -469,6 +469,12 @@
       margin-top: 6px;
     }
 
+    /* 新增：用戶列表與角色管理的 Scroll bar 設定（高度可容納約10行資料） */
+    .admin-user-table-container {
+      max-height: 280px;
+      overflow-y: auto;
+    }
+
     .edit-table {
       width: 100%;
       min-width: 980px;
@@ -481,6 +487,9 @@
       border: 1px solid #bae6fd;
       padding: 6px;
       text-align: left;
+      position: sticky;
+      top: 0;
+      z-index: 1;
     }
     .edit-table td {
       border: 1px solid #bae6fd;
@@ -627,7 +636,7 @@
       
       <div style="margin-bottom: 15px;">
         <h4 style="margin-bottom:5px; color:#0284c7;">全站用戶列表與角色管理</h4>
-        <div class="table-container">
+        <div class="table-container admin-user-table-container">
           <table class="edit-table" style="min-width:550px;">
             <thead>
               <tr>
@@ -1085,7 +1094,6 @@
           <td>
             <div class="flex" style="gap:4px; margin:0;">
               <button onclick="adminSaveUser('${u.uid}')" style="width:auto; margin:0; padding:2px 6px; font-size:10px;" class="btn-secondary">儲存</button>
-              <button onclick="adminResetPassword('${u.email}')" style="width:auto; margin:0; padding:2px 6px; font-size:10px;" class="btn-warning">重設密碼信</button>
               <button onclick="adminDeleteUser('${u.uid}')" style="width:auto; margin:0; padding:2px 6px; font-size:10px;" class="btn-danger">刪除用戶</button>
             </div>
           </td>
@@ -1095,18 +1103,6 @@
       alert("載入用戶列表失敗: " + e.message);
     }
   }
-
-  window.adminResetPassword = async (email) => {
-    if(!email) return alert("該用戶沒有有效的 Email！");
-    if(confirm(`確定要向 ${email} 發送密碼重設信嗎？`)) {
-      try {
-        await sendPasswordResetEmail(auth, email);
-        alert(`【成功】重設密碼信已成功發送到 ${email}！請提示用戶查收 Email 並設定新密碼。`);
-      } catch(e) {
-        alert("【失敗】無法發送重設信: " + e.message);
-      }
-    }
-  };
 
   window.adminSaveUser = async (uid) => {
     const name = document.getElementById(`admin-name-${uid}`).value.trim();
@@ -2591,30 +2587,24 @@
     sessions[dateStr].students = students;
 
     try {
-      await updateDoc(doc(db, "classes", classId), { sessions: sessions });
+      await updateDoc(doc(db, "classes", classId), { sessions });
       loadClasses();
     } catch(e) {
       alert("操作失敗: " + e.message);
     }
   };
 
-  window.deleteClass = async (id) => {
-    if(confirm("確定要刪除/解散此課程嗎？")) {
-      try {
-        await deleteDoc(doc(db, "classes", id));
-        alert("課程已成功從資料庫刪除！");
-        loadClasses();
-      } catch(e) {
-        alert("刪除失敗: " + e.message);
-      }
+  window.deleteClass = async (classId) => {
+    if(!confirm("⚠️ 警告：確定要刪除整個課程嗎？此動作無法復原！")) return;
+    try {
+      await deleteDoc(doc(db, "classes", classId));
+      alert("課程已成功刪除！");
+      loadClasses();
+    } catch(e) {
+      alert("刪除失敗: " + e.message);
     }
-  }
+  };
 
-  window.copyEntireCode = () => {
-    const code = document.documentElement.outerHTML;
-    navigator.clipboard.writeText(code);
-  }
 </script>
-
 </body>
 </html>
