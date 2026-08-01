@@ -927,29 +927,37 @@
 
     try {
       if(isRegisterMode) {
-        const name = email.split('@')[0];
         const res = await createUserWithEmailAndPassword(auth, email, password);
-        await sendEmailVerification(res.user);
-        const registrationDate = new Date().toISOString().split('T')[0];
-        
-        let imageUrl = "";
+        const user = res.user;
 
-        const newProfile = { 
-          name, 
-          email, 
-          registrationDate, 
-          image: imageUrl, 
-          role: "user" 
-        };
-
-        await setDoc(doc(db, "users", res.user.uid), newProfile);
-        alert("註冊成功！驗證電郵已發送，請檢查您的信箱並完成驗證後再登入。");
+        await sendEmailVerification(user);
+        alert("驗證電郵已發送，請檢查您的收件匣並完成電子郵件地址驗證後再登入。");
         await signOut(auth);
+        return;
       } else {
-        const res = await signInWithEmailAndPassword(auth, email, password);
-        if (!res.user.emailVerified) {
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+
+        if (!user.emailVerified) {
           await signOut(auth);
-          return alert("您的電郵尚未完成驗證！請檢查您的信箱收件匣（或垃圾郵件夾）並點擊驗證連結後再登入。");
+          alert("您的電子郵件地址尚未驗證，請先完成驗證後才能登入。");
+          return;
+        }
+
+        const userDocRef = doc(db, "users", user.uid);
+        const userDoc = await getDoc(userDocRef);
+        if (!userDoc.exists()) {
+          const name = email.split('@')[0];
+          const registrationDate = new Date().toISOString().split('T')[0];
+          const newProfile = { 
+            name, 
+            email, 
+            registrationDate, 
+            image: "", 
+            role: "user" 
+          };
+          await setDoc(userDocRef, newProfile);
+          showUserProfileModal(user.uid, newProfile);
         }
       }
     } catch (err) {
@@ -1037,11 +1045,7 @@
   });
 
   onAuthStateChanged(auth, async (user) => {
-    if (user) {
-      if (!user.emailVerified) {
-        await signOut(auth);
-        return;
-      }
+    if (user && user.emailVerified) {
       currentUser = user;
       try {
         const userDoc = await getDoc(doc(db, "users", user.uid));
@@ -1699,7 +1703,7 @@
             <td style="padding:4px; border:1px solid var(--pojai-border); font-size:11px;">
               <div class="flex between" style="align-items:center;">
                 <span>$${roundedShare}</span>
-                {(!isSettled && canManage) ? `<button onclick="deleteMiscItem('${c.id}', ${idx})" style="width:auto; margin:0; padding:1px 4px; font-size:12px; background:transparent; color:#be123c; border:none; box-shadow:none;">❌</button>` : ''}
+                ${(!isSettled && canManage) ? `<button onclick="deleteMiscItem('${c.id}', ${idx})" style="width:auto; margin:0; padding:1px 4px; font-size:12px; background:transparent; color:#be123c; border:none; box-shadow:none;">❌</button>` : ''}
               </div>
             </td>
           </tr>
@@ -1783,7 +1787,7 @@
             <div class="tab-header">
               <button onclick="switchTab('${c.id}', 'course')" id="tab-btn-course-${c.id}" class="tab-btn ${currentTab === 'course' ? 'active-tab-course' : ''}">📚 課程</button>
               <button onclick="switchTab('${c.id}', 'pojai')" id="tab-btn-pojai-${c.id}" class="tab-btn ${currentTab === 'pojai' ? 'active-tab-pojai' : ''}">👵🏼 婆仔數</button>
-              {canManage ? `<button onclick="switchTab('${c.id}', 'admin')" id="tab-btn-admin-${c.id}" class="tab-btn ${currentTab === 'admin' ? 'active-tab-admin' : ''}">🛠️ 班長管理</button>` : ''}
+              ${canManage ? `<button onclick="switchTab('${c.id}', 'admin')" id="tab-btn-admin-${c.id}" class="tab-btn ${currentTab === 'admin' ? 'active-tab-admin' : ''}">🛠️ 班長管理</button>` : ''}
             </div>
 
             <div id="tab-content-course-${c.id}" class="tab-content ${currentTab === 'course' ? 'active-content' : ''}">
@@ -1801,7 +1805,7 @@
                 <hr style="border: none; border-top: 1px solid var(--pojai-border); margin: 8px 0;">
                 <div style="font-weight:bold; color:var(--pojai-text); font-size:12px; margin-bottom:4px;">🪬雜費</div>
                 ${miscTableHtml}
-                {(!isSettled) ? addMiscFormHtml : ''}
+                ${!isSettled ? addMiscFormHtml : ''}
 
                 <hr style="border: none; border-top: 1px solid var(--pojai-border); margin: 10px 0;">
                 <div style="text-align: center; margin-bottom: 8px;">
@@ -1812,7 +1816,7 @@
               </div>
             </div>
 
-            {canManage ? `
+            ${canManage ? `
               <div id="tab-content-admin-${c.id}" class="tab-content ${currentTab === 'admin' ? 'active-content' : ''}">
                 <div class="admin-edit-box" style="margin-top:0;">
                   <div style="background:#fff; padding:8px; border-radius:8px; border:1px solid #bae6fd; margin-bottom:8px;">
@@ -2602,10 +2606,10 @@
   };
 
   window.deleteClass = async (classId) => {
-    if(!confirm("⚠️ 警告：確定要刪除整個課程嗎？此動作無法復原！")) return;
+    if(!confirm("⚠️ 確定要刪除整個課程嗎？此動作無法復原！")) return;
     try {
       await deleteDoc(doc(db, "classes", classId));
-      alert("【成功】課程已刪除！");
+      alert("課程已成功刪除！");
       loadClasses();
     } catch(e) {
       alert("刪除失敗: " + e.message);
