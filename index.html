@@ -849,7 +849,7 @@
         await setDoc(doc(db, "users", res.user.uid), newProfile);
         alert("註冊成功！");
 
-        // 彈出小窗顯示用戶現時的所有資料，並改為可以修改及儲存，檢查暱稱有沒有跟其他用戶相同
+        // 彈出小窗顯示用戶現時的所有資料，並改為可以修改及儲存
         showUserProfileModal(res.user.uid, newProfile);
       } else {
         await signInWithEmailAndPassword(auth, email, password);
@@ -859,13 +859,7 @@
     }
   });
 
-  async function showUserProfileModal(uid, profile) {
-    const querySnapshot = await getDocs(collection(db, "users"));
-    const existingUsers = [];
-    querySnapshot.forEach(docSnap => {
-      existingUsers.push({ id: docSnap.id, ...docSnap.data() });
-    });
-
+  function showUserProfileModal(uid, profile) {
     const overlay = document.createElement('div');
     overlay.className = 'custom-modal-overlay';
     
@@ -888,15 +882,27 @@
     document.body.appendChild(overlay);
 
     document.getElementById('modal-save-btn').addEventListener('click', async () => {
-      const newName = document.getElementById('modal-edit-name').value.trim();
-      if(!newName) return alert("暱稱不能為空！");
+      const rawName = document.getElementById('modal-edit-name').value;
+      const newName = rawName.trim();
 
-      const isDuplicate = existingUsers.some(u => u.id !== uid && u.name === newName);
-      if (isDuplicate) {
-        return alert("此暱稱已經被其他用戶使用，請修改其他暱稱！");
-      }
+      if(!newName) return alert("暱稱不能為空！");
+      if(/\s/.test(rawName)) return alert("暱稱不能包含空白！請繼續修改。");
+      if(rawName.length > 20) return alert("暱稱不能多過20個字！請繼續修改。");
 
       try {
+        const q = query(collection(db, "users"), where("name", "==", newName));
+        const querySnapshot = await getDocs(q);
+        let isDuplicate = false;
+        querySnapshot.forEach(docSnap => {
+          if (docSnap.id !== uid) {
+            isDuplicate = true;
+          }
+        });
+
+        if (isDuplicate) {
+          return alert("此暱稱已有其他用戶使用，請繼續修改！");
+        }
+
         await setDoc(doc(db, "users", uid), { name: newName }, { merge: true });
         if(currentUserProfile) currentUserProfile.name = newName;
         document.body.removeChild(overlay);
