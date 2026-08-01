@@ -766,22 +766,6 @@
 
 </div>
 
-<!-- 用戶資料修改彈窗 -->
-<div id="user-profile-modal" class="custom-modal-overlay hidden">
-  <div class="custom-modal-box" style="max-width: 380px;">
-    <div style="font-weight: bold; font-size: 16px; color: #9d174d; margin-bottom: 12px;">📋 您的用戶資料</div>
-    <div style="text-align: left; font-size: 13px; margin-bottom: 12px; line-height: 1.6; background: #fdf2f8; padding: 10px; border-radius: 6px; border: 1px solid #fbcfe8;">
-      <div><b>電子郵件：</b> <span id="modal-user-email"></span></div>
-      <div><b>註冊日期：</b> <span id="modal-user-regdate"></span></div>
-      <div><b>角色身份：</b> <span id="modal-user-role"></span></div>
-    </div>
-    <div style="text-align: left; font-size: 13px; margin-bottom: 6px; font-weight: bold; color: #1f2937;">修改暱稱 (不可有空格)：</div>
-    <input type="text" id="modal-user-name-input" placeholder="請輸入新暱稱" style="margin-top: 0; margin-bottom: 12px;">
-    <div id="modal-nickname-error" style="color: #be123c; font-size: 11px; margin-bottom: 10px; text-align: left; display: none;"></div>
-    <button id="modal-save-profile-btn" class="btn-pojai" style="width: 100%; padding: 10px; font-size: 14px;">儲存並進入主頁面</button>
-  </div>
-</div>
-
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
   import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, signOut, onAuthStateChanged, deleteUser } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
@@ -855,16 +839,19 @@
         
         let imageUrl = "";
 
-        await setDoc(doc(db, "users", res.user.uid), { 
+        const newProfile = { 
           name, 
           email, 
           registrationDate, 
           image: imageUrl, 
           role: "user" 
-        });
-        
-        // 註冊成功後設定為剛註冊狀態，觸發彈窗
-        window.isNewlyRegistered = true;
+        };
+
+        await setDoc(doc(db, "users", res.user.uid), newProfile);
+        alert("註冊成功！");
+
+        // 彈出小窗顯示用戶現時的所有資料，並改為可以修改及儲存
+        showUserProfileModal(res.user.uid, newProfile);
       } else {
         await signInWithEmailAndPassword(auth, email, password);
       }
@@ -872,6 +859,42 @@
       alert("登入/註冊失敗: " + err.message);
     }
   });
+
+  function showUserProfileModal(uid, profile) {
+    const overlay = document.createElement('div');
+    overlay.className = 'custom-modal-overlay';
+    
+    const box = document.createElement('div');
+    box.className = 'custom-modal-box';
+    
+    box.innerHTML = `
+      <div class="custom-modal-text" style="text-align: left;">🎉 歡迎註冊！您的現時資料如下（可修改暱稱）：<br><br>
+        👤 暱稱：<input type="text" id="modal-edit-name" value="${profile.name || ''}" style="margin:4px 0;"><br>
+        📧 電郵：${profile.email || '無'}<br>
+        📅 註冊日期：${profile.registrationDate || '無'}<br>
+        🛡️ 角色：${profile.role || 'user'}
+      </div>
+      <div class="custom-modal-buttons" style="flex-direction: column; gap: 8px;">
+        <button id="modal-save-btn" class="btn-pojai" style="width: 100%;">儲存並進入主頁面</button>
+      </div>
+    `;
+    
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+
+    document.getElementById('modal-save-btn').addEventListener('click', async () => {
+      const newName = document.getElementById('modal-edit-name').value.trim();
+      if(!newName) return alert("暱稱不能為空！");
+
+      try {
+        await setDoc(doc(db, "users", uid), { name: newName }, { merge: true });
+        if(currentUserProfile) currentUserProfile.name = newName;
+        document.body.removeChild(overlay);
+      } catch(e) {
+        alert("儲存暱稱失敗: " + e.message);
+      }
+    });
+  }
 
   logoutBtn.addEventListener('click', () => {
     signOut(auth);
@@ -925,12 +948,6 @@
       document.getElementById('app-section').classList.remove('hidden');
       document.getElementById('user-action-btns').classList.remove('hidden');
 
-      // 檢查是否為新註冊用戶，如果是則彈出資料修改視窗
-      if (window.isNewlyRegistered) {
-        window.isNewlyRegistered = false;
-        await showNewUserModal();
-      }
-
       loadClasses();
     } else {
       currentUser = null;
@@ -941,71 +958,6 @@
       document.getElementById('app-section').classList.add('hidden');
       adminPanel.classList.add('hidden');
       document.getElementById('user-action-btns').classList.add('hidden');
-      document.getElementById('user-profile-modal').classList.add('hidden');
-    }
-  });
-
-  async function showNewUserModal() {
-    const modal = document.getElementById('user-profile-modal');
-    document.getElementById('modal-user-email').innerText = currentUserProfile.email || currentUser.email || '';
-    document.getElementById('modal-user-regdate').innerText = currentUserProfile.registrationDate || new Date().toISOString().split('T')[0];
-    document.getElementById('modal-user-role').innerText = currentUserProfile.role === 'admin' ? 'Admin' : '一般用戶';
-    document.getElementById('modal-user-name-input').value = currentUserProfile.name || '';
-    document.getElementById('modal-nickname-error').style.display = 'none';
-    modal.classList.remove('hidden');
-  }
-
-  document.getElementById('modal-save-profile-btn').addEventListener('click', async () => {
-    const newName = document.getElementById('modal-user-name-input').value.trim();
-    const errorEl = document.getElementById('modal-nickname-error');
-
-    if (!newName) {
-      errorEl.innerText = "暱稱不能為空";
-      errorEl.style.display = 'block';
-      return;
-    }
-
-    if (/\s/.test(newName)) {
-      errorEl.innerText = "暱稱不接受任何空格";
-      errorEl.style.display = 'block';
-      return;
-    }
-
-    // 檢查是否有其他現有用戶擁有相同暱稱
-    try {
-      const querySnapshot = await getDocs(collection(db, "users"));
-      let isDuplicate = false;
-      querySnapshot.forEach(docSnap => {
-        if (docSnap.id !== currentUser.uid) {
-          const data = docSnap.data();
-          if (data.name === newName) {
-            isDuplicate = true;
-          }
-        }
-      });
-
-      if (isDuplicate) {
-        errorEl.innerText = "此暱稱已被其他用戶使用，請修改至沒有相同才能離開";
-        errorEl.style.display = 'block';
-        return;
-      }
-
-      // 更新資料庫
-      await updateDoc(doc(db, "users", currentUser.uid), { name: newName });
-      currentUserProfile.name = newName;
-      if (isAdmin) {
-        userStatus.innerHTML = `<span class="badge-admin">👑 Admin</span> ${newName}`;
-      } else {
-        userStatus.innerText = `👶🏻 ${newName}`;
-      }
-
-      errorEl.style.display = 'none';
-      document.getElementById('user-profile-modal').classList.add('hidden');
-      alert("暱稱設定成功！");
-      loadClasses();
-    } catch(e) {
-      errorEl.innerText = "儲存失敗: " + e.message;
-      errorEl.style.display = 'block';
     }
   });
 
