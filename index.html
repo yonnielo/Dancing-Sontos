@@ -612,6 +612,7 @@
     <button id="auth-main-btn">登入</button>
     <div style="display:flex; justify-content:space-between; margin-top: 10px;">
       <a href="#" id="toggle-auth-mode" style="font-size:13px; color:#be123c;">沒有帳號？點此註冊</a>
+      <a href="#" id="forgot-password-link" style="font-size:13px; color:#0284c7;">忘記密碼？</a>
     </div>
 
     <div style="margin-top: 15px; text-align: center;">
@@ -808,6 +809,7 @@
   });
 
   const toggleAuthModeBtn = document.getElementById('toggle-auth-mode');
+  const forgotPasswordLink = document.getElementById('forgot-password-link');
   const registerExtra = document.getElementById('register-extra');
   const authMainBtn = document.getElementById('auth-main-btn');
   const logoutBtn = document.getElementById('logout-btn');
@@ -891,6 +893,21 @@
     authMainBtn.innerText = isRegisterMode ? "註冊" : "登入";
     registerExtra.classList.toggle('hidden', !isRegisterMode);
     toggleAuthModeBtn.innerText = isRegisterMode ? "已有帳號？登入" : "沒有帳號？註冊";
+  });
+
+  forgotPasswordLink.addEventListener('click', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('auth-email').value.trim();
+    if (!email) {
+      alert("請先在上方輸入您的電子郵件信箱，然後再點擊「忘記密碼？」");
+      return;
+    }
+    try {
+      await sendPasswordResetEmail(auth, email);
+      alert(`重設密碼信已發送至 ${email}，請查收電郵並依照指示重設密碼。`);
+    } catch (err) {
+      alert("發送重設密碼信失敗: " + err.message);
+    }
   });
 
   authMainBtn.addEventListener('click', async () => {
@@ -2595,12 +2612,8 @@
 
   window.copyEntireCode = () => {
     const code = document.documentElement.outerHTML;
-    navigator.clipboard.writeText(code).then(() => {
-      alert("已成功複製完整程式碼！");
-    }).catch(err => {
-      alert("複製失敗: " + err);
-    });
-  };
+    navigator.clipboard.writeText(code);
+  }
 </script>
 
 </body>
