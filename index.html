@@ -477,7 +477,7 @@
 
     .edit-table {
       width: 100%;
-      min-width: 980px;
+      min-width: 900px;
       border-collapse: collapse;
       font-size: 12px;
     }
@@ -1674,17 +1674,11 @@
           `;
         }).join('');
 
+      // 【修改點 2】只找出有報名該課程的用戶作為「邊個有份」及雜費分攤的候選名單
       const eligibleNamesSet = new Set([c.leaderName]);
       dateKeys.forEach(d => {
         (sessions[d].students || []).forEach(s => eligibleNamesSet.add(s.name));
       });
-      if (c.accessType === 'specific' && c.allowedUsers) {
-        c.allowedUsers.forEach(uid => {
-          const uObj = allUsersList.find(u => u.uid === uid);
-          if (uObj) eligibleNamesSet.add(uObj.name || uObj.email);
-        });
-      }
-      allUsersList.forEach(u => eligibleNamesSet.add(u.name || u.email));
       const eligibleNames = Array.from(eligibleNamesSet);
 
       const payerOptions = eligibleNames.map(name => `<option value="${name}">${name}</option>`).join('');
@@ -1861,7 +1855,7 @@
                           <th style="width:90px;">學費付款人</th>
                           <th style="width:60px;">場租($)</th>
                           <th style="width:90px;">場租付款人</th>
-                          <th style="min-width:180px;">已報名學員 (點擊刪除) / 手動加人</th>
+                          <th style="min-width:160px;">已報名學員 (點擊刪除)</th>
                           <th style="width:50px;">操作</th>
                         </tr>
                       </thead>
@@ -1998,8 +1992,6 @@
         </span>
       `).join('');
 
-      const addStudentOptions = allUsersList.map(u => `<option value="${u.uid}">${u.name || u.email}</option>`).join('');
-
       const feePayerOptions = allUsersList.map(u => {
         const isSelected = u.uid === (sess.feePayerUid || classObj.leaderId);
         return `<option value="${u.uid}" ${isSelected ? 'selected' : ''}>${u.name || u.email}</option>`;
@@ -2015,6 +2007,7 @@
       const endTimeVal = sess.endTime || '21:00';
       const isClosed = sess.isClosed || false;
 
+      // 【修改點 1】移除手動加人下拉式選單與加人按鈕，僅保留已報名學員列表與刪除功能
       return `
         <tr data-date="${d}" class="edit-session-row">
           <td><input type="date" value="${d}" class="edit-date-input"></td>
@@ -2040,37 +2033,13 @@
             </select>
           </td>
           <td>
-            <div class="students-container" style="display:flex; flex-wrap:wrap; gap:3px; margin-bottom:4px;">${studentChipsHtml}</div>
-            <div style="display:flex; gap:4px; align-items:center;">
-              <select class="add-student-select" style="margin:0; padding:2px 4px; font-size:11px; flex:1;">
-                ${addStudentOptions}
-              </select>
-              <button type="button" onclick="addStudentToSessionRow(this)" style="width:auto; margin:0; padding:2px 6px; font-size:11px; background:#38bdf8; white-space:nowrap; border-radius:4px;">加人</button>
-            </div>
+            <div class="students-container" style="display:flex; flex-wrap:wrap; gap:3px;">${studentChipsHtml || '<span style="color:#6b7280; font-size:11px;">暫無</span>'}</div>
           </td>
           <td><button onclick="this.closest('tr').remove()" style="padding:3px 6px; margin:0; background:#fb7185; font-size:11px; white-space:nowrap;">❌ 刪除</button></td>
         </tr>
       `;
     }).join('');
   }
-
-  window.addStudentToSessionRow = (btn) => {
-    const tr = btn.closest('tr');
-    const select = tr.querySelector('.add-student-select');
-    const selectedUid = select.value;
-    const userObj = allUsersList.find(u => u.uid === selectedUid);
-    if (!userObj) return;
-
-    const container = tr.querySelector('.students-container');
-    if (container.querySelector(`[data-uid="${selectedUid}"]`)) return alert("該學員已在名單中");
-
-    const chip = document.createElement('span');
-    chip.className = 'student-chip';
-    chip.setAttribute('data-uid', selectedUid);
-    chip.setAttribute('data-name', userObj.name || userObj.email);
-    chip.innerHTML = `${userObj.name || userObj.email} <button type="button" onclick="removeStudentFromSessionRow(this)">✕</button>`;
-    container.appendChild(chip);
-  };
 
   window.removeStudentFromSessionRow = (btn) => {
     btn.closest('.student-chip').remove();
@@ -2081,7 +2050,6 @@
     const todayStr = new Date().toISOString().split('T')[0];
     const classObj = classesData.find(c => c.id === classId);
 
-    const addStudentOptions = allUsersList.map(u => `<option value="${u.uid}">${u.name || u.email}</option>`).join('');
     const payerOptions = allUsersList.map(u => {
       const isSelected = u.uid === classObj.leaderId;
       return `<option value="${u.uid}" ${isSelected ? 'selected' : ''}>${u.name || u.email}</option>`;
@@ -2113,13 +2081,7 @@
         </select>
       </td>
       <td>
-        <div class="students-container" style="display:flex; flex-wrap:wrap; gap:3px; margin-bottom:4px;"></div>
-        <div style="display:flex; gap:4px; align-items:center;">
-          <select class="add-student-select" style="margin:0; padding:2px 4px; font-size:11px; flex:1;">
-            ${addStudentOptions}
-          </select>
-          <button type="button" onclick="addStudentToSessionRow(this)" style="width:auto; margin:0; padding:2px 6px; font-size:11px; background:#38bdf8; white-space:nowrap; border-radius:4px;">加人</button>
-        </div>
+        <div class="students-container" style="display:flex; flex-wrap:wrap; gap:3px;"><span style="color:#6b7280; font-size:11px;">暫無</span></div>
       </td>
       <td><button onclick="this.closest('tr').remove()" style="padding:3px 6px; margin:0; background:#fb7185; font-size:11px; white-space:nowrap;">❌ 刪除</button></td>
     `;
@@ -2601,15 +2563,15 @@
       await updateDoc(doc(db, "classes", classId), { sessions });
       loadClasses();
     } catch(e) {
-      alert("操作失敗: " + e.message);
+      alert("更新報名狀態失敗: " + e.message);
     }
   };
 
   window.deleteClass = async (classId) => {
-    if(!confirm("⚠️ 確定要刪除整個課程嗎？此動作無法復原！")) return;
+    if(!confirm("⚠️ 警告：確定要刪除整個課程嗎？此動作將刪除所有堂數及相關數據！")) return;
     try {
       await deleteDoc(doc(db, "classes", classId));
-      alert("課程已成功刪除！");
+      alert("課程已刪除。");
       loadClasses();
     } catch(e) {
       alert("刪除失敗: " + e.message);
