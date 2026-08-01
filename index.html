@@ -886,6 +886,21 @@
       if(!newName) return alert("暱稱不能為空！");
 
       try {
+        const usersSnapshot = await getDocs(collection(db, "users"));
+        let isDuplicate = false;
+        usersSnapshot.forEach(docSnap => {
+          if (docSnap.id !== uid) {
+            const data = docSnap.data();
+            if (data.name === newName) {
+              isDuplicate = true;
+            }
+          }
+        });
+
+        if (isDuplicate) {
+          return alert("此暱稱已經被其他用戶使用，請更改其他暱稱！");
+        }
+
         await setDoc(doc(db, "users", uid), { name: newName }, { merge: true });
         if(currentUserProfile) currentUserProfile.name = newName;
         document.body.removeChild(overlay);
@@ -1593,7 +1608,7 @@
             <td style="padding:4px; border:1px solid var(--pojai-border); font-size:11px;">
               <div class="flex between" style="align-items:center;">
                 <span>$${roundedShare}</span>
-                ${(!isSettled && canManage) ? `<button onclick="deleteMiscItem('${c.id}', ${idx})" style="width:auto; margin:0; padding:1px 4px; font-size:12px; background:transparent; color:#be123c; border:none; box-shadow:none;">❌</button>` : ''}
+                {(!isSettled && canManage) ? `<button onclick="deleteMiscItem('${c.id}', ${idx})" style="width:auto; margin:0; padding:1px 4px; font-size:12px; background:transparent; color:#be123c; border:none; box-shadow:none;">❌</button>` : ''}
               </div>
             </td>
           </tr>
