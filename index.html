@@ -1,7 +1,8 @@
+
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8">新
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dancing-Sontos</title>
   <style>
@@ -591,12 +592,6 @@
 
 <div class="container">
   
-  <!-- 🧪 小測試區域：一開始顯示 -->
-  <div id="test-user-list-box-initial" class="card" style="background:#fffbeb; border:1px solid #fef08a;">
-    <h4 style="margin:0 0 6px 0; color:#713f12; font-size:14px;">🧪 小測試：現有用戶名及電郵檢視</h4>
-    <div id="test-user-list-content-initial" style="font-size:12px; color:#713f12;">載入中...</div>
-  </div>
-
   <div id="header-section" class="card flex between">
     <div>
       <h2 style="margin:0; font-size:18px; color:#9d174d;"> 💃 Dancing-Sontos</h2>
@@ -621,12 +616,6 @@
       <a href="#" id="toggle-auth-mode" style="font-size:13px; color:#be123c;">沒有帳號？點此註冊</a>
     </div>
 
-    <!-- 🧪 小測試區域：註冊頁面顯示 -->
-    <div id="test-user-list-box-register" class="card hidden" style="background:#fffbeb; border:1px solid #fef08a; margin-top:15px; margin-bottom:0;">
-      <h4 style="margin:0 0 6px 0; color:#713f12; font-size:14px;">🧪 小測試：現有用戶名及電郵檢視 (註冊頁面)</h4>
-      <div id="test-user-list-content-register" style="font-size:12px; color:#713f12;">載入中...</div>
-    </div>
-
     <div style="margin-top: 15px; text-align: center;">
       <img src="IMG_4823.jpeg" alt="Dancing Photo" style="width: 100%; object-fit: cover; border-radius: 6px; opacity: 0.6;">
     </div>
@@ -634,12 +623,6 @@
 
   <div id="app-section" class="hidden">
     
-    <!-- 🧪 小測試區域：用戶登入後顯示 -->
-    <div id="test-user-list-box-loggedin" class="card" style="background:#fffbeb; border:1px solid #fef08a;">
-      <h4 style="margin:0 0 6px 0; color:#713f12; font-size:14px;">🧪 小測試：現有用戶名及電郵檢視 (登入後)</h4>
-      <div id="test-user-list-content-loggedin" style="font-size:12px; color:#713f12;">載入中...</div>
-    </div>
-
     <div id="admin-panel" class="card card-admin hidden">
       <h3 style="color:#0369a1; margin-top:0;">👑 Admin 全系統最高管理面板</h3>
       
@@ -784,9 +767,36 @@
 
 </div>
 
+<!-- 用戶資料修改 Modal -->
+<div id="user-profile-modal" class="custom-modal-overlay hidden">
+  <div class="custom-modal-box" style="max-width: 380px; text-align: left;">
+    <h3 style="margin-top:0; color:#9d174d; text-align: center;">用戶個人資料</h3>
+    
+    <label style="font-size:12px; color:#6b7280; font-weight:bold;">登記電郵 (不能修改)：</label>
+    <input type="text" id="modal-profile-email" disabled style="background:#f3f4f6; margin-bottom:8px;">
+
+    <label style="font-size:12px; color:#6b7280; font-weight:bold;">註冊日期 (不能修改)：</label>
+    <input type="text" id="modal-profile-regdate" disabled style="background:#f3f4f6; margin-bottom:8px;">
+
+    <label style="font-size:12px; font-weight:bold;">密碼 (如需修改請輸入新密碼)：</label>
+    <input type="password" id="modal-profile-password" placeholder="不修改請留空" style="margin-bottom:8px;">
+
+    <label style="font-size:12px; font-weight:bold;">用戶名：</label>
+    <input type="text" id="modal-profile-name" style="margin-bottom:8px;">
+
+    <label style="font-size:12px; font-weight:bold;">註冊圖片網址 / 檔案名稱：</label>
+    <input type="text" id="modal-profile-image" placeholder="例如: IMG_4823.jpeg" style="margin-bottom:15px;">
+
+    <div class="custom-modal-buttons">
+      <button id="modal-profile-save" class="btn-pojai" style="flex:1;">儲存修改</button>
+      <button id="modal-profile-close" class="btn-gray-action" style="flex:1;">關閉</button>
+    </div>
+  </div>
+</div>
+
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-  import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, signOut, onAuthStateChanged, deleteUser } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+  import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, signOut, onAuthStateChanged, deleteUser, updatePassword } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
   import { getFirestore, collection, addDoc, getDocs, doc, setDoc, getDoc, updateDoc, deleteDoc, query, where } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
   const firebaseConfig = {
@@ -816,35 +826,6 @@
   // 記錄每個課程當前啟用的 tab
   let activeTabState = {};
 
-  // 🧪 小測試：更新顯示所有用戶名及電郵
-  async function updateTestUserDisplay() {
-    try {
-      const querySnapshot = await getDocs(collection(db, "users"));
-      let usersTemp = [];
-      querySnapshot.forEach(docSnap => {
-        usersTemp.push(docSnap.data());
-      });
-      const htmlText = usersTemp.length > 0 
-        ? usersTemp.map(u => `• <b>${u.name || '未命名'}</b> (${u.email || '無電郵'})`).join('<br>')
-        : '暫無用戶資料';
-
-      const initialEl = document.getElementById('test-user-list-content-initial');
-      const registerEl = document.getElementById('test-user-list-content-register');
-      const loggedinEl = document.getElementById('test-user-list-content-loggedin');
-
-      if (initialEl) initialEl.innerHTML = htmlText;
-      if (registerEl) registerEl.innerHTML = htmlText;
-      if (loggedinEl) loggedinEl.innerHTML = htmlText;
-    } catch(e) {
-      console.error("小測試載入失敗", e);
-    }
-  }
-
-  // 一開始載入頁面時先執行一次
-  window.addEventListener('DOMContentLoaded', () => {
-    updateTestUserDisplay();
-  });
-
   document.getElementById('toggle-create-btn').addEventListener('click', async () => {
     document.getElementById('create-class-form').classList.toggle('hidden');
     await loadAllUsers();
@@ -870,12 +851,6 @@
     authMainBtn.innerText = isRegisterMode ? "註冊" : "登入";
     registerExtra.classList.toggle('hidden', !isRegisterMode);
     toggleAuthModeBtn.innerText = isRegisterMode ? "已有帳號？登入" : "沒有帳號？註冊";
-    
-    // 🧪 註冊頁面顯示/隱藏切換
-    document.getElementById('test-user-list-box-register').classList.toggle('hidden', !isRegisterMode);
-    if (isRegisterMode) {
-      updateTestUserDisplay();
-    }
   });
 
   authMainBtn.addEventListener('click', async () => {
@@ -890,7 +865,7 @@
         const res = await createUserWithEmailAndPassword(auth, email, password);
         const registrationDate = new Date().toISOString().split('T')[0];
         
-        let imageUrl = "";
+        let imageUrl = "IMG_4823.jpeg";
 
         await setDoc(doc(db, "users", res.user.uid), { 
           name, 
@@ -900,13 +875,68 @@
           role: "user" 
         });
         alert("註冊成功！");
-        // 🧪 新用戶註冊完再show一次
-        await updateTestUserDisplay();
+        
+        // 成功註冊後，登入主頁面並彈出用戶資料小窗
+        currentUser = res.user;
+        const userDoc = await getDoc(doc(db, "users", res.user.uid));
+        currentUserProfile = userDoc.exists() ? userDoc.data() : { name, email, registrationDate, image: imageUrl, role: 'user' };
+        
+        showUserProfileModal();
       } else {
         await signInWithEmailAndPassword(auth, email, password);
       }
     } catch (err) {
       alert("登入/註冊失敗: " + err.message);
+    }
+  });
+
+  function showUserProfileModal() {
+    if (!currentUserProfile) return;
+    document.getElementById('modal-profile-email').value = currentUserProfile.email || currentUser.email || '';
+    document.getElementById('modal-profile-regdate').value = currentUserProfile.registrationDate || new Date().toISOString().split('T')[0];
+    document.getElementById('modal-profile-name').value = currentUserProfile.name || '';
+    document.getElementById('modal-profile-image').value = currentUserProfile.image || '';
+    document.getElementById('modal-profile-password').value = '';
+    document.getElementById('user-profile-modal').classList.remove('hidden');
+  }
+
+  document.getElementById('modal-profile-close').addEventListener('click', () => {
+    document.getElementById('user-profile-modal').classList.add('hidden');
+  });
+
+  document.getElementById('modal-profile-save').addEventListener('click', async () => {
+    if (!currentUser) return;
+    const newName = document.getElementById('modal-profile-name').value.trim();
+    const newImage = document.getElementById('modal-profile-image').value.trim();
+    const newPassword = document.getElementById('modal-profile-password').value.trim();
+
+    if (!newName) return alert("用戶名不能為空！");
+
+    try {
+      if (newPassword) {
+        if (newPassword.length < 6) return alert("密碼最少需要6個字！");
+        await updatePassword(currentUser, newPassword);
+      }
+
+      await setDoc(doc(db, "users", currentUser.uid), {
+        name: newName,
+        image: newImage
+      }, { merge: true });
+
+      currentUserProfile.name = newName;
+      currentUserProfile.image = newImage;
+
+      alert("用戶資料已成功更新！");
+      document.getElementById('user-profile-modal').classList.add('hidden');
+      
+      // 重新載入狀態顯示
+      if (isAdmin) {
+        userStatus.innerHTML = `<span class="badge-admin">👑 Admin</span> ${currentUserProfile.name || '管理員'}`;
+      } else {
+        userStatus.innerText = `👶🏻 ${currentUserProfile.name}`;
+      }
+    } catch (err) {
+      alert("更新資料失敗: " + err.message);
     }
   });
 
@@ -962,10 +992,6 @@
       document.getElementById('app-section').classList.remove('hidden');
       document.getElementById('user-action-btns').classList.remove('hidden');
 
-      // 🧪 用戶登入後show一次
-      document.getElementById('test-user-list-box-initial').classList.add('hidden');
-      await updateTestUserDisplay();
-
       loadClasses();
     } else {
       currentUser = null;
@@ -976,10 +1002,6 @@
       document.getElementById('app-section').classList.add('hidden');
       adminPanel.classList.add('hidden');
       document.getElementById('user-action-btns').classList.add('hidden');
-      
-      // 🧪 未登入時顯示一開始的測試區塊
-      document.getElementById('test-user-list-box-initial').classList.remove('hidden');
-      updateTestUserDisplay();
     }
   });
 
@@ -1037,7 +1059,6 @@
       await setDoc(doc(db, "users", uid), { name, email, role }, { merge: true });
       alert("【成功】使用者資料已順利更新！");
       loadAdminUsers();
-      updateTestUserDisplay();
     } catch(e) {
       alert("【失敗】資料庫拒絕變更，錯誤原因: " + e.message);
     }
@@ -1049,7 +1070,6 @@
       await deleteDoc(doc(db, "users", uid));
       alert("【成功】用戶已成功刪除！");
       loadAdminUsers();
-      updateTestUserDisplay();
     } catch(e) {
       alert("【失敗】刪除用戶失敗: " + e.message);
     }
@@ -1618,7 +1638,7 @@
             <td style="padding:4px; border:1px solid var(--pojai-border); font-size:11px;">
               <div class="flex between" style="align-items:center;">
                 <span>$${roundedShare}</span>
-                ${(!isSettled && canManage) ? `<button onclick="deleteMiscItem('${c.id}', ${idx})" style="width:auto; margin:0; padding:1px 4px; font-size:12px; background:transparent; color:#be123c; border:none; box-shadow:none;">❌</button>` : ''}
+                {(!isSettled && canManage) ? `<button onclick="deleteMiscItem('${c.id}', ${idx})" style="width:auto; margin:0; padding:1px 4px; font-size:12px; background:transparent; color:#be123c; border:none; box-shadow:none;">❌</button>` : ''}
               </div>
             </td>
           </tr>
