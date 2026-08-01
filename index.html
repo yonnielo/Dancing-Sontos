@@ -943,6 +943,7 @@
             <div class="flex" style="gap:4px; margin:0;">
               <button onclick="adminSaveUser('${u.uid}')" style="width:auto; margin:0; padding:2px 6px; font-size:10px;" class="btn-secondary">儲存</button>
               <button onclick="adminResetPassword('${u.email}')" style="width:auto; margin:0; padding:2px 6px; font-size:10px;" class="btn-warning">重設密碼信</button>
+              <button onclick="adminDeleteUser('${u.uid}')" style="width:auto; margin:0; padding:2px 6px; font-size:10px;" class="btn-danger">刪除用戶</button>
             </div>
           </td>
         </tr>
@@ -975,6 +976,17 @@
       loadAdminUsers();
     } catch(e) {
       alert("【失敗】資料庫拒絕變更，錯誤原因: " + e.message);
+    }
+  };
+
+  window.adminDeleteUser = async (uid) => {
+    if(!confirm("⚠️ 警告：確定要刪除此用戶嗎？此動作將會刪除該用戶的資料庫記錄！")) return;
+    try {
+      await deleteDoc(doc(db, "users", uid));
+      alert("【成功】用戶已成功刪除！");
+      loadAdminUsers();
+    } catch(e) {
+      alert("【失敗】刪除用戶失敗: " + e.message);
     }
   };
 
