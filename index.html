@@ -2365,13 +2365,23 @@
 
   window.openPayMe = (event, appUrl, fallbackUrl) => {
     event.preventDefault();
-    const startTime = Date.now();
-    window.location.href = appUrl;
-    setTimeout(() => {
-      if (Date.now() - startTime < 1500) {
-        window.location.href = fallbackUrl;
-      }
-    }, 1000);
+    
+    if (/Android/i.test(navigator.userAgent)) {
+      // Android: 使用 intent 強制指定 PayMe package，避免被吉野家 app 劫持
+      const intentUrl = appUrl.replace(/^payme:\/\//, 'intent://') + '#Intent;scheme=payme;package=hk.com.hsbc.payme;end;';
+      window.location.href = intentUrl;
+    } else {
+      // iOS: 使用隱藏 iframe 嘗試打開 app，若未安裝則安靜失效（無任何動作跳轉）
+      const iframe = document.createElement('iframe');
+      iframe.style.display = 'none';
+      iframe.src = appUrl;
+      document.body.appendChild(iframe);
+      setTimeout(() => {
+        if(document.body.contains(iframe)) {
+          document.body.removeChild(iframe);
+        }
+      }, 1000);
+    }
   };
 
   window.promptSettlement = (classId) => {
