@@ -2329,7 +2329,7 @@
 
         const paymeUrl = `payme://pay?amount=${tx.amount}&note=${encodeURIComponent('Dancing-Sontos 轉帳')}`;
         const paymeDownloadUrl = `https://payme.hsbc.com.hk/`;
-        const paymeIconHtml = `<a href="#" onclick="openPayMe(event, '${paymeUrl}', '${paymeDownloadUrl}')" title="使用 PayMe 支付"> <img src="IMG_5031.png" alt="PayMe" style="width: 18px; height: 18px; vertical-align: middle; margin-right: 4px; border-radius: 3px;"></a>`;
+        const paymeIconHtml = `<a href="#" onclick="openPayMe(event, '${paymeUrl}', '${paymeDownloadUrl}')" title="Using PayMe"> <img src="IMG_5031.png" alt="PayMe" style="width: 18px; height: 18px; vertical-align: middle; margin-right: 4px; border-radius: 3px;"></a>`;
 
         return `
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
@@ -2366,21 +2366,21 @@
   window.openPayMe = (event, appUrl, fallbackUrl) => {
     event.preventDefault();
     
-    if (/Android/i.test(navigator.userAgent)) {
-      // Android: 使用 intent 強制指定 PayMe package，避免被吉野家 app 劫持
-      const intentUrl = appUrl.replace(/^payme:\/\//, 'intent://') + '#Intent;scheme=payme;package=hk.com.hsbc.payme;end;';
-      window.location.href = intentUrl;
-    } else {
-      // iOS: 使用隱藏 iframe 嘗試打開 app，若未安裝則安靜失效（無任何動作跳轉）
-      const iframe = document.createElement('iframe');
-      iframe.style.display = 'none';
-      iframe.src = appUrl;
-      document.body.appendChild(iframe);
+    const isAndroid = /Android/i.test(navigator.userAgent);
+    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+    if (isAndroid) {
+      window.location.href = appUrl;
       setTimeout(() => {
-        if(document.body.contains(iframe)) {
-          document.body.removeChild(iframe);
-        }
-      }, 1000);
+        window.location.href = `https://play.google.com/store/apps/details?id=hk.com.hsbc.payme`;
+      }, 1500);
+    } else if (isIOS) {
+      window.location.href = appUrl;
+      setTimeout(() => {
+        window.location.href = `https://apps.apple.com/app/payme-from-hsbc/id1169061596`;
+      }, 1500);
+    } else {
+      window.location.href = appUrl;
     }
   };
 
@@ -2530,7 +2530,7 @@
 
       const paymeUrl = `payme://pay?amount=${tx.amount}&note=${encodeURIComponent('Dancing-Sontos 轉帳')}`;
       const paymeDownloadUrl = `https://payme.hsbc.com.hk/`;
-      const paymeIconHtml = `<a href="#" onclick="openPayMe(event, '${paymeUrl}', '${paymeDownloadUrl}')" title="使用 PayMe 支付"><<img src="IMG_5031.png"alt="PayMe" style="width: 18px; height: 18px; vertical-align: middle; margin-right: 4px; border-radius: 3px;"></a>`;
+      const paymeIconHtml = `<a href="#" onclick="openPayMe(event, '${paymeUrl}', '${paymeDownloadUrl}')" title="Using PayMe"><img src="IMG_5031.png" alt="PayMe" style="width: 18px; height: 18px; vertical-align: middle; margin-right: 4px; border-radius: 3px;"></a>`;
 
       return `
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
@@ -2595,18 +2595,6 @@
       alert("更新報名狀態失敗: " + e.message);
     }
   };
-
-  window.deleteClass = async (classId) => {
-    if(!confirm("⚠️ 警告：確定要刪除整個課程嗎？此動作將刪除所有堂數及相關數據！")) return;
-    try {
-      await deleteDoc(doc(db, "classes", classId));
-      alert("課程已刪除。");
-      loadClasses();
-    } catch(e) {
-      alert("刪除失敗: " + e.message);
-    }
-  };
 </script>
-
 </body>
 </html>
