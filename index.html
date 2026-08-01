@@ -1674,7 +1674,6 @@
           `;
         }).join('');
 
-      // 【修改點 2】只找出有報名該課程的用戶作為「邊個有份」及雜費分攤的候選名單
       const eligibleNamesSet = new Set([c.leaderName]);
       dateKeys.forEach(d => {
         (sessions[d].students || []).forEach(s => eligibleNamesSet.add(s.name));
@@ -2007,7 +2006,6 @@
       const endTimeVal = sess.endTime || '21:00';
       const isClosed = sess.isClosed || false;
 
-      // 【修改點 1】移除手動加人下拉式選單與加人按鈕，僅保留已報名學員列表與刪除功能
       return `
         <tr data-date="${d}" class="edit-session-row">
           <td><input type="date" value="${d}" class="edit-date-input"></td>
@@ -2329,10 +2327,15 @@
         const boxContent = pStatus === "✅" ? "✅" : "";
         const boxStyle = pStatus === "✅" ? "width: 20px; height: 20px; border: 1px solid #d1d5db; background: #fff; border-radius: 3px; cursor: default; display: flex; align-items: center; justify-content: center; font-size: 12px; user-select: none;" : "width: 20px; height: 20px; border: 1px solid #d1d5db; background: #e5e7eb; border-radius: 3px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 12px; user-select: none;";
 
+        const paymeUrl = `payme://pay?amount=${tx.amount}&note=${encodeURIComponent('Dancing-Sontos 轉帳')}`;
+        const paymeDownloadUrl = `https://payme.hsbc.com.hk/`;
+        const paymeIconHtml = `<a href="#" onclick="openPayMe(event, '${paymeUrl}', '${paymeDownloadUrl}')" title="使用 PayMe 支付"><img src="https://payme.hsbc.com.hk/images/favicon.ico" alt="PayMe" style="width: 18px; height: 18px; vertical-align: middle; margin-right: 4px; border-radius: 3px;"></a>`;
+
         return `
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
             <div style="text-align: left;">👉 <b>${tx.debtor}</b> 轉帳 <b>$${tx.amount}</b> 畀 <b>${tx.creditor}</b></div>
             <div style="display: flex; align-items: center;">
+              ${paymeIconHtml}
               ${payerInfo}
               <div onclick="handlePaymentCheckboxClick('${classId}', ${idx}, '${pStatus}')" style="${boxStyle}">${boxContent}</div>
             </div>
@@ -2358,6 +2361,17 @@
         alert("更新付款狀態失敗: " + e.message);
       }
     });
+  };
+
+  window.openPayMe = (event, appUrl, fallbackUrl) => {
+    event.preventDefault();
+    const startTime = Date.now();
+    window.location.href = appUrl;
+    setTimeout(() => {
+      if (Date.now() - startTime < 1500) {
+        window.location.href = fallbackUrl;
+      }
+    }, 1000);
   };
 
   window.promptSettlement = (classId) => {
@@ -2504,10 +2518,15 @@
       const boxContent = pStatus === "✅" ? "✅" : "";
       const boxStyle = pStatus === "✅" ? "width: 20px; height: 20px; border: 1px solid #d1d5db; background: #fff; border-radius: 3px; cursor: default; display: flex; align-items: center; justify-content: center; font-size: 12px; user-select: none;" : "width: 20px; height: 20px; border: 1px solid #d1d5db; background: #e5e7eb; border-radius: 3px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 12px; user-select: none;";
 
+      const paymeUrl = `payme://pay?amount=${tx.amount}&note=${encodeURIComponent('Dancing-Sontos 轉帳')}`;
+      const paymeDownloadUrl = `https://payme.hsbc.com.hk/`;
+      const paymeIconHtml = `<a href="#" onclick="openPayMe(event, '${paymeUrl}', '${paymeDownloadUrl}')" title="使用 PayMe 支付"><img src="https://payme.hsbc.com.hk/images/favicon.ico" alt="PayMe" style="width: 18px; height: 18px; vertical-align: middle; margin-right: 4px; border-radius: 3px;"></a>`;
+
       return `
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
           <div style="text-align: left;">👉 <b>${tx.debtor}</b> 轉帳 <b>$${tx.amount}</b> 畀 <b>${tx.creditor}</b></div>
           <div style="display: flex; align-items: center;">
+            ${paymeIconHtml}
             ${payerInfo}
             <div onclick="handlePaymentCheckboxClick('${classId}', ${idx}, '${pStatus}')" style="${boxStyle}">${boxContent}</div>
           </div>
