@@ -593,7 +593,7 @@
   <div id="header-section" class="card flex between">
     <div>
       <h2 style="margin:0; font-size:18px; color:#9d174d;"> 💃 Dancing-Sontos</h2>
-      <span id="user-status" style="font-size: 11px; color: #6b7280;">未登入</span>
+      <span id="user-status" style="font-size: 11px; color: #6b7280; cursor: pointer;" title="點擊修改暱稱">未登入</span>
     </div>
     <div id="user-action-btns" class="hidden flex" style="gap:4px;">
       <button id="delete-account-btn" class="btn-danger" style="width: auto; margin:0; font-size:11px; padding:4px 8px;">取消我的帳戶</button>
@@ -814,6 +814,75 @@
   const deleteAccountBtn = document.getElementById('delete-account-btn');
   const userStatus = document.getElementById('user-status');
   const adminPanel = document.getElementById('admin-panel');
+
+  userStatus.addEventListener('click', () => {
+    if (!currentUser) return;
+    showEditNicknameModal();
+  });
+
+  function showEditNicknameModal() {
+    const overlay = document.createElement('div');
+    overlay.className = 'custom-modal-overlay';
+    
+    const box = document.createElement('div');
+    box.className = 'custom-modal-box';
+    
+    box.innerHTML = `
+      <div class="custom-modal-text" style="text-align: left;">✏️ 修改暱稱：<br><br>
+        <input type="text" id="modal-edit-nickname" value="${currentUserProfile ? currentUserProfile.name || '' : ''}" style="margin:4px 0;"><br>
+        <small style="color:#6b7280; font-weight:normal;">(必需不和其他人相同，沒有空白隔及在20字內)</small>
+      </div>
+      <div class="custom-modal-buttons" style="flex-direction: column; gap: 8px;">
+        <button id="modal-update-nickname-btn" class="btn-pojai" style="width: 100%;">儲存</button>
+        <button id="modal-cancel-nickname-btn" class="btn-gray-action" style="width: 100%;">取消</button>
+      </div>
+    `;
+    
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+
+    document.getElementById('modal-cancel-nickname-btn').addEventListener('click', () => {
+      document.body.removeChild(overlay);
+    });
+
+    document.getElementById('modal-update-nickname-btn').addEventListener('click', async () => {
+      const rawName = document.getElementById('modal-edit-nickname').value;
+      const newName = rawName.trim();
+
+      if(!newName) return alert("暱稱不能為空！");
+      if(/\s/.test(rawName)) return alert("暱稱不能包含空白！");
+      if(rawName.length > 20) return alert("暱稱不能多過20個字！");
+
+      try {
+        const q = query(collection(db, "users"), where("name", "==", newName));
+        const querySnapshot = await getDocs(q);
+        let isDuplicate = false;
+        querySnapshot.forEach(docSnap => {
+          if (docSnap.id !== currentUser.uid) {
+            isDuplicate = true;
+          }
+        });
+
+        if (isDuplicate) {
+          return alert("此暱稱已有其他用戶使用，請更換其他暱稱！");
+        }
+
+        await setDoc(doc(db, "users", currentUser.uid), { name: newName }, { merge: true });
+        if(currentUserProfile) currentUserProfile.name = newName;
+
+        if (isAdmin) {
+          userStatus.innerHTML = `<span class="badge-admin">👑 Admin</span> ${newName}`;
+        } else {
+          userStatus.innerText = `👶🏻 ${newName}`;
+        }
+
+        document.body.removeChild(overlay);
+        alert("修改暱稱成功！");
+      } catch(e) {
+        alert("修改暱稱失敗: " + e.message);
+      }
+    });
+  }
 
   toggleAuthModeBtn.addEventListener('click', (e) => {
     e.preventDefault();
