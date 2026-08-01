@@ -890,6 +890,8 @@
     document.getElementById('modal-save-btn').addEventListener('click', async () => {
       const newName = document.getElementById('modal-edit-name').value.trim();
       if(!newName) return alert("暱稱不能為空！");
+      if(/\s/.test(newName)) return alert("用戶暱稱不能含有空白隔！");
+      if(newName.length > 20) return alert("用戶暱稱上限為20個字！");
 
       const isDuplicate = existingUsers.some(u => u.id !== uid && u.name === newName);
       if (isDuplicate) {
@@ -1020,6 +1022,10 @@
     const name = document.getElementById(`admin-name-${uid}`).value.trim();
     const email = document.getElementById(`admin-email-${uid}`).value.trim();
     const role = document.getElementById(`admin-role-${uid}`).value;
+
+    if(!name) return alert("暱稱不能為空！");
+    if(/\s/.test(name)) return alert("用戶暱稱不能含有空白隔！");
+    if(name.length > 20) return alert("用戶暱稱上限為20個字！");
 
     try {
       await setDoc(doc(db, "users", uid), { name, email, role }, { merge: true });
@@ -1604,7 +1610,7 @@
             <td style="padding:4px; border:1px solid var(--pojai-border); font-size:11px;">
               <div class="flex between" style="align-items:center;">
                 <span>$${roundedShare}</span>
-                ${(!isSettled && canManage) ? `<button onclick="deleteMiscItem('${c.id}', ${idx})" style="width:auto; margin:0; padding:1px 4px; font-size:12px; background:transparent; color:#be123c; border:none; box-shadow:none;">❌</button>` : ''}
+                {(!isSettled && canManage) ? `<button onclick="deleteMiscItem('${c.id}', ${idx})" style="width:auto; margin:0; padding:1px 4px; font-size:12px; background:transparent; color:#be123c; border:none; box-shadow:none;">❌</button>` : ''}
               </div>
             </td>
           </tr>
@@ -1688,7 +1694,7 @@
             <div class="tab-header">
               <button onclick="switchTab('${c.id}', 'course')" id="tab-btn-course-${c.id}" class="tab-btn ${currentTab === 'course' ? 'active-tab-course' : ''}">📚 課程</button>
               <button onclick="switchTab('${c.id}', 'pojai')" id="tab-btn-pojai-${c.id}" class="tab-btn ${currentTab === 'pojai' ? 'active-tab-pojai' : ''}">👵🏼 婆仔數</button>
-              ${canManage ? `<button onclick="switchTab('${c.id}', 'admin')" id="tab-btn-admin-${c.id}" class="tab-btn ${currentTab === 'admin' ? 'active-tab-admin' : ''}">🛠️ 班長管理</button>` : ''}
+              {canManage ? `<button onclick="switchTab('${c.id}', 'admin')" id="tab-btn-admin-${c.id}" class="tab-btn ${currentTab === 'admin' ? 'active-tab-admin' : ''}">🛠️ 班長管理</button>` : ''}
             </div>
 
             <div id="tab-content-course-${c.id}" class="tab-content ${currentTab === 'course' ? 'active-content' : ''}">
@@ -1706,7 +1712,7 @@
                 <hr style="border: none; border-top: 1px solid var(--pojai-border); margin: 8px 0;">
                 <div style="font-weight:bold; color:var(--pojai-text); font-size:12px; margin-bottom:4px;">🪬雜費</div>
                 ${miscTableHtml}
-                ${!isSettled ? addMiscFormHtml : ''}
+                {!isSettled ? addMiscFormHtml : ''}
 
                 <hr style="border: none; border-top: 1px solid var(--pojai-border); margin: 10px 0;">
                 <div style="text-align: center; margin-bottom: 8px;">
@@ -1717,7 +1723,7 @@
               </div>
             </div>
 
-            ${canManage ? `
+            {canManage ? `
               <div id="tab-content-admin-${c.id}" class="tab-content ${currentTab === 'admin' ? 'active-content' : ''}">
                 <div class="admin-edit-box" style="margin-top:0;">
                   <div style="background:#fff; padding:8px; border-radius:8px; border:1px solid #bae6fd; margin-bottom:8px;">
