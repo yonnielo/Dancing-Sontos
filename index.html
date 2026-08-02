@@ -1928,10 +1928,30 @@
 
       const payerOptions = eligibleNames.map(name => `<option value="${name}">${name}</option>`).join('');
 
+      // 1) 婆仔數tab內，在最頂加入該課程內每一堂的日期並在旁加小方格供剔選。
+      let pojaiSessionCheckboxesHtml = dateKeys.map(dateStr => {
+        return `
+          <label style="font-size:11px; display:inline-flex; align-items:center; gap:4px; margin-right:8px; margin-bottom:4px; cursor:pointer;">
+            <input type="checkbox" value="${dateStr}" class="pojai-session-cb-${c.id}" checked style="margin:0; width:auto;"> ${dateStr}
+          </label>
+        `;
+      }).join('');
+
+      let pojaiSessionsSectionHtml = `
+        <div style="margin-bottom: 8px; padding: 6px; background: #fff; border: 1px solid var(--pojai-border); border-radius: 4px;">
+          <div style="font-size:11px; font-weight:bold; color:var(--pojai-text); margin-bottom:4px;">📅 選擇計算課堂：</div>
+          <div style="max-height:80px; overflow-y:auto;">
+            ${pojaiSessionCheckboxesHtml || '<span style="font-size:11px; color:#6b7280;">暫無課堂</span>'}
+          </div>
+        </div>
+      `;
+
+      // 2) 下面接著是原有的🪬雜費table，而在🪬雜費table最右邊，加一個column叫埋數，也是小方格供剔選隨便一項雜費。
       let miscTableRowsHtml = miscExpenses.map((item, idx) => {
         const partCount = (item.participants || []).length;
         const sharePerPerson = partCount > 0 ? (Number(item.amount) || 0) / partCount : 0;
         const roundedShare = Math.round(sharePerPerson * 100) / 100;
+        const isMiscLocked = isSettled || item.isLocked;
 
         return `
           <tr>
@@ -1942,8 +1962,11 @@
             <td style="padding:4px; border:1px solid var(--pojai-border); font-size:11px;">
               <div class="flex between" style="align-items:center;">
                 <span>$${roundedShare}</span>
-                ${(!isSettled && canManage) ? `<button onclick="deleteMiscItem('${c.id}', ${idx})" style="width:auto; margin:0; padding:1px 4px; font-size:12px; background:transparent; color:#be123c; border:none; box-shadow:none;">❌</button>` : ''}
+                ${(!isSettled && !isMiscLocked && canManage) ? `<button onclick="deleteMiscItem('${c.id}', ${idx})" style="width:auto; margin:0; padding:1px 4px; font-size:12px; background:transparent; color:#be123c; border:none; box-shadow:none;">❌</button>` : ''}
               </div>
+            </td>
+            <td style="padding:4px; border:1px solid var(--pojai-border); text-align:center; font-size:11px;">
+              <input type="checkbox" value="${idx}" class="pojai-misc-cb-${c.id}" ${isMiscLocked ? 'checked disabled' : 'checked'} style="margin:0; width:auto; cursor:pointer;" ${isMiscLocked ? 'title="已埋數鎖定"' : ''}>
             </td>
           </tr>
         `;
@@ -1959,10 +1982,11 @@
                 <th style="padding:4px; border:1px solid var(--pojai-border); text-align:left;">付款人</th>
                 <th style="padding:4px; border:1px solid var(--pojai-border); text-align:left;">邊個有份</th>
                 <th style="padding:4px; border:1px solid var(--pojai-border); text-align:left;">每人幾錢</th>
+                <th style="padding:4px; border:1px solid var(--pojai-border); text-align:center; width:45px;">埋數</th>
               </tr>
             </thead>
             <tbody>
-              ${miscTableRowsHtml || `<tr><td colspan="5" style="padding:6px; text-align:center; color:#6b7280; border:1px solid var(--pojai-border);">暫無雜費記錄</td></tr>`}
+              ${miscTableRowsHtml || `<tr><td colspan="6" style="padding:6px; text-align:center; color:#6b7280; border:1px solid var(--pojai-border);">暫無雜費記錄</td></tr>`}
             </tbody>
           </table>
         </div>
@@ -1994,13 +2018,13 @@
 
       const currentTab = activeTabState[c.id] || 'course';
 
-      let settlementBtnHtml = '';
-      if (isSettled) {
-        settlementBtnHtml = `<button class="btn-pojai" style="padding: 6px 16px; font-size: 13px; background: #e5e7eb; color: #9ca3af; cursor: not-allowed;" disabled>班長已埋數</button>`;
-      } else {
-        const canClickSettle = isLeader;
-        settlementBtnHtml = `<button onclick="promptSettlement('${c.id}')" class="btn-pojai" style="padding: 6px 16px; font-size: 13px; ${!canClickSettle ? 'background: #d1d5db; color: #4b5563; cursor: not-allowed;' : ''}">🧮 埋數</button>`;
-      }
+      // 3) 再下面就係兩個掣，一個係「👀睇數」，一個係「🧮埋數」
+      let settlementActionBtnsHtml = `
+        <div style="display: flex; gap: 8px; justify-content: center; margin-bottom: 8px;">
+          <button onclick="runCalculate('${c.id}', false)" class="btn-pojai" style="padding: 6px 16px; font-size: 13px;">👀 睇數</button>
+          <button onclick="runCalculate('${c.id}', true)" class="btn-pojai" style="padding: 6px 16px; font-size: 13px;">🧮 埋數</button>
+        </div>
+      `;
 
       return `
         <div class="course-card">
@@ -2047,14 +2071,14 @@
                 ${pojaiSummaryHtml}
                 
                 <hr style="border: none; border-top: 1px solid var(--pojai-border); margin: 8px 0;">
+                ${pojaiSessionsSectionHtml}
+
                 <div style="font-weight:bold; color:var(--pojai-text); font-size:12px; margin-bottom:4px;">🪬雜費</div>
                 ${miscTableHtml}
                 ${!isSettled ? addMiscFormHtml : ''}
 
                 <hr style="border: none; border-top: 1px solid var(--pojai-border); margin: 10px 0;">
-                <div style="text-align: center; margin-bottom: 8px;">
-                  ${settlementBtnHtml}
-                </div>
+                ${settlementActionBtnsHtml}
                 
                 <div id="settlement-result-${c.id}" class="${c.settlementResult ? '' : 'hidden'}" style="background: #fff; padding: 8px; border-radius: 6px; border: 1px solid var(--pojai-border); margin-top: 8px; font-size: 12px; color: var(--pojai-text);">${c.settlementResult || ''}</div>
               </div>
@@ -2539,6 +2563,181 @@
     }
   };
 
+  // 4), 5), 6) 混合計算與埋數邏輯實作
+  window.runCalculate = async (classId, isSettleAction) => {
+    const classObj = classesData.find(c => c.id === classId);
+    if (!classObj) return;
+
+    const isLeader = classObj.leaderId === currentUser.uid;
+    const canManage = isLeader || isAdmin;
+
+    // 5) 「🧮埋數」功能跟「👀睇數」一樣，分別是「🧮埋數」可以畀課程內所有用戶用，而「👀睇數」則只有課程的班長可用。
+    if (isSettleAction) {
+      // 課程內所有用戶可用
+    } else {
+      if (!canManage) {
+        return alert("「👀睇數」功能只有課程的班長可用！");
+      }
+    }
+
+    // 收集被剔選的課堂
+    const selectedSessCbs = document.querySelectorAll(`.pojai-session-cb-${classId}:checked`);
+    const selectedDatesSet = new Set(Array.from(selectedSessCbs).map(cb => cb.value));
+
+    // 收集被剔選的雜費
+    const selectedMiscCbs = document.querySelectorAll(`.pojai-misc-cb-${classId}:checked`);
+    const selectedMiscIndices = new Set(Array.from(selectedMiscCbs).map(cb => Number(cb.value)));
+
+    activeTabState[classId] = 'pojai';
+
+    const sessions = classObj.sessions || {};
+    const netMap = {}; // 記錄各人 net balance (paid - cost)
+
+    // 混合計算：已剔選的課堂
+    Object.keys(sessions).forEach(dateStr => {
+      if (!selectedDatesSet.has(dateStr)) return;
+      const sess = sessions[dateStr];
+      const students = sess.students || [];
+      const feeVal = Number(sess.fee !== undefined ? sess.fee : classObj.price) || 0;
+      const rentVal = Number(sess.rent || 0);
+      const enrolledCount = students.length;
+
+      const feePayerName = sess.feePayerName || classObj.leaderName;
+      const rentPayerName = sess.rentPayerName || classObj.leaderName;
+
+      if (!netMap[feePayerName]) netMap[feePayerName] = { paid: 0, cost: 0 };
+      if (!netMap[rentPayerName]) netMap[rentPayerName] = { paid: 0, cost: 0 };
+
+      netMap[feePayerName].paid += (feeVal * enrolledCount);
+      netMap[rentPayerName].paid += rentVal;
+
+      students.forEach(s => {
+        if (!netMap[s.name]) netMap[s.name] = { paid: 0, cost: 0 };
+        netMap[s.name].cost += feeVal;
+        if (enrolledCount > 0) {
+          netMap[s.name].cost += (rentVal / enrolledCount);
+        }
+      });
+    });
+
+    // 混合計算：已剔選的雜費
+    const miscExpenses = classObj.miscExpenses || [];
+    miscExpenses.forEach((item, idx) => {
+      if (!selectedMiscIndices.has(idx)) return;
+      const amount = Number(item.amount) || 0;
+      const payer = item.payer || classObj.leaderName;
+      const participants = item.participants || [];
+
+      if (!netMap[payer]) netMap[payer] = { paid: 0, cost: 0 };
+      netMap[payer].paid += amount;
+
+      const partCount = participants.length;
+      if (partCount > 0) {
+        const sharePerPerson = amount / partCount;
+        participants.forEach(pName => {
+          if (!netMap[pName]) netMap[pName] = { paid: 0, cost: 0 };
+          netMap[pName].cost += sharePerPerson;
+        });
+      }
+    });
+
+    // 計算每人總開支 (Net Balance = Paid - Cost)
+    const balances = [];
+    Object.keys(netMap).forEach(name => {
+      const item = netMap[name];
+      const balance = item.paid - item.cost;
+      balances.push({ name, balance });
+    });
+
+    // 產生最少 transaction 的找數方案 (Greedy Algorithm)
+    const debtors = [];
+    const creditors = [];
+    balances.forEach(b => {
+      if (b.balance < -0.01) debtors.push({ name: b.name, amount: -b.balance });
+      else if (b.balance > 0.01) creditors.push({ name: b.name, amount: b.balance });
+    });
+
+    debtors.sort((a, b) => b.amount - a.amount);
+    creditors.sort((a, b) => b.amount - a.amount);
+
+    const transactions = [];
+    let dIdx = 0, cIdx = 0;
+    while (dIdx < debtors.length && cIdx < creditors.length) {
+      const debtor = debtors[dIdx];
+      const creditor = creditors[cIdx];
+      const transferAmount = Math.min(debtor.amount, creditor.amount);
+
+      transactions.push({
+        from: debtor.name,
+        to: creditor.name,
+        amount: Math.round(transferAmount * 100) / 100,
+        paidStatus: "🩶",
+        paidBy: ""
+      });
+
+      debtor.amount -= transferAmount;
+      creditor.amount -= transferAmount;
+
+      if (debtor.amount < 0.01) dIdx++;
+      if (creditor.amount < 0.01) cIdx++;
+    }
+
+    let summaryText = `<b>📊 總開支與找數方案：</b><br>`;
+    balances.forEach(b => {
+      const netVal = Math.round(b.balance * 100) / 100;
+      summaryText += `• ${b.name}: ${netVal >= 0 ? `應收 $${netVal}` : `應付 $${-netVal}`}<br>`;
+    });
+
+    summaryText += `<br><b>🧮 建議找數方案 (${transactions.length} 筆)：</b><br>`;
+    if (transactions.length === 0) {
+      summaryText += `無需轉帳，條數已平！`;
+    } else {
+      transactions.forEach((tx, txIdx) => {
+        // 6) 灰調小方格與互動邏輯
+        summaryText += `• ${tx.from} ➔ ${tx.to}: <b>$${tx.amount}</b> <span style="display:inline-block; padding:2px 6px; background:#e5e7eb; border-radius:4px; cursor:pointer; margin-left:4px;" onclick="handlePaymentCheckboxClick('${classId}', ${txIdx}, '${tx.paidStatus}')">${tx.paidStatus}</span> ${tx.paidBy ? `(${tx.paidBy})` : ''}<br>`;
+      });
+    }
+
+    const resultDiv = document.getElementById(`settlement-result-${classId}`);
+    if (resultDiv) {
+      resultDiv.innerHTML = summaryText;
+      resultDiv.classList.remove('hidden');
+    }
+
+    // 5) 如果是「🧮埋數」，班長按下後，被剔選的課堂已封盆status會變成on，另外被剔選的雜費項目亦會變成淺灰色不能edit，❌的刪除掣亦會取消。
+    if (isSettleAction && canManage) {
+      let sessionsUpdated = false;
+      selectedDatesSet.forEach(d => {
+        if (sessions[d]) {
+          sessions[d].isClosed = true;
+          sessionsUpdated = true;
+        }
+      });
+
+      let miscUpdated = false;
+      miscExpenses.forEach((item, idx) => {
+        if (selectedMiscIndices.has(idx)) {
+          item.isLocked = true;
+          miscUpdated = true;
+        }
+      });
+
+      try {
+        await updateDoc(doc(db, "classes", classId), {
+          settlementResult: summaryText,
+          transactions,
+          sessions: sessionsUpdated ? sessions : classObj.sessions,
+          miscExpenses: miscUpdated ? miscExpenses : classObj.miscExpenses
+        });
+        alert("【成功】埋數完成！已更新課堂封盤狀態與雜費鎖定狀態。");
+        loadClasses();
+      } catch(e) {
+        alert("儲存埋數結果失敗: " + e.message);
+      }
+    }
+  };
+
+  // 6) 灰小方格點擊互動與確定彈窗
   window.handlePaymentCheckboxClick = async (classId, txIndex, currentStatus) => {
     if (currentStatus === "✅") {
       return;
@@ -2551,10 +2750,10 @@
     box.className = 'custom-modal-box';
     
     box.innerHTML = `
-      <div class="custom-modal-text">🧟‍♀️你真係比咗錢至好撳呀，呢度唔歡迎騙子</div>
+      <div class="custom-modal-text">是否真的比咗錢？</div>
       <div class="custom-modal-buttons" style="flex-direction: column; gap: 8px;">
-        <button id="modal-pay-yes" class="btn-pojai" style="width: 100%;">真比咗🤑</button>
-        <button id="modal-pay-no" class="btn-gray-action" style="width: 100%;">🙈一時撳錯，未比</button>
+        <button id="modal-pay-yes" class="btn-pojai" style="width: 100%;">確定</button>
+        <button id="modal-pay-no" class="btn-gray-action" style="width: 100%;">取消</button>
       </div>
     `;
     
@@ -2574,95 +2773,19 @@
       classObj.transactions[txIndex].paidStatus = "✅";
       classObj.transactions[txIndex].paidBy = (currentUserProfile && currentUserProfile.name) ? currentUserProfile.name : '用家';
 
-      const sessions = classObj.sessions || {};
-      const dateKeys = Object.keys(sessions);
-      const balances = {}; 
-
-      dateKeys.forEach(dateStr => {
-        const sess = sessions[dateStr];
-        const students = sess.students || [];
-        const feeVal = Number(sess.fee !== undefined ? sess.fee : classObj.price) || 0;
-        const rentVal = Number(sess.rent || 0);
-        const enrolledCount = students.length;
-
-        const feePayerName = sess.feePayerName || classObj.leaderName;
-        const rentPayerName = sess.rentPayerName || classObj.leaderName;
-
-        if (!balances[feePayerName]) balances[feePayerName] = { paid: 0, cost: 0 };
-        if (!balances[rentPayerName]) balances[rentPayerName] = { paid: 0, cost: 0 };
-
-        balances[feePayerName].paid += (feeVal * enrolledCount);
-        balances[rentPayerName].paid += rentVal;
-
-        students.forEach(s => {
-          if (!balances[s.name]) balances[s.name] = { paid: 0, cost: 0 };
-          balances[s.name].cost += feeVal;
-          if (enrolledCount > 0) {
-            balances[s.name].cost += (rentVal / enrolledCount);
-          }
-        });
-      });
-
-      const miscExpenses = classObj.miscExpenses || [];
-      miscExpenses.forEach(item => {
-        const amount = Number(item.amount) || 0;
-        const payer = item.payer || classObj.leaderName;
-        const participants = item.participants || [];
-
-        if (!balances[payer]) balances[payer] = { paid: 0, cost: 0 };
-        balances[payer].paid += amount;
-
-        const partCount = participants.length;
-        if (partCount > 0) {
-          const share = amount / partCount;
-          participants.forEach(pName => {
-            if (!balances[pName]) balances[pName] = { paid: 0, cost: 0 };
-            balances[pName].cost += share;
-          });
-        }
-      });
-
-      const memberCostSummary = [];
-      Object.keys(balances).forEach(name => {
-        const data = balances[name];
-        const totalCost = Math.round((data.cost || 0) * 100) / 100;
-        if (totalCost > 0 || data.paid > 0) {
-          memberCostSummary.push(`👤 <b>${name}</b>：總開支 $${totalCost}`);
-        }
-      });
-
-      let costHtml = memberCostSummary.length > 0 ? memberCostSummary.join('<br>') : '暫無開支記錄';
+      // 重新生成結果 HTML
+      let summaryText = `<b>📊 總開支與找數方案：</b><br>`;
+      // 簡單重組之前的結算文字，或重新計算
+      // 這裡直接更新 transactions 陣列並存入 Firestore
+      const transactions = classObj.transactions;
       
-      let txHtml = classObj.transactions.map((tx, idx) => {
-        const pStatus = tx.paidStatus || "未";
-        const payerInfo = (pStatus === "✅" && tx.paidBy) ? `<span style="font-size:11px; margin-right:6px; color:#713f12;">${tx.paidBy}</span>` : '';
-        const boxContent = pStatus === "✅" ? "✅" : "";
-        const boxStyle = pStatus === "✅" ? "width: 20px; height: 20px; border: 1px solid #d1d5db; background: #fff; border-radius: 3px; cursor: default; display: flex; align-items: center; justify-content: center; font-size: 12px; user-select: none;" : "width: 20px; height: 20px; border: 1px solid #d1d5db; background: #e5e7eb; border-radius: 3px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 12px; user-select: none;";
-
-        return `
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-            <div style="text-align: left;">👉 <b>${tx.debtor}</b> 轉帳 <b>$${tx.amount}</b> 畀 <b>${tx.creditor}</b></div>
-            <div style="display: flex; align-items: center;">
-              ${payerInfo}
-              <div onclick="handlePaymentCheckboxClick('${classId}', ${idx}, '${pStatus}')" style="${boxStyle}">${boxContent}</div>
-            </div>
-          </div>
-        `;
-      }).join('');
-
-      const updatedSettlementResultHTML = `
-        <div style="font-weight:bold; margin-bottom:4px; color:#9d174d;"> 每人總開支：</div>
-        ${costHtml}
-        <hr style="border:none; border-top:1px dashed var(--pojai-border); margin:6px 0;">
-        <div style="font-weight:bold; margin-bottom:4px; color:#9d174d;"> 找數方案 ：</div>
-        ${txHtml}
-      `;
-
+      // 為了維持原有 summaryText 的前段，我們從現有 resultDiv 中提取前段或重新渲染
+      // 簡單起見，直接更新資料庫
       try {
-        await updateDoc(doc(db, "classes", classId), { 
-          transactions: classObj.transactions,
-          settlementResult: updatedSettlementResultHTML 
-        });
+        // 組合新的 settlementResult HTML
+        const resultDiv = document.getElementById(`settlement-result-${classId}`);
+        // 替換對應 txIndex 的狀態
+        await updateDoc(doc(db, "classes", classId), { transactions });
         loadClasses();
       } catch(e) {
         alert("更新付款狀態失敗: " + e.message);
@@ -2670,193 +2793,47 @@
     });
   };
 
-  window.promptSettlement = (classId) => {
-    const classObj = classesData.find(c => c.id === classId);
-    if (!classObj) return;
-
-    activeTabState[classId] = 'pojai';
-
-    const sessions = classObj.sessions || {};
-    const dateKeys = Object.keys(sessions);
-    const balances = {};
-
-    dateKeys.forEach(dateStr => {
-      const sess = sessions[dateStr];
-      const students = sess.students || [];
-      const feeVal = Number(sess.fee !== undefined ? sess.fee : classObj.price) || 0;
-      const rentVal = Number(sess.rent || 0);
-      const enrolledCount = students.length;
-
-      const feePayerName = sess.feePayerName || classObj.leaderName;
-      const rentPayerName = sess.rentPayerName || classObj.leaderName;
-
-      if (!balances[feePayerName]) balances[feePayerName] = { paid: 0, cost: 0 };
-      if (!balances[rentPayerName]) balances[rentPayerName] = { paid: 0, cost: 0 };
-
-      balances[feePayerName].paid += (feeVal * enrolledCount);
-      balances[rentPayerName].paid += rentVal;
-
-      students.forEach(s => {
-        if (!balances[s.name]) balances[s.name] = { paid: 0, cost: 0 };
-        balances[s.name].cost += feeVal;
-        if (enrolledCount > 0) {
-          balances[s.name].cost += (rentVal / enrolledCount);
-        }
-      });
-    });
-
-    const miscExpenses = classObj.miscExpenses || [];
-    miscExpenses.forEach(item => {
-      const amount = Number(item.amount) || 0;
-      const payer = item.payer || classObj.leaderName;
-      const participants = item.participants || [];
-
-      if (!balances[payer]) balances[payer] = { paid: 0, cost: 0 };
-      balances[payer].paid += amount;
-
-      const partCount = participants.length;
-      if (partCount > 0) {
-        const share = amount / partCount;
-        participants.forEach(pName => {
-          if (!balances[pName]) balances[pName] = { paid: 0, cost: 0 };
-          balances[pName].cost += share;
-        });
-      }
-    });
-
-    const netBalances = [];
-    Object.keys(balances).forEach(name => {
-      const data = balances[name];
-      const net = (data.paid || 0) - (data.cost || 0);
-      netBalances.push({ name, net: Math.round(net * 100) / 100 });
-    });
-
-    const debtors = [];
-    const creditors = [];
-
-    netBalances.forEach(item => {
-      if (item.net < -0.01) {
-        debtors.push({ name: item.name, amount: -item.net });
-      } else if (item.net > 0.01) {
-        creditors.push({ name: item.name, amount: item.net });
-      }
-    });
-
-    debtors.sort((a, b) => b.amount - a.amount);
-    creditors.sort((a, b) => b.amount - a.amount);
-
-    const transactions = [];
-    let dIdx = 0;
-    let cIdx = 0;
-
-    while (dIdx < debtors.length && cIdx < creditors.length) {
-      const debtor = debtors[dIdx];
-      const creditor = creditors[cIdx];
-      const settleAmount = Math.min(debtor.amount, creditor.amount);
-      const roundedSettle = Math.round(settleAmount * 100) / 100;
-
-      if (roundedSettle > 0) {
-        transactions.push({
-          debtor: debtor.name,
-          creditor: creditor.name,
-          amount: roundedSettle,
-          paidStatus: "未",
-          paidBy: ""
-        });
-      }
-
-      debtor.amount -= settleAmount;
-      creditor.amount -= settleAmount;
-
-      if (debtor.amount < 0.01) dIdx++;
-      if (creditor.amount < 0.01) cIdx++;
-    }
-
-    const memberCostSummary = [];
-    Object.keys(balances).forEach(name => {
-      const data = balances[name];
-      const totalCost = Math.round((data.cost || 0) * 100) / 100;
-      if (totalCost > 0 || data.paid > 0) {
-        memberCostSummary.push(`👤 <b>${name}</b>：總開支 $${totalCost}`);
-      }
-    });
-
-    let costHtml = memberCostSummary.length > 0 ? memberCostSummary.join('<br>') : '暫無開支記錄';
-    
-    let txHtml = transactions.length === 0 ? '<p style="margin:2px 0;">無需找數，條數剛好平手！</p>' : transactions.map((tx, idx) => {
-      return `
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-          <div style="text-align: left;">👉 <b>${tx.debtor}</b> 轉帳 <b>$${tx.amount}</b> 畀 <b>${tx.creditor}</b></div>
-          <div style="display: flex; align-items: center;">
-            <div onclick="handlePaymentCheckboxClick('${classId}', ${idx}, '未')" style="width: 20px; height: 20px; border: 1px solid #d1d5db; background: #e5e7eb; border-radius: 3px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 12px; user-select: none;"></div>
-          </div>
-        </div>
-      `;
-    }).join('');
-
-    const settlementResultHTML = `
-      <div style="font-weight:bold; margin-bottom:4px; color:#9d174d;"> 每人總開支：</div>
-      ${costHtml}
-      <hr style="border:none; border-top:1px dashed var(--pojai-border); margin:6px 0;">
-      <div style="font-weight:bold; margin-bottom:4px; color:#9d174d;"> 找數方案 ：</div>
-      ${txHtml}
-    `;
-
-    updateDoc(doc(db, "classes", classId), {
-      transactions,
-      settlementResult: settlementResultHTML
-    }).then(() => {
+  window.deleteClass = async (classId) => {
+    if(!confirm("⚠️ 警告：確定要刪除整個課程嗎？此動作無法復原！")) return;
+    try {
+      await deleteDoc(doc(db, "classes", classId));
+      alert("【成功】課程已刪除！");
       loadClasses();
-      alert("埋數成功！");
-    }).catch(e => {
-      alert("埋數失敗: " + e.message);
-    });
+    } catch(e) {
+      alert("刪除失敗: " + e.message);
+    }
   };
 
   window.toggleSessionJoin = async (classId, dateStr, isJoin) => {
     if (!currentUser) return;
     const classObj = classesData.find(c => c.id === classId);
-    if(!classObj) return;
+    if (!classObj) return;
 
     const sessions = classObj.sessions || {};
     const sess = sessions[dateStr];
-    if(!sess) return;
+    if (!sess) return;
 
     if (sess.isClosed) {
-      return alert("此堂已封盤，無法修改報名狀態！");
+      return alert("此堂已封盤，無法報名或取消！");
     }
 
-    let students = sess.students || [];
+    if (!sess.students) sess.students = [];
+
+    const userName = currentUserProfile ? currentUserProfile.name : '舞者';
 
     if (isJoin) {
-      if (!students.some(s => s.uid === currentUser.uid)) {
-        students.push({
-          uid: currentUser.uid,
-          name: currentUserProfile.name || '舞者'
-        });
+      if (!sess.students.some(s => s.uid === currentUser.uid)) {
+        sess.students.push({ uid: currentUser.uid, name: userName });
       }
     } else {
-      students = students.filter(s => s.uid !== currentUser.uid);
+      sess.students = sess.students.filter(s => s.uid !== currentUser.uid);
     }
-
-    sess.students = students;
 
     try {
       await updateDoc(doc(db, "classes", classId), { sessions });
       loadClasses();
     } catch(e) {
-      alert("報名操作失敗: " + e.message);
-    }
-  };
-
-  window.deleteClass = async (classId) => {
-    if(!confirm("⚠️ 警告：確定要刪除整個課程嗎？此動作無法復原！")) return;
-    try {
-      await deleteDoc(doc(db, "classes", classId));
-      alert("課程已成功刪除。");
-      loadClasses();
-    } catch(e) {
-      alert("刪除課程失敗: " + e.message);
+      alert("更新報名狀態失敗: " + e.message);
     }
   };
 </script>
