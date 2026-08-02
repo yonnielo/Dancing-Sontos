@@ -287,7 +287,7 @@
 
     .pin-btn {
       background: transparent;
-      border: 1px solid #d1d5db;
+      border: 1px solid #f472b6;
       border-radius: 4px;
       width: 28px;
       height: 28px;
@@ -298,18 +298,14 @@
       font-size: 14px;
       padding: 0;
       margin-left: 8px;
-      transition: background 0.2s, border-color 0.2s, color 0.2s;
-      color: #d1d5db;
+      transition: background 0.2s;
     }
     .pin-btn:hover {
       background: #fce7f3;
-      border-color: #f472b6;
-      color: #f472b6;
     }
     .pin-btn.pinned {
       background: #fce7f3;
       border-color: #db2777;
-      color: #db2777;
     }
 
     .collapse-toggle-btn {
@@ -866,8 +862,9 @@
         </div>
         <div class="calendar-grid" id="calendar-days" style="margin-top:4px;"></div>
       </div>
-      <div style="margin-top: 8px; text-align: right;">
-        <button id="toggle-filter-pinned-btn" onclick="toggleFilterPinned()" style="width: auto; margin: 0; padding: 4px 10px; font-size: 11px; background: #f3f4f6; color: #4b5563; border: 1px solid #d1d5db;">📌只看釘選課程</button>
+
+      <div style="margin-top: 8px; text-align: center;">
+        <button id="toggle-favorite-calendar-btn" onclick="toggleFavoriteCalendarFilter()" class="btn-gray-action" style="font-size: 12px; padding: 6px 12px; width: auto; margin: 0; border-radius: 6px;">❤️只看心水課程</button>
       </div>
     </div>
 
@@ -914,25 +911,10 @@
   let allUsersList = [];
   let selectedDates = [];
   let currentFilter = 'all';
-  let filterOnlyPinned = false;
+  let onlyFavoriteCalendar = false;
   
   // 記錄每個課程當前啟用的 tab
   let activeTabState = {};
-
-  window.toggleFilterPinned = () => {
-    filterOnlyPinned = !filterOnlyPinned;
-    const btn = document.getElementById('toggle-filter-pinned-btn');
-    if (filterOnlyPinned) {
-      btn.style.background = 'var(--primary-hover)';
-      btn.style.color = 'white';
-      btn.style.border = 'none';
-    } else {
-      btn.style.background = '#f3f4f6';
-      btn.style.color = '#4b5563';
-      btn.style.border = '1px solid #d1d5db';
-    }
-    renderCalendar();
-  };
 
   window.setFilter = (type) => {
     currentFilter = type;
@@ -966,6 +948,21 @@
 
     renderCalendar();
     renderClassList();
+  };
+
+  window.toggleFavoriteCalendarFilter = () => {
+    onlyFavoriteCalendar = !onlyFavoriteCalendar;
+    const btn = document.getElementById('toggle-favorite-calendar-btn');
+    if (onlyFavoriteCalendar) {
+      btn.style.background = 'var(--primary-hover)';
+      btn.style.color = 'white';
+      btn.style.border = 'none';
+    } else {
+      btn.style.background = '#f3f4f6';
+      btn.style.color = '#374151';
+      btn.style.border = '1px solid #d1d5db';
+    }
+    renderCalendar();
   };
 
   document.getElementById('toggle-create-btn').addEventListener('click', async () => {
@@ -1690,6 +1687,8 @@
       calendarDays.appendChild(emptyCell);
     }
 
+    const pinnedList = (currentUserProfile && currentUserProfile.pinnedCourses) || [];
+
     for (let day = 1; day <= daysInMonth; day++) {
       const cell = document.createElement('div');
       cell.className = 'day-cell';
@@ -1700,13 +1699,9 @@
       const dateStr = `${year}-${monthStr}-${dayStr}`;
 
       classesData.forEach(c => {
-        if (filterOnlyPinned) {
-          const pinnedList = (currentUserProfile && currentUserProfile.pinnedCourses) || [];
-          if (!pinnedList.includes(c.id)) return;
-        }
-
         if (currentFilter === 'private' && c.accessType !== 'specific') return;
         if (currentFilter === 'public' && c.accessType === 'specific') return;
+        if (onlyFavoriteCalendar && !pinnedList.includes(c.id)) return;
 
         if(c.sessions && c.sessions[dateStr]) {
           const sess = c.sessions[dateStr];
@@ -1998,7 +1993,7 @@
       let addMiscFormHtml = `
         <div style="margin-top: 6px; padding: 6px; background: #fff; border: 1px dashed var(--pojai-border); border-radius: 4px;">
           <div style="font-size:11px; font-weight:bold; color:var(--pojai-text); margin-bottom:4px;">➕ 新增雜費項目</div>
-          <input type="text" id="misc-name-${c.id}" placeholder="項目名稱 (例如: 買水 / 道具)" style="margin:2px 0 4px 0; font-size:11px; padding:4px;">
+          <input type="text" id="misc-name-${c.id}" placeholder="項目名稱 (例如:買水 / 道具)" style="margin:2px 0 4px 0; font-size:11px; padding:4px;">
           <div class="flex" style="gap:4px; margin-bottom:4px;">
             <input type="number" id="misc-amount-${c.id}" placeholder="總金額 ($)" style="margin:0; font-size:11px; padding:4px;" title="請輸入該項目的總金額">
             <select id="misc-payer-${c.id}" style="margin:0; font-size:11px; padding:4px;">
@@ -2038,7 +2033,7 @@
               </div>
             </div>
             <div style="display: flex; align-items: center; gap: 4px;">
-              <button onclick="togglePinCourse('${c.id}')" class="pin-btn ${isPinned ? 'pinned' : ''}" title="${isPinned ? '取消釘選' : '釘選至頂'}">📌</button>
+              <button onclick="togglePinCourse('${c.id}')" class="pin-btn ${isPinned ? 'pinned' : ''}" title="${isPinned ? '取消心水' : '加入心水'}">${isPinned ? '❤️' : '🩶'}</button>
               <button onclick="toggleCourseBody('${c.id}')" id="collapse-btn-${c.id}" class="collapse-toggle-btn" title="展開/收藏課程資料">
                 <div class="collapse-arrow"></div>
               </button>
