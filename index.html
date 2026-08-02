@@ -842,7 +842,13 @@
     </div>
 
     <div class="card">
-      <h3 style="margin-top:0; font-size:16px; margin-bottom:12px; color:#1f2937;"> 👱🏻‍♂️所有課程</h3>
+      <div class="flex between" style="margin-bottom:12px; align-items:center;">
+        <h3 style="margin:0; font-size:16px; color:#1f2937;"> 👱🏻‍♂️所有課程</h3>
+        <div class="flex" style="gap:4px; margin:0;">
+          <button id="filter-private-btn" class="btn-gray-action" style="width:auto; margin:0; padding:4px 8px; font-size:11px;">🔒私人班</button>
+          <button id="filter-public-btn" class="btn-gray-action" style="width:auto; margin:0; padding:4px 8px; font-size:11px;">🌐公開班</button>
+        </div>
+      </div>
       <div id="class-list">載入中...</div>
     </div>
 
@@ -878,9 +884,52 @@
   let classesData = [];
   let allUsersList = [];
   let selectedDates = [];
+  let currentFilter = 'all'; // 'all', 'private', 'public'
   
   // 記錄每個課程當前啟用的 tab
   let activeTabState = {};
+
+  document.getElementById('filter-private-btn').addEventListener('click', () => {
+    currentFilter = (currentFilter === 'private') ? 'all' : 'private';
+    updateFilterButtonStyles();
+    renderCalendar();
+    renderClassList();
+  });
+
+  document.getElementById('filter-public-btn').addEventListener('click', () => {
+    currentFilter = (currentFilter === 'public') ? 'all' : 'public';
+    updateFilterButtonStyles();
+    renderCalendar();
+    renderClassList();
+  });
+
+  function updateFilterButtonStyles() {
+    const privBtn = document.getElementById('filter-private-btn');
+    const pubBtn = document.getElementById('filter-public-btn');
+    
+    if (currentFilter === 'private') {
+      privBtn.style.background = 'var(--primary)';
+      privBtn.style.color = '#fff';
+      privBtn.style.borderColor = 'var(--primary)';
+      pubBtn.style.background = '#f3f4f6';
+      pubBtn.style.color = '#374151';
+      pubBtn.style.borderColor = '#d1d5db';
+    } else if (currentFilter === 'public') {
+      pubBtn.style.background = 'var(--primary)';
+      pubBtn.style.color = '#fff';
+      pubBtn.style.borderColor = 'var(--primary)';
+      privBtn.style.background = '#f3f4f6';
+      privBtn.style.color = '#374151';
+      privBtn.style.borderColor = '#d1d5db';
+    } else {
+      privBtn.style.background = '#f3f4f6';
+      privBtn.style.color = '#374151';
+      privBtn.style.borderColor = '#d1d5db';
+      pubBtn.style.background = '#f3f4f6';
+      pubBtn.style.color = '#374151';
+      pubBtn.style.borderColor = '#d1d5db';
+    }
+  }
 
   document.getElementById('toggle-create-btn').addEventListener('click', async () => {
     document.getElementById('create-class-form').classList.toggle('hidden');
@@ -1608,6 +1657,9 @@
       const dateStr = `${year}-${monthStr}-${dayStr}`;
 
       classesData.forEach(c => {
+        if (currentFilter === 'private' && c.accessType !== 'specific') return;
+        if (currentFilter === 'public' && c.accessType === 'specific') return;
+
         if(c.sessions && c.sessions[dateStr]) {
           const sess = c.sessions[dateStr];
           const isJoined = (sess.students || []).some(s => s.uid === currentUser.uid);
@@ -1647,14 +1699,21 @@
     });
 
     const listEl = document.getElementById('class-list');
-    if(classesData.length === 0) {
+    
+    let filteredClasses = classesData.filter(c => {
+      if (currentFilter === 'private') return c.accessType === 'specific';
+      if (currentFilter === 'public') return c.accessType !== 'specific';
+      return true;
+    });
+
+    if(filteredClasses.length === 0) {
       listEl.innerHTML = "<p style='color:#6b7280;'>目前沒有課程。</p>";
       return;
     }
 
     const now = new Date();
 
-    listEl.innerHTML = classesData.map(c => {
+    listEl.innerHTML = filteredClasses.map(c => {
       const isLeader = c.leaderId === currentUser.uid;
       const canManage = isLeader || isAdmin;
       const sessions = c.sessions || {};
@@ -2644,35 +2703,34 @@
       }
     });
 
-    const memberCostSummary = [];
-    const netList = [];
-
+    const netBalances = {};
     Object.keys(balances).forEach(name => {
-      const data = balances[name];
-      const totalCost = Math.round((data.cost || 0) * 100) / 100;
-      const totalPaid = Math.round((data.paid || 0) * 100) / 100;
-      const net = totalPaid - totalCost;
-
-      if (totalCost > 0 || totalPaid > 0) {
-        memberCostSummary.push(`👤 <b>${name}</b>：總開支 $${totalCost}`);
-      }
-      netList.push({ name, net: Math.round(net * 100) / 100 });
+      const d = balances[name];
+      netBalances[name] = Math.round(((d.paid || 0) - (d.cost || 0)) * 100) / 100;
     });
 
-    const debtors = netList.filter(item => item.net < -0.01).sort((a, b) => a.net - b.net);
-    const creditors = netList.filter(item => item.net > 0.01).sort((a, b) => b.net - a.net);
+    const debtors = [];
+    const creditors = [];
+
+    Object.keys(netBalances).forEach(name => {
+      const net = netBalances[name];
+      if (net < -0.01) {
+        debtors.push({ name, amount: -net });
+      } else if (net > 0.01) {
+        creditors.push({ name, amount: net });
+      }
+    });
+
+    debtors.sort((a, b) => b.amount - a.amount);
+    creditors.sort((a, b) => b.amount - a.amount);
 
     const transactions = [];
-    let dIdx = 0;
-    let cIdx = 0;
+    let i = 0, j = 0;
 
-    while (dIdx < debtors.length && cIdx < creditors.length) {
-      const debtor = debtors[dIdx];
-      const creditor = creditors[cIdx];
-
-      const debtAmount = -debtor.net;
-      const creditAmount = creditor.net;
-      const transferAmount = Math.min(debtAmount, creditAmount);
+    while (i < debtors.length && j < creditors.length) {
+      const debtor = debtors[i];
+      const creditor = creditors[j];
+      const transferAmount = Math.min(debtor.amount, creditor.amount);
       const roundedAmount = Math.round(transferAmount * 100) / 100;
 
       if (roundedAmount > 0) {
@@ -2685,17 +2743,26 @@
         });
       }
 
-      debtor.net += transferAmount;
-      creditor.net -= transferAmount;
+      debtor.amount -= transferAmount;
+      creditor.amount -= transferAmount;
 
-      if (Math.abs(debtor.net) < 0.01) dIdx++;
-      if (Math.abs(creditor.net) < 0.01) cIdx++;
+      if (debtor.amount < 0.01) i++;
+      if (creditor.amount < 0.01) j++;
     }
 
+    const memberCostSummary = [];
+    Object.keys(balances).forEach(name => {
+      const data = balances[name];
+      const totalCost = Math.round((data.cost || 0) * 100) / 100;
+      if (totalCost > 0 || data.paid > 0) {
+        memberCostSummary.push(`👤 <b>${name}</b>：總開支 $${totalCost}`);
+      }
+    });
+
     let costHtml = memberCostSummary.length > 0 ? memberCostSummary.join('<br>') : '暫無開支記錄';
-    
+
     let txHtml = transactions.length === 0 ? 
-      `<div style="font-size:12px; color:#6b7280;">大家已經平手，無需轉帳！</div>` : 
+      '<div style="color:#6b7280; font-size:12px;">大家條目剛剛好，無需找數！</div>' :
       transactions.map((tx, idx) => {
         const pStatus = tx.paidStatus || "未";
         const payerInfo = (pStatus === "✅" && tx.paidBy) ? `<span style="font-size:11px; margin-right:6px; color:#713f12;">${tx.paidBy}</span>` : '';
@@ -2727,6 +2794,7 @@
         transactions,
         settlementResult: settlementResultHTML
       });
+      alert("【成功】已順利埋數！");
       loadClasses();
     } catch(e) {
       alert("埋數失敗: " + e.message);
@@ -2734,6 +2802,7 @@
   };
 
   window.toggleSessionJoin = async (classId, dateStr, isJoin) => {
+    if (!currentUser) return;
     const classObj = classesData.find(c => c.id === classId);
     if (!classObj) return;
 
@@ -2748,8 +2817,7 @@
     let students = sess.students || [];
 
     if (isJoin) {
-      const already = students.some(s => s.uid === currentUser.uid);
-      if (!already) {
+      if (!students.some(s => s.uid === currentUser.uid)) {
         students.push({
           uid: currentUser.uid,
           name: currentUserProfile.name || '舞者'
@@ -2765,7 +2833,7 @@
       await updateDoc(doc(db, "classes", classId), { sessions });
       loadClasses();
     } catch(e) {
-      alert("報名操作失敗: " + e.message);
+      alert("更新報名失敗: " + e.message);
     }
   };
 
@@ -2773,7 +2841,7 @@
     if (!confirm("⚠️ 警告：確定要刪除整個課程嗎？此動作無法復原！")) return;
     try {
       await deleteDoc(doc(db, "classes", classId));
-      alert("【成功】課程已成功刪除！");
+      alert("【成功】課程已刪除！");
       loadClasses();
     } catch(e) {
       alert("刪除課程失敗: " + e.message);
