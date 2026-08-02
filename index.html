@@ -287,7 +287,7 @@
 
     .pin-btn {
       background: transparent;
-      border: 1px solid #f472b6;
+      border: 1px solid #d1d5db;
       border-radius: 4px;
       width: 28px;
       height: 28px;
@@ -298,14 +298,18 @@
       font-size: 14px;
       padding: 0;
       margin-left: 8px;
-      transition: background 0.2s;
+      transition: background 0.2s, border-color 0.2s, color 0.2s;
+      color: #d1d5db;
     }
     .pin-btn:hover {
       background: #fce7f3;
+      border-color: #f472b6;
+      color: #f472b6;
     }
     .pin-btn.pinned {
       background: #fce7f3;
       border-color: #db2777;
+      color: #db2777;
     }
 
     .collapse-toggle-btn {
@@ -862,6 +866,9 @@
         </div>
         <div class="calendar-grid" id="calendar-days" style="margin-top:4px;"></div>
       </div>
+      <div style="margin-top: 8px; text-align: right;">
+        <button id="toggle-filter-pinned-btn" onclick="toggleFilterPinned()" style="width: auto; margin: 0; padding: 4px 10px; font-size: 11px; background: #f3f4f6; color: #4b5563; border: 1px solid #d1d5db;">📌只看釘選課程</button>
+      </div>
     </div>
 
     <div class="card">
@@ -907,9 +914,25 @@
   let allUsersList = [];
   let selectedDates = [];
   let currentFilter = 'all';
+  let filterOnlyPinned = false;
   
   // 記錄每個課程當前啟用的 tab
   let activeTabState = {};
+
+  window.toggleFilterPinned = () => {
+    filterOnlyPinned = !filterOnlyPinned;
+    const btn = document.getElementById('toggle-filter-pinned-btn');
+    if (filterOnlyPinned) {
+      btn.style.background = 'var(--primary-hover)';
+      btn.style.color = 'white';
+      btn.style.border = 'none';
+    } else {
+      btn.style.background = '#f3f4f6';
+      btn.style.color = '#4b5563';
+      btn.style.border = '1px solid #d1d5db';
+    }
+    renderCalendar();
+  };
 
   window.setFilter = (type) => {
     currentFilter = type;
@@ -1677,6 +1700,11 @@
       const dateStr = `${year}-${monthStr}-${dayStr}`;
 
       classesData.forEach(c => {
+        if (filterOnlyPinned) {
+          const pinnedList = (currentUserProfile && currentUserProfile.pinnedCourses) || [];
+          if (!pinnedList.includes(c.id)) return;
+        }
+
         if (currentFilter === 'private' && c.accessType !== 'specific') return;
         if (currentFilter === 'public' && c.accessType === 'specific') return;
 
@@ -2529,142 +2557,6 @@
       alert("刪除雜費失敗: " + e.message);
     }
   };
-
-  window.handlePaymentCheckboxClick = async (classId, txIndex, currentStatus) => {
-    if (currentStatus === "✅") {
-      return;
-    }
-
-    const overlay = document.createElement('div');
-    overlay.className = 'custom-modal-overlay';
-    
-    const box = document.createElement('div');
-    box.className = 'custom-modal-box';
-    
-    box.innerHTML = `
-      <div class="custom-modal-text">🧟‍♀️你真係比咗錢至好撳呀，呢度唔歡迎騙子</div>
-      <div class="custom-modal-buttons" style="flex-direction: column; gap: 8px;">
-        <button id="modal-pay-yes" class="btn-pojai" style="width: 100%;">真比咗🤑</button>
-        <button id="modal-pay-no" class="btn-gray-action" style="width: 100%;">🙈一時撳錯，未比</button>
-      </div>
-    `;
-    
-    overlay.appendChild(box);
-    document.body.appendChild(overlay);
-
-    document.getElementById('modal-pay-no').addEventListener('click', () => {
-      document.body.removeChild(overlay);
-    });
-
-    document.getElementById('modal-pay-yes').addEventListener('click', async () => {
-      document.body.removeChild(overlay);
-      
-      const classObj = classesData.find(c => c.id === classId);
-      if (!classObj || !classObj.transactions) return;
-
-      classObj.transactions[txIndex].paidStatus = "✅";
-      classObj.transactions[txIndex].paidBy = (currentUserProfile && currentUserProfile.name) ? currentUserProfile.name : '用家';
-
-      const sessions = classObj.sessions || {};
-      const dateKeys = Object.keys(sessions);
-      const balances = {}; 
-
-      dateKeys.forEach(dateStr => {
-        const sess = sessions[dateStr];
-        const students = sess.students || [];
-        const feeVal = Number(sess.fee !== undefined ? sess.fee : classObj.price) || 0;
-        const rentVal = Number(sess.rent || 0);
-        const enrolledCount = students.length;
-
-        const feePayerName = sess.feePayerName || classObj.leaderName;
-        const rentPayerName = sess.rentPayerName || classObj.leaderName;
-
-        if (!balances[feePayerName]) balances[feePayerName] = { paid: 0, cost: 0 };
-        if (!balances[rentPayerName]) balances[rentPayerName] = { paid: 0, cost: 0 };
-
-        balances[feePayerName].paid += (feeVal * enrolledCount);
-        balances[rentPayerName].paid += rentVal;
-
-        students.forEach(s => {
-          if (!balances[s.name]) balances[s.name] = { paid: 0, cost: 0 };
-          balances[s.name].cost += feeVal;
-          if (enrolledCount > 0) {
-            balances[s.name].cost += (rentVal / enrolledCount);
-          }
-        });
-      });
-
-      const miscExpenses = classObj.miscExpenses || [];
-      miscExpenses.forEach(item => {
-        const amount = Number(item.amount) || 0;
-        const payer = item.payer || classObj.leaderName;
-        const participants = item.participants || [];
-
-        if (!balances[payer]) balances[payer] = { paid: 0, cost: 0 };
-        balances[payer].paid += amount;
-
-        const partCount = participants.length;
-        if (partCount > 0) {
-          const share = amount / partCount;
-          participants.forEach(pName => {
-            if (!balances[pName]) balances[pName] = { paid: 0, cost: 0 };
-            balances[pName].cost += share;
-          });
-        }
-      });
-
-      const memberCostSummary = [];
-      Object.keys(balances).forEach(name => {
-        const data = balances[name];
-        const totalCost = Math.round((data.cost || 0) * 100) / 100;
-        if (totalCost > 0 || data.paid > 0) {
-          memberCostSummary.push(`👤 <b>${name}</b>：總開支 $${totalCost}`);
-        }
-      });
-
-      let costHtml = memberCostSummary.length > 0 ? memberCostSummary.join('<br>') : '暫無開支記錄';
-      
-      let txHtml = classObj.transactions.map((tx, idx) => {
-        const pStatus = tx.paidStatus || "未";
-        const payerInfo = (pStatus === "✅" && tx.paidBy) ? `<span style="font-size:11px; margin-right:6px; color:#713f12;">${tx.paidBy}</span>` : '';
-        const boxContent = pStatus === "✅" ? "✅" : "";
-        const boxStyle = pStatus === "✅" ? "width: 20px; height: 20px; border: 1px solid #d1d5db; background: #fff; border-radius: 3px; cursor: default; display: flex; align-items: center; justify-content: center; font-size: 12px; user-select: none;" : "width: 20px; height: 20px; border: 1px solid #d1d5db; background: #e5e7eb; border-radius: 3px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 12px; user-select: none;";
-
-        return `
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-            <div style="text-align: left;">👉 <b>${tx.debtor}</b> 轉帳 <b>$${tx.amount}</b> 畀 <b>${tx.creditor}</b></div>
-            <div style="display: flex; align-items: center;">
-              ${payerInfo}
-              <div onclick="handlePaymentCheckboxClick('${classId}', ${idx}, '${pStatus}')" style="${boxStyle}">${boxContent}</div>
-            </div>
-          </div>
-        `;
-      }).join('');
-
-      const updatedSettlementResultHTML = `
-        <div style="font-weight:bold; margin-bottom:4px; color:#9d174d;"> 每人總開支：</div>
-        ${costHtml}
-        <hr style="border:none; border-top:1px dashed var(--pojai-border); margin:6px 0;">
-        <div style="font-weight:bold; margin-bottom:4px; color:#9d174d;"> 找數方案 ：</div>
-        ${txHtml}
-      `;
-
-      try {
-        await updateDoc(doc(db, "classes", classId), { 
-          transactions: classObj.transactions,
-          settlementResult: updatedSettlementResultHTML 
-        });
-        loadClasses();
-      } catch(e) {
-        alert("更新付款狀態失敗: " + e.message);
-      }
-    });
-  };
-
-  window.promptSettlement = (classId) => {
-    const classObj = classesData.find(c => c.id === classId);
-    if (!classObj) return;
-  }
 </script>
 </body>
 </html>
