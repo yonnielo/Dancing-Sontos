@@ -601,7 +601,7 @@
       border-radius: 4px;
     }
     .custom-dropdown-list {
-      max-height: 180px; /* 修改：拉長下拉選單高度，最少看到5個用戶名 */
+      max-height: 200px;
       overflow-y: auto;
       padding: 0 6px 6px 6px;
     }
@@ -2633,4 +2633,17 @@
       }
     });
 
-    // ... (rest of settlement code omitted for space or fully intact as original)
+    const memberCostSummary = [];
+    const netList = [];
+
+    Object.keys(balances).forEach(name => {
+      const data = balances[name];
+      const totalCost = Math.round((data.cost || 0) * 100) / 100;
+      if (totalCost > 0 || data.paid > 0) {
+        memberCostSummary.push(`👤 <b>${name}</b>：總開支 $${totalCost}`);
+      }
+    });
+  };
+</script>
+</body>
+</html>
