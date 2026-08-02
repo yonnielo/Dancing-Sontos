@@ -1755,6 +1755,40 @@
     }
   };
 
+  window.toggleSessionJoin = async (classId, dateStr, isJoining) => {
+    if (!currentUser) return;
+    const classObj = classesData.find(c => c.id === classId);
+    if (!classObj || !classObj.sessions || !classObj.sessions[dateStr]) return;
+
+    const sess = classObj.sessions[dateStr];
+    if (sess.isClosed) {
+      return alert("此課堂已封盤，無法修改報名狀態！");
+    }
+
+    let students = sess.students || [];
+    const userUid = currentUser.uid;
+    const userName = currentUserProfile ? (currentUserProfile.name || '舞者') : '舞者';
+
+    if (isJoining) {
+      if (!students.some(s => s.uid === userUid)) {
+        students.push({ uid: userUid, name: userName });
+      }
+    } else {
+      students = students.filter(s => s.uid !== userUid);
+    }
+
+    sess.students = students;
+
+    try {
+      await updateDoc(doc(db, "classes", classId), {
+        sessions: classObj.sessions
+      });
+      loadClasses();
+    } catch (e) {
+      alert("更新報名狀態失敗: " + e.message);
+    }
+  };
+
   function renderClassList() {
     const expandedIds = [];
     document.querySelectorAll('[id^="course-body-"]').forEach(el => {
