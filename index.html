@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
@@ -283,29 +284,6 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-    }
-
-    .pin-btn {
-      background: transparent;
-      border: 1px solid #f472b6;
-      border-radius: 4px;
-      width: 28px;
-      height: 28px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      font-size: 14px;
-      padding: 0;
-      margin-left: 8px;
-      transition: background 0.2s;
-    }
-    .pin-btn:hover {
-      background: #fce7f3;
-    }
-    .pin-btn.pinned {
-      background: #fce7f3;
-      border-color: #db2777;
     }
 
     .collapse-toggle-btn {
@@ -1238,10 +1216,10 @@
       currentUser = user;
       try {
         const userDoc = await getDoc(doc(db, "users", user.uid));
-        currentUserProfile = userDoc.exists() ? userDoc.data() : { name: '舞者', role: 'user', pinnedCourses: [] };
+        currentUserProfile = userDoc.exists() ? userDoc.data() : { name: '舞者', role: 'user' };
       } catch(e) {
         console.error("無法取得使用者 Profile", e);
-        currentUserProfile = { name: '舞者', role: 'user', pinnedCourses: [] };
+        currentUserProfile = { name: '舞者', role: 'user' };
       }
       
       isAdmin = (currentUserProfile && currentUserProfile.role === 'admin') || user.email === 'yonnielo@yahoo.com';
@@ -1595,12 +1573,6 @@
       }
 
       classesData.sort((a, b) => {
-        const pinnedList = (currentUserProfile && currentUserProfile.pinnedCourses) || [];
-        const aPinned = pinnedList.includes(a.id);
-        const bPinned = pinnedList.includes(b.id);
-        if (aPinned && !bPinned) return -1;
-        if (!aPinned && bPinned) return 1;
-
         const aDates = Object.keys(a.sessions || {}).sort();
         const bDates = Object.keys(b.sessions || {}).sort();
         const aLast = aDates.length > 0 ? new Date(aDates[aDates.length - 1]) : new Date(0);
@@ -1709,29 +1681,6 @@
     renderCalendar();
   });
 
-  window.togglePinCourse = async (classId) => {
-    if (!currentUserProfile) return;
-    let pinnedList = currentUserProfile.pinnedCourses || [];
-    const isPinned = pinnedList.includes(classId);
-
-    if (isPinned) {
-      pinnedList = pinnedList.filter(id => id !== classId);
-    } else {
-      if (pinnedList.length >= 5) {
-        return alert("每用戶最多只可釘選5個課程！");
-      }
-      pinnedList.push(classId);
-    }
-
-    try {
-      await setDoc(doc(db, "users", currentUser.uid), { pinnedCourses: pinnedList }, { merge: true });
-      currentUserProfile.pinnedCourses = pinnedList;
-      loadClasses();
-    } catch (e) {
-      alert("釘選失敗: " + e.message);
-    }
-  };
-
   function renderClassList() {
     const expandedIds = [];
     document.querySelectorAll('[id^="course-body-"]').forEach(el => {
@@ -1762,9 +1711,6 @@
       const sessions = c.sessions || {};
       const dateKeys = Object.keys(sessions).sort();
       const isSettled = !!c.settlementResult;
-
-      const pinnedList = (currentUserProfile && currentUserProfile.pinnedCourses) || [];
-      const isPinned = pinnedList.includes(c.id);
 
       let isCompleted = false;
       if (dateKeys.length > 0) {
@@ -1999,7 +1945,7 @@
         <div class="course-card">
           
           <div class="course-card-header" style="border-left: 4px solid ${headerBorderColor};">
-            <div style="flex: 1;">
+            <div>
               <strong style="font-size: 17px; ${classNameStyle}">${c.name}</strong>${completedBadgeHtml}
               <div style="margin-top: 6px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
                 <span class="badge-leader">👑 班長: ${c.leaderName}</span>
@@ -2009,12 +1955,9 @@
                 ${leaderNoteHtml}
               </div>
             </div>
-            <div style="display: flex; align-items: center; gap: 4px;">
-              <button onclick="togglePinCourse('${c.id}')" class="pin-btn ${isPinned ? 'pinned' : ''}" title="${isPinned ? '取消釘選' : '釘選至頂'}">📌</button>
-              <button onclick="toggleCourseBody('${c.id}')" id="collapse-btn-${c.id}" class="collapse-toggle-btn" title="展開/收藏課程資料">
-                <div class="collapse-arrow"></div>
-              </button>
-            </div>
+            <button onclick="toggleCourseBody('${c.id}')" id="collapse-btn-${c.id}" class="collapse-toggle-btn" title="展開/收藏課程資料">
+              <div class="collapse-arrow"></div>
+            </button>
           </div>
 
           <div id="course-body-${c.id}" class="hidden">
@@ -2664,7 +2607,221 @@
   window.promptSettlement = (classId) => {
     const classObj = classesData.find(c => c.id === classId);
     if (!classObj) return;
-  }
+    if (classObj.leaderId !== currentUser.uid) return alert("只有班長才可以按埋數！");
+    if (!!classObj.settlementResult) return;
+
+    const overlay = document.createElement('div');
+    overlay.className = 'custom-modal-overlay';
+    
+    const box = document.createElement('div');
+    box.className = 'custom-modal-box';
+    
+    box.innerHTML = `
+      <div class="custom-modal-text">🧛真係要埋數？撳咗就全部數冇得再郁，返唔到轉頭㗎啦！Sure?</div>
+      <div class="custom-modal-buttons">
+        <button id="modal-yes-btn" class="btn-pojai" style="flex:1;">是，埋數</button>
+        <button id="modal-no-btn" class="btn-gray-action" style="flex:1;">否，唔埋住</button>
+      </div>
+    `;
+    
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+
+    document.getElementById('modal-no-btn').addEventListener('click', () => {
+      document.body.removeChild(overlay);
+    });
+
+    document.getElementById('modal-yes-btn').addEventListener('click', async () => {
+      document.body.removeChild(overlay);
+      await calculateSettlement(classId);
+    });
+  };
+
+  window.calculateSettlement = async (classId) => {
+    const classObj = classesData.find(c => c.id === classId);
+    if (!classObj) return;
+
+    activeTabState[classId] = 'pojai';
+
+    const sessions = classObj.sessions || {};
+    Object.keys(sessions).forEach(dateStr => {
+      sessions[dateStr].isClosed = true;
+    });
+
+    const dateKeys = Object.keys(sessions);
+    const balances = {}; 
+
+    dateKeys.forEach(dateStr => {
+      const sess = sessions[dateStr];
+      const students = sess.students || [];
+      const feeVal = Number(sess.fee !== undefined ? sess.fee : classObj.price) || 0;
+      const rentVal = Number(sess.rent || 0);
+      const enrolledCount = students.length;
+
+      const feePayerName = sess.feePayerName || classObj.leaderName;
+      const rentPayerName = sess.rentPayerName || classObj.leaderName;
+
+      if (!balances[feePayerName]) balances[feePayerName] = { paid: 0, cost: 0 };
+      if (!balances[rentPayerName]) balances[rentPayerName] = { paid: 0, cost: 0 };
+
+      balances[feePayerName].paid += (feeVal * enrolledCount);
+      balances[rentPayerName].paid += rentVal;
+
+      students.forEach(s => {
+        if (!balances[s.name]) balances[s.name] = { paid: 0, cost: 0 };
+        balances[s.name].cost += feeVal;
+        if (enrolledCount > 0) {
+          balances[s.name].cost += (rentVal / enrolledCount);
+        }
+      });
+    });
+
+    const miscExpenses = classObj.miscExpenses || [];
+    miscExpenses.forEach(item => {
+      const amount = Number(item.amount) || 0;
+      const payer = item.payer || classObj.leaderName;
+      const participants = item.participants || [];
+
+      if (!balances[payer]) balances[payer] = { paid: 0, cost: 0 };
+      balances[payer].paid += amount;
+
+      const partCount = participants.length;
+      if (partCount > 0) {
+        const share = amount / partCount;
+        participants.forEach(pName => {
+          if (!balances[pName]) balances[pName] = { paid: 0, cost: 0 };
+          balances[pName].cost += share;
+        });
+      }
+    });
+
+    const netBalances = {};
+    Object.keys(balances).forEach(name => {
+      const data = balances[name];
+      netBalances[name] = Math.round(((data.paid || 0) - (data.cost || 0)) * 100) / 100;
+    });
+
+    const debtors = [];
+    const creditors = [];
+
+    Object.keys(netBalances).forEach(name => {
+      const net = netBalances[name];
+      if (net < -0.01) {
+        debtors.push({ name, amount: -net });
+      } else if (net > 0.01) {
+        creditors.push({ name, amount: net });
+      }
+    });
+
+    const transactions = [];
+    let dIdx = 0;
+    let cIdx = 0;
+
+    while (dIdx < debtors.length && cIdx < creditors.length) {
+      const debtor = debtors[dIdx];
+      const creditor = creditors[cIdx];
+
+      const payAmount = Math.min(debtor.amount, creditor.amount);
+      const roundedPay = Math.round(payAmount * 100) / 100;
+
+      if (roundedPay > 0) {
+        transactions.push({
+          debtor: debtor.name,
+          creditor: creditor.name,
+          amount: roundedPay,
+          paidStatus: "未"
+        });
+      }
+
+      debtor.amount -= payAmount;
+      creditor.amount -= payAmount;
+
+      if (debtor.amount < 0.01) dIdx++;
+      if (creditor.amount < 0.01) cIdx++;
+    }
+
+    const memberCostSummary = [];
+    Object.keys(balances).forEach(name => {
+      const data = balances[name];
+      const totalCost = Math.round((data.cost || 0) * 100) / 100;
+      if (totalCost > 0 || data.paid > 0) {
+        memberCostSummary.push(`👤 <b>${name}</b>：總開支 $${totalCost}`);
+      }
+    });
+
+    let costHtml = memberCostSummary.length > 0 ? memberCostSummary.join('<br>') : '暫無開支記錄';
+
+    let txHtml = transactions.length === 0 ? '<div style="text-align:left;">所有帳目已平，無需找數！</div>' : transactions.map((tx, idx) => {
+      return `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+          <div style="text-align: left;">👉 <b>${tx.debtor}</b> 轉帳 <b>$${tx.amount}</b> 畀 <b>${tx.creditor}</b></div>
+          <div style="display: flex; align-items: center;">
+            <div onclick="handlePaymentCheckboxClick('${classId}', ${idx}, '未')" style="width: 20px; height: 20px; border: 1px solid #d1d5db; background: #e5e7eb; border-radius: 3px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 12px; user-select: none;"></div>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    const settlementResultHTML = `
+      <div style="font-weight:bold; margin-bottom:4px; color:#9d174d;"> 每人總開支：</div>
+      ${costHtml}
+      <hr style="border:none; border-top:1px dashed var(--pojai-border); margin:6px 0;">
+      <div style="font-weight:bold; margin-bottom:4px; color:#9d174d;"> 找數方案 ：</div>
+      ${txHtml}
+    `;
+
+    try {
+      await updateDoc(doc(db, "classes", classId), {
+        sessions,
+        transactions,
+        settlementResult: settlementResultHTML
+      });
+      alert("【成功】埋數完成！");
+      loadClasses();
+    } catch(e) {
+      alert("埋數失敗: " + e.message);
+    }
+  };
+
+  window.toggleSessionJoin = async (classId, dateStr, isJoin) => {
+    const classObj = classesData.find(c => c.id === classId);
+    if (!classObj) return;
+
+    const sessions = classObj.sessions || {};
+    const sess = sessions[dateStr];
+    if (!sess) return;
+    if (sess.isClosed) return alert("此堂已封盤，無法修改報名！");
+
+    let students = sess.students || [];
+
+    if (isJoin) {
+      if (!students.some(s => s.uid === currentUser.uid)) {
+        students.push({ uid: currentUser.uid, name: currentUserProfile.name || '舞者' });
+      }
+    } else {
+      students = students.filter(s => s.uid !== currentUser.uid);
+    }
+
+    sess.students = students;
+
+    try {
+      await updateDoc(doc(db, "classes", classId), { sessions });
+      loadClasses();
+    } catch(e) {
+      alert("報名操作失敗: " + e.message);
+    }
+  };
+
+  window.deleteClass = async (classId) => {
+    if (!confirm("⚠️ 警告：確定要刪除整個課程嗎？此動作無法復原！")) return;
+    try {
+      await deleteDoc(doc(db, "classes", classId));
+      alert("課程已成功刪除！");
+      loadClasses();
+    } catch(e) {
+      alert("刪除課程失敗: " + e.message);
+    }
+  };
 </script>
 </body>
 </html>
