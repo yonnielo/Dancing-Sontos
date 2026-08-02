@@ -712,8 +712,7 @@
           <label style="font-size: 12px; font-weight: bold;">💵 每節學費與學費付款人：</label>
           <div class="flex" style="margin-top:5px;">
             <input type="number" id="class-price" placeholder="單堂學費 ($)" style="margin:0;">
-            <select id="class-default-fee-payer" style="margin:0;">
-            </select>
+            <input type="text" id="class-default-fee-payer-display" value="班長 (預設)" disabled style="margin:0; background:#f3f4f6; color:#374151; font-weight:bold; text-align:center;">
           </div>
         </div>
 
@@ -721,8 +720,7 @@
           <label style="font-size: 12px; font-weight: bold;">💰 每節場租與付款人：</label>
           <div class="flex" style="margin-top:5px;">
             <input type="number" id="class-default-rent" placeholder="每節場租 ($)" style="margin:0;" value="0">
-            <select id="class-default-rent-payer" style="margin:0;">
-            </select>
+            <input type="text" id="class-default-rent-payer-display" value="班長 (預設)" disabled style="margin:0; background:#f3f4f6; color:#374151; font-weight:bold; text-align:center;">
           </div>
         </div>
 
@@ -1159,15 +1157,6 @@
         `;
       }).join('');
 
-      const optionsHtml = allUsersList.map(u => {
-        const userName = u.name || u.email || '未命名用戶';
-        const isSelf = currentUser && u.uid === currentUser.uid;
-        return `<option value="${u.uid}" ${isSelf ? 'selected' : ''}>${userName} ${isSelf ? '(班長/預設)' : ''}</option>`;
-      }).join('');
-
-      document.getElementById('class-default-fee-payer').innerHTML = optionsHtml;
-      document.getElementById('class-default-rent-payer').innerHTML = optionsHtml;
-
     } catch(e) {
       console.error("載入用戶名單失敗:", e);
     }
@@ -1288,14 +1277,12 @@
     const endTime = document.getElementById('class-end-time').value || '21:00';
 
     const defaultFee = Number(document.getElementById('class-price').value) || 0;
-    const defaultFeePayerUid = document.getElementById('class-default-fee-payer').value || currentUser.uid;
-    const feePayerObj = allUsersList.find(u => u.uid === defaultFeePayerUid);
-    const defaultFeePayerName = feePayerObj ? (feePayerObj.name || feePayerObj.email) : (currentUserProfile.name || '班長');
+    const defaultFeePayerUid = currentUser.uid;
+    const defaultFeePayerName = currentUserProfile.name || '班長';
 
     const defaultRent = Number(document.getElementById('class-default-rent').value) || 0;
-    const defaultRentPayerUid = document.getElementById('class-default-rent-payer').value || currentUser.uid;
-    const rentPayerObj = allUsersList.find(u => u.uid === defaultRentPayerUid);
-    const defaultRentPayerName = rentPayerObj ? (rentPayerObj.name || rentPayerObj.email) : (currentUserProfile.name || '班長');
+    const defaultRentPayerUid = currentUser.uid;
+    const defaultRentPayerName = currentUserProfile.name || '班長';
 
     const accessType = document.getElementById('access-type').value;
     let allowedUsers = [];
@@ -1674,7 +1661,6 @@
           `;
         }).join('');
 
-      // 【修改點 2】只找出有報名該課程的用戶作為「邊個有份」及雜費分攤的候選名單
       const eligibleNamesSet = new Set([c.leaderName]);
       dateKeys.forEach(d => {
         (sessions[d].students || []).forEach(s => eligibleNamesSet.add(s.name));
@@ -1992,14 +1978,22 @@
         </span>
       `).join('');
 
-      const feePayerOptions = allUsersList.map(u => {
+      // 只提供有報名該堂課（或至少在該堂課名單內）的用戶作選擇，若無則預設為班長或已有付款人
+      const sessionUsersMap = new Map();
+      // 必定包含班長本人
+      sessionUsersMap.set(classObj.leaderId, classObj.leaderName);
+      students.forEach(s => sessionUsersMap.set(s.uid, s.name));
+
+      const sessionUsersList = Array.from(sessionUsersMap.entries()).map(([uid, name]) => ({ uid, name }));
+
+      const feePayerOptions = sessionUsersList.map(u => {
         const isSelected = u.uid === (sess.feePayerUid || classObj.leaderId);
-        return `<option value="${u.uid}" ${isSelected ? 'selected' : ''}>${u.name || u.email}</option>`;
+        return `<option value="${u.uid}" ${isSelected ? 'selected' : ''}>${u.name}</option>`;
       }).join('');
 
-      const rentPayerOptions = allUsersList.map(u => {
+      const rentPayerOptions = sessionUsersList.map(u => {
         const isSelected = u.uid === (sess.rentPayerUid || sess.payerUid || classObj.leaderId);
-        return `<option value="${u.uid}" ${isSelected ? 'selected' : ''}>${u.name || u.email}</option>`;
+        return `<option value="${u.uid}" ${isSelected ? 'selected' : ''}>${u.name}</option>`;
       }).join('');
 
       const feeVal = sess.fee !== undefined ? sess.fee : classObj.price;
@@ -2007,7 +2001,6 @@
       const endTimeVal = sess.endTime || '21:00';
       const isClosed = sess.isClosed || false;
 
-      // 【修改點 1】移除手動加人下拉式選單與加人按鈕，僅保留已報名學員列表與刪除功能
       return `
         <tr data-date="${d}" class="edit-session-row">
           <td><input type="date" value="${d}" class="edit-date-input"></td>
@@ -2050,10 +2043,7 @@
     const todayStr = new Date().toISOString().split('T')[0];
     const classObj = classesData.find(c => c.id === classId);
 
-    const payerOptions = allUsersList.map(u => {
-      const isSelected = u.uid === classObj.leaderId;
-      return `<option value="${u.uid}" ${isSelected ? 'selected' : ''}>${u.name || u.email}</option>`;
-    }).join('');
+    const payerOptions = `<option value="${classObj.leaderId}" selected>${classObj.leaderName}</option>`;
 
     const tr = document.createElement('tr');
     tr.className = 'edit-session-row';
@@ -2130,12 +2120,12 @@
       const feeVal = Number(tr.querySelector('.edit-fee-input').value) || 0;
       const feePayerUid = tr.querySelector('.edit-fee-payer-select').value;
       const feePayerObj = allUsersList.find(u => u.uid === feePayerUid);
-      const feePayerName = feePayerObj ? (feePayerObj.name || feePayerObj.email) : '班長';
+      const feePayerName = feePayerObj ? (feePayerObj.name || feePayerObj.email) : (feePayerUid === classObj.leaderId ? classObj.leaderName : '班長');
 
       const rentVal = Number(tr.querySelector('.edit-rent-input').value) || 0;
       const rentPayerUid = tr.querySelector('.edit-rent-payer-select').value;
       const rentPayerObj = allUsersList.find(u => u.uid === rentPayerUid);
-      const rentPayerName = rentPayerObj ? (rentPayerObj.name || rentPayerObj.email) : '班長';
+      const rentPayerName = rentPayerObj ? (rentPayerObj.name || rentPayerObj.email) : (rentPayerUid === classObj.leaderId ? classObj.leaderName : '班長');
 
       const studentChips = tr.querySelectorAll('.student-chip');
       const updatedStudents = [];
