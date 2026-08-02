@@ -1735,6 +1735,38 @@
     renderCalendar();
   });
 
+  window.toggleSessionJoin = async (classId, dateStr, isJoin) => {
+    if (!currentUser) return;
+    const classObj = classesData.find(c => c.id === classId);
+    if (!classObj) return;
+
+    const sessions = classObj.sessions || {};
+    const sess = sessions[dateStr];
+    if (!sess) return;
+    if (sess.isClosed) {
+      alert("此課堂已封盤，無法報名或取消！");
+      return;
+    }
+
+    let students = sess.students || [];
+    if (isJoin) {
+      if (!students.some(s => s.uid === currentUser.uid)) {
+        students.push({ uid: currentUser.uid, name: currentUserProfile.name || '舞者' });
+      }
+    } else {
+      students = students.filter(s => s.uid !== currentUser.uid);
+    }
+
+    sess.students = students;
+
+    try {
+      await updateDoc(doc(db, "classes", classId), { sessions });
+      loadClasses();
+    } catch(e) {
+      alert("報名狀態更新失敗: " + e.message);
+    }
+  };
+
   function renderClassList() {
     const expandedIds = [];
     document.querySelectorAll('[id^="course-body-"]').forEach(el => {
@@ -1928,11 +1960,14 @@
 
       const payerOptions = eligibleNames.map(name => `<option value="${name}">${name}</option>`).join('');
 
-      // 1) 婆仔數tab內，在最頂加入該課程內每一堂的日期並在旁加小方格供剔選。
       let pojaiSessionCheckboxesHtml = dateKeys.map(dateStr => {
+        const isSessionSettled = isSettled || (c.settledSessions && c.settledSessions.includes(dateStr));
+        const checkboxDisabledAttr = isSessionSettled ? 'checked disabled' : 'checked';
+        const labelStyleAttr = isSessionSettled ? 'font-size:11px; display:inline-flex; align-items:center; gap:4px; margin-right:8px; margin-bottom:4px; color: #9ca3af;' : 'font-size:11px; display:inline-flex; align-items:center; gap:4px; margin-right:8px; margin-bottom:4px; cursor:pointer;';
+        
         return `
-          <label style="font-size:11px; display:inline-flex; align-items:center; gap:4px; margin-right:8px; margin-bottom:4px; cursor:pointer;">
-            <input type="checkbox" value="${dateStr}" class="pojai-session-cb-${c.id}" checked style="margin:0; width:auto;"> ${dateStr}
+          <label style="${labelStyleAttr}">
+            <input type="checkbox" value="${dateStr}" class="pojai-session-cb-${c.id}" ${checkboxDisabledAttr} style="margin:0; width:auto;"> ${dateStr}
           </label>
         `;
       }).join('');
@@ -1946,7 +1981,6 @@
         </div>
       `;
 
-      // 2) 下面接著是原有的🪬雜費table，而在🪬雜費table最右邊，加一個column叫埋數，也是小方格供剔選隨便一項雜費。
       let miscTableRowsHtml = miscExpenses.map((item, idx) => {
         const partCount = (item.participants || []).length;
         const sharePerPerson = partCount > 0 ? (Number(item.amount) || 0) / partCount : 0;
@@ -2018,7 +2052,6 @@
 
       const currentTab = activeTabState[c.id] || 'course';
 
-      // 3) 再下面就係兩個掣，一個係「👀睇數」，一個係「🧮埋數」
       let settlementActionBtnsHtml = `
         <div style="display: flex; gap: 8px; justify-content: center; margin-bottom: 8px;">
           <button onclick="runCalculate('${c.id}', false)" class="btn-pojai" style="padding: 6px 16px; font-size: 13px;">👀 睇數</button>
@@ -2075,7 +2108,7 @@
 
                 <div style="font-weight:bold; color:var(--pojai-text); font-size:12px; margin-bottom:4px;">🪬雜費</div>
                 ${miscTableHtml}
-                ${!isSettled ? addMiscFormHtml : ''}
+                ${addMiscFormHtml}
 
                 <hr style="border: none; border-top: 1px solid var(--pojai-border); margin: 10px 0;">
                 ${settlementActionBtnsHtml}
@@ -2516,7 +2549,6 @@
   window.addMiscItem = async (classId) => {
     const classObj = classesData.find(c => c.id === classId);
     if (!classObj) return;
-    if (!!classObj.settlementResult) return alert("已完成埋數，雜費功能已暫停！");
 
     activeTabState[classId] = 'pojai';
     const nameInput = document.getElementById(`misc-name-${classId}`);
@@ -2534,7 +2566,7 @@
     if (participants.length === 0) return alert("請至少選擇一個有份的成員");
 
     const miscExpenses = classObj.miscExpenses || [];
-    miscExpenses.push({ name, amount, payer, participants });
+    miscExpenses.push({ name, amount, payer, participants, isLocked: false });
 
     try {
       await updateDoc(doc(db, "classes", classId), { miscExpenses });
@@ -2548,7 +2580,6 @@
     activeTabState[classId] = 'pojai';
     const classObj = classesData.find(c => c.id === classId);
     if (!classObj) return;
-    if (!!classObj.settlementResult) return alert("已完成埋數，雜費功能已暫停！");
 
     if (!confirm("確定要刪除此雜費項目嗎？")) return;
 
@@ -2563,7 +2594,6 @@
     }
   };
 
-  // 4), 5), 6) 混合計算與埋數邏輯實作
   window.runCalculate = async (classId, isSettleAction) => {
     const classObj = classesData.find(c => c.id === classId);
     if (!classObj) return;
@@ -2571,29 +2601,57 @@
     const isLeader = classObj.leaderId === currentUser.uid;
     const canManage = isLeader || isAdmin;
 
-    // 5) 「🧮埋數」功能跟「👀睇數」一樣，分別是「🧮埋數」可以畀課程內所有用戶用，而「👀睇數」則只有課程的班長可用。
+    // 1) 修正：👀睇數掣是所有有報該課程的用戶都可以按，而🧮埋數掣才是只有班長至可唔撳
     if (isSettleAction) {
-      // 課程內所有用戶可用
-    } else {
       if (!canManage) {
-        return alert("「👀睇數」功能只有課程的班長可用！");
+        return alert("「🧮埋數」功能只有課程的班長至可用！");
+      }
+    } else {
+      // 檢查是否為有報該課程的用戶或班長/Admin
+      const sessionsObj = classObj.sessions || {};
+      let hasJoined = false;
+      Object.keys(sessionsObj).forEach(d => {
+        const students = sessionsObj[d].students || [];
+        if (currentUser && students.some(s => s.uid === currentUser.uid)) {
+          hasJoined = true;
+        }
+      });
+      if (!canManage && !hasJoined) {
+        return alert("「👀睇數」功能只有有報讀該課程的學員或班長可用！");
       }
     }
 
-    // 收集被剔選的課堂
-    const selectedSessCbs = document.querySelectorAll(`.pojai-session-cb-${classId}:checked`);
-    const selectedDatesSet = new Set(Array.from(selectedSessCbs).map(cb => cb.value));
+    const selectedSessCbs = document.querySelectorAll(`.pojai-session-cb-${classId}`);
+    const selectedDatesSet = new Set();
+    const settledSessionsToLock = [];
 
-    // 收集被剔選的雜費
-    const selectedMiscCbs = document.querySelectorAll(`.pojai-misc-cb-${classId}:checked`);
-    const selectedMiscIndices = new Set(Array.from(selectedMiscCbs).map(cb => Number(cb.value)));
+    selectedSessCbs.forEach(cb => {
+      if (cb.checked && !cb.disabled) {
+        selectedDatesSet.add(cb.value);
+        if (isSettleAction) {
+          settledSessionsToLock.push(cb.value);
+        }
+      }
+    });
+
+    const selectedMiscCbs = document.querySelectorAll(`.pojai-misc-cb-${classId}`);
+    const selectedMiscIndices = new Set();
+    const settledMiscToLock = [];
+
+    selectedMiscCbs.forEach(cb => {
+      if (cb.checked && !cb.disabled) {
+        selectedMiscIndices.add(Number(cb.value));
+        if (isSettleAction) {
+          settledMiscToLock.push(Number(cb.value));
+        }
+      }
+    });
 
     activeTabState[classId] = 'pojai';
 
     const sessions = classObj.sessions || {};
-    const netMap = {}; // 記錄各人 net balance (paid - cost)
+    const netMap = {};
 
-    // 混合計算：已剔選的課堂
     Object.keys(sessions).forEach(dateStr => {
       if (!selectedDatesSet.has(dateStr)) return;
       const sess = sessions[dateStr];
@@ -2608,7 +2666,8 @@
       if (!netMap[feePayerName]) netMap[feePayerName] = { paid: 0, cost: 0 };
       if (!netMap[rentPayerName]) netMap[rentPayerName] = { paid: 0, cost: 0 };
 
-      netMap[feePayerName].paid += (feeVal * enrolledCount);
+      const totalSessionTuition = feeVal * enrolledCount;
+      netMap[feePayerName].paid += totalSessionTuition;
       netMap[rentPayerName].paid += rentVal;
 
       students.forEach(s => {
@@ -2620,7 +2679,6 @@
       });
     });
 
-    // 混合計算：已剔選的雜費
     const miscExpenses = classObj.miscExpenses || [];
     miscExpenses.forEach((item, idx) => {
       if (!selectedMiscIndices.has(idx)) return;
@@ -2641,202 +2699,86 @@
       }
     });
 
-    // 計算每人總開支 (Net Balance = Paid - Cost)
     const balances = [];
     Object.keys(netMap).forEach(name => {
-      const item = netMap[name];
-      const balance = item.paid - item.cost;
-      balances.push({ name, balance });
+      const diff = netMap[name].paid - netMap[name].cost;
+      balances.push({ name, diff: Math.round(diff * 100) / 100 });
     });
 
-    // 產生最少 transaction 的找數方案 (Greedy Algorithm)
-    const debtors = [];
-    const creditors = [];
-    balances.forEach(b => {
-      if (b.balance < -0.01) debtors.push({ name: b.name, amount: -b.balance });
-      else if (b.balance > 0.01) creditors.push({ name: b.name, amount: b.balance });
-    });
-
-    debtors.sort((a, b) => b.amount - a.amount);
-    creditors.sort((a, b) => b.amount - a.amount);
+    const creditors = balances.filter(b => b.diff > 0.01).sort((a, b) => b.diff - a.diff);
+    const debtors = balances.filter(b => b.diff < -0.01).sort((a, b) => a.diff - b.diff);
 
     const transactions = [];
-    let dIdx = 0, cIdx = 0;
-    while (dIdx < debtors.length && cIdx < creditors.length) {
-      const debtor = debtors[dIdx];
+    let cIdx = 0;
+    let dIdx = 0;
+
+    while (cIdx < creditors.length && dIdx < debtors.length) {
       const creditor = creditors[cIdx];
-      const transferAmount = Math.min(debtor.amount, creditor.amount);
+      const debtor = debtors[dIdx];
 
-      transactions.push({
-        from: debtor.name,
-        to: creditor.name,
-        amount: Math.round(transferAmount * 100) / 100,
-        paidStatus: "🩶",
-        paidBy: ""
-      });
+      const amount = Math.min(creditor.diff, -debtor.diff);
+      const roundedAmount = Math.round(amount * 100) / 100;
 
-      debtor.amount -= transferAmount;
-      creditor.amount -= transferAmount;
+      if (roundedAmount > 0) {
+        transactions.push(`<b>${debtor.name}</b> ➡️ 支付給 <b>${creditor.name}</b> <b>$${roundedAmount}</b>`);
+      }
 
-      if (debtor.amount < 0.01) dIdx++;
-      if (creditor.amount < 0.01) cIdx++;
+      creditor.diff -= amount;
+      debtor.diff += amount;
+
+      if (creditor.diff <= 0.01) cIdx++;
+      if (debtor.diff >= -0.01) dIdx++;
     }
 
-    let summaryText = `<b>📊 總開支與找數方案：</b><br>`;
-    balances.forEach(b => {
-      const netVal = Math.round(b.balance * 100) / 100;
-      summaryText += `• ${b.name}: ${netVal >= 0 ? `應收 $${netVal}` : `應付 $${-netVal}`}<br>`;
-    });
-
-    summaryText += `<br><b>🧮 建議找數方案 (${transactions.length} 筆)：</b><br>`;
+    let resultHtml = `<b>📊 ${isSettleAction ? '埋數結果' : '試算結果 (👀睇數)'}：</b><br>`;
     if (transactions.length === 0) {
-      summaryText += `無需轉帳，條數已平！`;
+      resultHtml += `<span style="color:#6b7280;">目前各人帳目已平手，無需轉帳。</span>`;
     } else {
-      transactions.forEach((tx, txIdx) => {
-        // 6) 灰調小方格與互動邏輯
-        summaryText += `• ${tx.from} ➔ ${tx.to}: <b>$${tx.amount}</b> <span style="display:inline-block; padding:2px 6px; background:#e5e7eb; border-radius:4px; cursor:pointer; margin-left:4px;" onclick="handlePaymentCheckboxClick('${classId}', ${txIdx}, '${tx.paidStatus}')">${tx.paidStatus}</span> ${tx.paidBy ? `(${tx.paidBy})` : ''}<br>`;
-      });
+      resultHtml += transactions.join('<br>');
     }
 
-    const resultDiv = document.getElementById(`settlement-result-${classId}`);
-    if (resultDiv) {
-      resultDiv.innerHTML = summaryText;
-      resultDiv.classList.remove('hidden');
-    }
+    if (isSettleAction) {
+      const existingSettledSessions = classObj.settledSessions || [];
+      const updatedSettledSessions = Array.from(new Set([...existingSettledSessions, ...settledSessionsToLock]));
 
-    // 5) 如果是「🧮埋數」，班長按下後，被剔選的課堂已封盆status會變成on，另外被剔選的雜費項目亦會變成淺灰色不能edit，❌的刪除掣亦會取消。
-    if (isSettleAction && canManage) {
-      let sessionsUpdated = false;
-      selectedDatesSet.forEach(d => {
-        if (sessions[d]) {
-          sessions[d].isClosed = true;
-          sessionsUpdated = true;
+      const updatedMiscExpenses = miscExpenses.map((item, idx) => {
+        if (settledMiscToLock.includes(idx)) {
+          return { ...item, isLocked: true };
         }
-      });
-
-      let miscUpdated = false;
-      miscExpenses.forEach((item, idx) => {
-        if (selectedMiscIndices.has(idx)) {
-          item.isLocked = true;
-          miscUpdated = true;
-        }
+        return item;
       });
 
       try {
         await updateDoc(doc(db, "classes", classId), {
-          settlementResult: summaryText,
-          transactions,
-          sessions: sessionsUpdated ? sessions : classObj.sessions,
-          miscExpenses: miscUpdated ? miscExpenses : classObj.miscExpenses
+          settlementResult: resultHtml,
+          settledSessions: updatedSettledSessions,
+          miscExpenses: updatedMiscExpenses
         });
-        alert("【成功】埋數完成！已更新課堂封盤狀態與雜費鎖定狀態。");
+        alert("【成功】已成功完成埋數並鎖定相關課堂及雜費！");
         loadClasses();
-      } catch(e) {
+      } catch (e) {
         alert("儲存埋數結果失敗: " + e.message);
       }
-    }
-  };
-
-  // 6) 灰小方格點擊互動與確定彈窗
-  window.handlePaymentCheckboxClick = async (classId, txIndex, currentStatus) => {
-    if (currentStatus === "✅") {
-      return;
-    }
-
-    const overlay = document.createElement('div');
-    overlay.className = 'custom-modal-overlay';
-    
-    const box = document.createElement('div');
-    box.className = 'custom-modal-box';
-    
-    box.innerHTML = `
-      <div class="custom-modal-text">是否真的比咗錢？</div>
-      <div class="custom-modal-buttons" style="flex-direction: column; gap: 8px;">
-        <button id="modal-pay-yes" class="btn-pojai" style="width: 100%;">確定</button>
-        <button id="modal-pay-no" class="btn-gray-action" style="width: 100%;">取消</button>
-      </div>
-    `;
-    
-    overlay.appendChild(box);
-    document.body.appendChild(overlay);
-
-    document.getElementById('modal-pay-no').addEventListener('click', () => {
-      document.body.removeChild(overlay);
-    });
-
-    document.getElementById('modal-pay-yes').addEventListener('click', async () => {
-      document.body.removeChild(overlay);
-      
-      const classObj = classesData.find(c => c.id === classId);
-      if (!classObj || !classObj.transactions) return;
-
-      classObj.transactions[txIndex].paidStatus = "✅";
-      classObj.transactions[txIndex].paidBy = (currentUserProfile && currentUserProfile.name) ? currentUserProfile.name : '用家';
-
-      // 重新生成結果 HTML
-      let summaryText = `<b>📊 總開支與找數方案：</b><br>`;
-      // 簡單重組之前的結算文字，或重新計算
-      // 這裡直接更新 transactions 陣列並存入 Firestore
-      const transactions = classObj.transactions;
-      
-      // 為了維持原有 summaryText 的前段，我們從現有 resultDiv 中提取前段或重新渲染
-      // 簡單起見，直接更新資料庫
-      try {
-        // 組合新的 settlementResult HTML
-        const resultDiv = document.getElementById(`settlement-result-${classId}`);
-        // 替換對應 txIndex 的狀態
-        await updateDoc(doc(db, "classes", classId), { transactions });
-        loadClasses();
-      } catch(e) {
-        alert("更新付款狀態失敗: " + e.message);
+    } else {
+      const resultEl = document.getElementById(`settlement-result-${classId}`);
+      if (resultEl) {
+        resultEl.innerHTML = resultHtml;
+        resultEl.classList.remove('hidden');
       }
-    });
+    }
   };
 
   window.deleteClass = async (classId) => {
-    if(!confirm("⚠️ 警告：確定要刪除整個課程嗎？此動作無法復原！")) return;
+    if (!confirm("⚠️ 警告：確定要刪除此全課程嗎？此動作將會刪除該課程的所有資料庫記錄！")) return;
     try {
       await deleteDoc(doc(db, "classes", classId));
-      alert("【成功】課程已刪除！");
+      alert("【成功】課程已成功刪除！");
       loadClasses();
     } catch(e) {
-      alert("刪除失敗: " + e.message);
+      alert("【失敗】刪除課程失敗: " + e.message);
     }
   };
 
-  window.toggleSessionJoin = async (classId, dateStr, isJoin) => {
-    if (!currentUser) return;
-    const classObj = classesData.find(c => c.id === classId);
-    if (!classObj) return;
-
-    const sessions = classObj.sessions || {};
-    const sess = sessions[dateStr];
-    if (!sess) return;
-
-    if (sess.isClosed) {
-      return alert("此堂已封盤，無法報名或取消！");
-    }
-
-    if (!sess.students) sess.students = [];
-
-    const userName = currentUserProfile ? currentUserProfile.name : '舞者';
-
-    if (isJoin) {
-      if (!sess.students.some(s => s.uid === currentUser.uid)) {
-        sess.students.push({ uid: currentUser.uid, name: userName });
-      }
-    } else {
-      sess.students = sess.students.filter(s => s.uid !== currentUser.uid);
-    }
-
-    try {
-      await updateDoc(doc(db, "classes", classId), { sessions });
-      loadClasses();
-    } catch(e) {
-      alert("更新報名狀態失敗: " + e.message);
-    }
-  };
 </script>
-
 </body>
 </html>
