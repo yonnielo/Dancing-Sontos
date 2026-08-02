@@ -287,7 +287,7 @@
 
     .pin-btn {
       background: transparent;
-      border: none;
+      border: 1px solid #f472b6;
       border-radius: 4px;
       width: 28px;
       height: 28px;
@@ -304,8 +304,8 @@
       background: #fce7f3;
     }
     .pin-btn.pinned {
-      background: transparent;
-      border: none;
+      background: #fce7f3;
+      border-color: #db2777;
     }
 
     .collapse-toggle-btn {
@@ -862,10 +862,6 @@
         </div>
         <div class="calendar-grid" id="calendar-days" style="margin-top:4px;"></div>
       </div>
-
-      <div style="margin-top: 8px; text-align: center;">
-        <button id="toggle-favorite-calendar-btn" onclick="toggleFavoriteCalendarFilter()" class="btn-gray-action" style="font-size: 12px; padding: 6px 12px; width: auto; margin: 0; border-radius: 6px;">❤️只看心水課程</button>
-      </div>
     </div>
 
     <div class="card">
@@ -911,7 +907,6 @@
   let allUsersList = [];
   let selectedDates = [];
   let currentFilter = 'all';
-  let onlyFavoriteCalendar = false;
   
   // 記錄每個課程當前啟用的 tab
   let activeTabState = {};
@@ -948,21 +943,6 @@
 
     renderCalendar();
     renderClassList();
-  };
-
-  window.toggleFavoriteCalendarFilter = () => {
-    onlyFavoriteCalendar = !onlyFavoriteCalendar;
-    const btn = document.getElementById('toggle-favorite-calendar-btn');
-    if (onlyFavoriteCalendar) {
-      btn.style.background = 'var(--primary-hover)';
-      btn.style.color = 'white';
-      btn.style.border = 'none';
-    } else {
-      btn.style.background = '#f3f4f6';
-      btn.style.color = '#374151';
-      btn.style.border = '1px solid #d1d5db';
-    }
-    renderCalendar();
   };
 
   document.getElementById('toggle-create-btn').addEventListener('click', async () => {
@@ -1687,8 +1667,6 @@
       calendarDays.appendChild(emptyCell);
     }
 
-    const pinnedList = (currentUserProfile && currentUserProfile.pinnedCourses) || [];
-
     for (let day = 1; day <= daysInMonth; day++) {
       const cell = document.createElement('div');
       cell.className = 'day-cell';
@@ -1701,7 +1679,6 @@
       classesData.forEach(c => {
         if (currentFilter === 'private' && c.accessType !== 'specific') return;
         if (currentFilter === 'public' && c.accessType === 'specific') return;
-        if (onlyFavoriteCalendar && !pinnedList.includes(c.id)) return;
 
         if(c.sessions && c.sessions[dateStr]) {
           const sess = c.sessions[dateStr];
@@ -1752,40 +1729,6 @@
       loadClasses();
     } catch (e) {
       alert("釘選失敗: " + e.message);
-    }
-  };
-
-  window.toggleSessionJoin = async (classId, dateStr, isJoining) => {
-    if (!currentUser) return;
-    const classObj = classesData.find(c => c.id === classId);
-    if (!classObj || !classObj.sessions || !classObj.sessions[dateStr]) return;
-
-    const sess = classObj.sessions[dateStr];
-    if (sess.isClosed) {
-      return alert("此課堂已封盤，無法修改報名狀態！");
-    }
-
-    let students = sess.students || [];
-    const userUid = currentUser.uid;
-    const userName = currentUserProfile ? (currentUserProfile.name || '舞者') : '舞者';
-
-    if (isJoining) {
-      if (!students.some(s => s.uid === userUid)) {
-        students.push({ uid: userUid, name: userName });
-      }
-    } else {
-      students = students.filter(s => s.uid !== userUid);
-    }
-
-    sess.students = students;
-
-    try {
-      await updateDoc(doc(db, "classes", classId), {
-        sessions: classObj.sessions
-      });
-      loadClasses();
-    } catch (e) {
-      alert("更新報名狀態失敗: " + e.message);
     }
   };
 
@@ -2027,7 +1970,7 @@
       let addMiscFormHtml = `
         <div style="margin-top: 6px; padding: 6px; background: #fff; border: 1px dashed var(--pojai-border); border-radius: 4px;">
           <div style="font-size:11px; font-weight:bold; color:var(--pojai-text); margin-bottom:4px;">➕ 新增雜費項目</div>
-          <input type="text" id="misc-name-${c.id}" placeholder="項目名稱 (例如:買水 / 道具)" style="margin:2px 0 4px 0; font-size:11px; padding:4px;">
+          <input type="text" id="misc-name-${c.id}" placeholder="項目名稱 (例如: 買水 / 道具)" style="margin:2px 0 4px 0; font-size:11px; padding:4px;">
           <div class="flex" style="gap:4px; margin-bottom:4px;">
             <input type="number" id="misc-amount-${c.id}" placeholder="總金額 ($)" style="margin:0; font-size:11px; padding:4px;" title="請輸入該項目的總金額">
             <select id="misc-payer-${c.id}" style="margin:0; font-size:11px; padding:4px;">
@@ -2067,7 +2010,7 @@
               </div>
             </div>
             <div style="display: flex; align-items: center; gap: 4px;">
-              <button onclick="togglePinCourse('${c.id}')" class="pin-btn ${isPinned ? 'pinned' : ''}" title="${isPinned ? '取消心水' : '加入心水'}">${isPinned ? '❤️' : '🩶'}</button>
+              <button onclick="togglePinCourse('${c.id}')" class="pin-btn ${isPinned ? 'pinned' : ''}" title="${isPinned ? '取消釘選' : '釘選至頂'}">📌</button>
               <button onclick="toggleCourseBody('${c.id}')" id="collapse-btn-${c.id}" class="collapse-toggle-btn" title="展開/收藏課程資料">
                 <div class="collapse-arrow"></div>
               </button>
@@ -2537,108 +2480,6 @@
     }
   };
 
-  window.promptSettlement = async (classId) => {
-    const classObj = classesData.find(c => c.id === classId);
-    if (!classObj) return;
-    if (classObj.leaderId !== currentUser.uid && !isAdmin) {
-      return alert("只有班長或管理員才可以進行埋數！");
-    }
-
-    activeTabState[classId] = 'pojai';
-    
-    const sessions = classObj.sessions || {};
-    const dateKeys = Object.keys(sessions).sort();
-    
-    const memberMap = {};
-    
-    dateKeys.forEach(dateStr => {
-      const sess = sessions[dateStr];
-      const students = sess.students || [];
-      const feeVal = Number(sess.fee !== undefined ? sess.fee : classObj.price) || 0;
-      const rentVal = Number(sess.rent || 0);
-      const enrolledCount = students.length;
-
-      const feePayerName = sess.feePayerName || classObj.leaderName;
-      const rentPayerName = sess.rentPayerName || classObj.leaderName;
-
-      if (!memberMap[feePayerName]) {
-        memberMap[feePayerName] = { totalTuition: 0, totalCourtFee: 0, totalPaid: 0 };
-      }
-      if (!memberMap[rentPayerName]) {
-        memberMap[rentPayerName] = { totalTuition: 0, totalCourtFee: 0, totalPaid: 0 };
-      }
-
-      students.forEach(s => {
-        if (!memberMap[s.name]) {
-          memberMap[s.name] = { totalTuition: 0, totalCourtFee: 0, totalPaid: 0 };
-        }
-        memberMap[s.name].totalTuition += feeVal;
-
-        if (enrolledCount > 0) {
-          memberMap[s.name].totalCourtFee += (rentVal / enrolledCount);
-        }
-      });
-
-      const totalSessionTuition = feeVal * enrolledCount;
-      memberMap[feePayerName].totalPaid += totalSessionTuition;
-      memberMap[rentPayerName].totalPaid += rentVal;
-    });
-
-    const miscExpenses = classObj.miscExpenses || [];
-    miscExpenses.forEach(item => {
-      const amount = Number(item.amount) || 0;
-      const payer = item.payer || classObj.leaderName;
-      const participants = item.participants || [];
-
-      if (!memberMap[payer]) {
-        memberMap[payer] = { totalTuition: 0, totalCourtFee: 0, totalPaid: 0 };
-      }
-      memberMap[payer].totalPaid += amount;
-
-      const partCount = participants.length;
-      if (partCount > 0) {
-        const sharePerPerson = amount / partCount;
-        participants.forEach(pName => {
-          if (!memberMap[pName]) {
-            memberMap[pName] = { totalTuition: 0, totalCourtFee: 0, totalPaid: 0 };
-          }
-          if (!memberMap[pName].totalMisc) memberMap[pName].totalMisc = 0;
-          memberMap[pName].totalMisc += sharePerPerson;
-        });
-      }
-    });
-
-    let htmlResult = "<b>📊 埋數結果結算：</b><br>";
-    Object.entries(memberMap).forEach(([name, data]) => {
-      const courtFee = data.totalCourtFee || 0;
-      const miscFee = data.totalMisc || 0;
-      const shouldPay = data.totalTuition + courtFee + miscFee;
-      const paid = data.totalPaid || 0;
-      const balance = paid - shouldPay; // 正數代表應收回(多付)，負數代表應付給人(欠款)
-
-      let balanceText = "";
-      if (Math.abs(balance) < 0.01) {
-        balanceText = "找平 (0)";
-      } else if (balance > 0) {
-        balanceText = `實收回 $${Math.round(balance * 100) / 100}`;
-      } else {
-        balanceText = `需支付 $${Math.round(Math.abs(balance) * 100) / 100}`;
-      }
-
-      htmlResult += `• <b>${name}</b>：應付 $${Math.round(shouldPay * 100) / 100} ｜ 已墊付 $${paid} ➔ <b>${balanceText}</b><br>`;
-    });
-
-    try {
-      await updateDoc(doc(db, "classes", classId), {
-        settlementResult: htmlResult
-      });
-      alert("埋數成功！");
-      loadClasses();
-    } catch(e) {
-      alert("埋數失敗: " + e.message);
-    }
-  };
-
   window.addMiscItem = async (classId) => {
     const classObj = classesData.find(c => c.id === classId);
     if (!classObj) return;
@@ -2688,6 +2529,142 @@
       alert("刪除雜費失敗: " + e.message);
     }
   };
+
+  window.handlePaymentCheckboxClick = async (classId, txIndex, currentStatus) => {
+    if (currentStatus === "✅") {
+      return;
+    }
+
+    const overlay = document.createElement('div');
+    overlay.className = 'custom-modal-overlay';
+    
+    const box = document.createElement('div');
+    box.className = 'custom-modal-box';
+    
+    box.innerHTML = `
+      <div class="custom-modal-text">🧟‍♀️你真係比咗錢至好撳呀，呢度唔歡迎騙子</div>
+      <div class="custom-modal-buttons" style="flex-direction: column; gap: 8px;">
+        <button id="modal-pay-yes" class="btn-pojai" style="width: 100%;">真比咗🤑</button>
+        <button id="modal-pay-no" class="btn-gray-action" style="width: 100%;">🙈一時撳錯，未比</button>
+      </div>
+    `;
+    
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+
+    document.getElementById('modal-pay-no').addEventListener('click', () => {
+      document.body.removeChild(overlay);
+    });
+
+    document.getElementById('modal-pay-yes').addEventListener('click', async () => {
+      document.body.removeChild(overlay);
+      
+      const classObj = classesData.find(c => c.id === classId);
+      if (!classObj || !classObj.transactions) return;
+
+      classObj.transactions[txIndex].paidStatus = "✅";
+      classObj.transactions[txIndex].paidBy = (currentUserProfile && currentUserProfile.name) ? currentUserProfile.name : '用家';
+
+      const sessions = classObj.sessions || {};
+      const dateKeys = Object.keys(sessions);
+      const balances = {}; 
+
+      dateKeys.forEach(dateStr => {
+        const sess = sessions[dateStr];
+        const students = sess.students || [];
+        const feeVal = Number(sess.fee !== undefined ? sess.fee : classObj.price) || 0;
+        const rentVal = Number(sess.rent || 0);
+        const enrolledCount = students.length;
+
+        const feePayerName = sess.feePayerName || classObj.leaderName;
+        const rentPayerName = sess.rentPayerName || classObj.leaderName;
+
+        if (!balances[feePayerName]) balances[feePayerName] = { paid: 0, cost: 0 };
+        if (!balances[rentPayerName]) balances[rentPayerName] = { paid: 0, cost: 0 };
+
+        balances[feePayerName].paid += (feeVal * enrolledCount);
+        balances[rentPayerName].paid += rentVal;
+
+        students.forEach(s => {
+          if (!balances[s.name]) balances[s.name] = { paid: 0, cost: 0 };
+          balances[s.name].cost += feeVal;
+          if (enrolledCount > 0) {
+            balances[s.name].cost += (rentVal / enrolledCount);
+          }
+        });
+      });
+
+      const miscExpenses = classObj.miscExpenses || [];
+      miscExpenses.forEach(item => {
+        const amount = Number(item.amount) || 0;
+        const payer = item.payer || classObj.leaderName;
+        const participants = item.participants || [];
+
+        if (!balances[payer]) balances[payer] = { paid: 0, cost: 0 };
+        balances[payer].paid += amount;
+
+        const partCount = participants.length;
+        if (partCount > 0) {
+          const share = amount / partCount;
+          participants.forEach(pName => {
+            if (!balances[pName]) balances[pName] = { paid: 0, cost: 0 };
+            balances[pName].cost += share;
+          });
+        }
+      });
+
+      const memberCostSummary = [];
+      Object.keys(balances).forEach(name => {
+        const data = balances[name];
+        const totalCost = Math.round((data.cost || 0) * 100) / 100;
+        if (totalCost > 0 || data.paid > 0) {
+          memberCostSummary.push(`👤 <b>${name}</b>：總開支 $${totalCost}`);
+        }
+      });
+
+      let costHtml = memberCostSummary.length > 0 ? memberCostSummary.join('<br>') : '暫無開支記錄';
+      
+      let txHtml = classObj.transactions.map((tx, idx) => {
+        const pStatus = tx.paidStatus || "未";
+        const payerInfo = (pStatus === "✅" && tx.paidBy) ? `<span style="font-size:11px; margin-right:6px; color:#713f12;">${tx.paidBy}</span>` : '';
+        const boxContent = pStatus === "✅" ? "✅" : "";
+        const boxStyle = pStatus === "✅" ? "width: 20px; height: 20px; border: 1px solid #d1d5db; background: #fff; border-radius: 3px; cursor: default; display: flex; align-items: center; justify-content: center; font-size: 12px; user-select: none;" : "width: 20px; height: 20px; border: 1px solid #d1d5db; background: #e5e7eb; border-radius: 3px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 12px; user-select: none;";
+
+        return `
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+            <div style="text-align: left;">👉 <b>${tx.debtor}</b> 轉帳 <b>$${tx.amount}</b> 畀 <b>${tx.creditor}</b></div>
+            <div style="display: flex; align-items: center;">
+              ${payerInfo}
+              <div onclick="handlePaymentCheckboxClick('${classId}', ${idx}, '${pStatus}')" style="${boxStyle}">${boxContent}</div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      const updatedSettlementResultHTML = `
+        <div style="font-weight:bold; margin-bottom:4px; color:#9d174d;"> 每人總開支：</div>
+        ${costHtml}
+        <hr style="border:none; border-top:1px dashed var(--pojai-border); margin:6px 0;">
+        <div style="font-weight:bold; margin-bottom:4px; color:#9d174d;"> 找數方案 ：</div>
+        ${txHtml}
+      `;
+
+      try {
+        await updateDoc(doc(db, "classes", classId), { 
+          transactions: classObj.transactions,
+          settlementResult: updatedSettlementResultHTML 
+        });
+        loadClasses();
+      } catch(e) {
+        alert("更新付款狀態失敗: " + e.message);
+      }
+    });
+  };
+
+  window.promptSettlement = (classId) => {
+    const classObj = classesData.find(c => c.id === classId);
+    if (!classObj) return;
+  }
 </script>
 </body>
 </html>
