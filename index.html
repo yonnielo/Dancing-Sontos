@@ -1961,7 +1961,7 @@
       const payerOptions = eligibleNames.map(name => `<option value="${name}">${name}</option>`).join('');
 
       let pojaiSessionCheckboxesHtml = dateKeys.map(dateStr => {
-        const isSessionSettled = isSettled || (c.settledSessions && c.settledSessions.includes(dateStr));
+        const isSessionSettled = c.settledSessions && c.settledSessions.includes(dateStr);
         const checkboxDisabledAttr = isSessionSettled ? 'checked disabled' : 'checked';
         const labelStyleAttr = isSessionSettled ? 'font-size:11px; display:inline-flex; align-items:center; gap:4px; margin-right:8px; margin-bottom:4px; color: #9ca3af;' : 'font-size:11px; display:inline-flex; align-items:center; gap:4px; margin-right:8px; margin-bottom:4px; cursor:pointer;';
         
@@ -1985,7 +1985,7 @@
         const partCount = (item.participants || []).length;
         const sharePerPerson = partCount > 0 ? (Number(item.amount) || 0) / partCount : 0;
         const roundedShare = Math.round(sharePerPerson * 100) / 100;
-        const isMiscLocked = isSettled || item.isLocked;
+        const isMiscLocked = item.isLocked;
 
         return `
           <tr>
@@ -1996,7 +1996,7 @@
             <td style="padding:4px; border:1px solid var(--pojai-border); font-size:11px;">
               <div class="flex between" style="align-items:center;">
                 <span>$${roundedShare}</span>
-                ${(!isSettled && !isMiscLocked && canManage) ? `<button onclick="deleteMiscItem('${c.id}', ${idx})" style="width:auto; margin:0; padding:1px 4px; font-size:12px; background:transparent; color:#be123c; border:none; box-shadow:none;">❌</button>` : ''}
+                ${(!isMiscLocked && canManage) ? `<button onclick="deleteMiscItem('${c.id}', ${idx})" style="width:auto; margin:0; padding:1px 4px; font-size:12px; background:transparent; color:#be123c; border:none; box-shadow:none;">❌</button>` : ''}
               </div>
             </td>
             <td style="padding:4px; border:1px solid var(--pojai-border); text-align:center; font-size:11px;">
@@ -2601,13 +2601,11 @@
     const isLeader = classObj.leaderId === currentUser.uid;
     const canManage = isLeader || isAdmin;
 
-    // 1) 修正：👀睇數掣是所有有報該課程的用戶都可以按，而🧮埋數掣才是只有班長至可唔撳
     if (isSettleAction) {
       if (!canManage) {
         return alert("「🧮埋數」功能只有課程的班長至可用！");
       }
     } else {
-      // 檢查是否為有報該課程的用戶或班長/Admin
       const sessionsObj = classObj.sessions || {};
       let hasJoined = false;
       Object.keys(sessionsObj).forEach(d => {
@@ -2616,45 +2614,27 @@
           hasJoined = true;
         }
       });
-      if (!canManage && !hasJoined) {
-        return alert("「👀睇數」功能只有有報讀該課程的學員或班長可用！");
+      if (!canManage && !hasJoined && classObj.accessType === 'specific') {
+        return alert("只有此課程的成員或班長才能查看數目！");
       }
     }
 
-    const selectedSessCbs = document.querySelectorAll(`.pojai-session-cb-${classId}`);
-    const selectedDatesSet = new Set();
-    const settledSessionsToLock = [];
+    const sessionCbs = document.querySelectorAll(`.pojai-session-cb-${classId}:checked`);
+    const selectedDates = Array.from(sessionCbs).map(cb => cb.value);
 
-    selectedSessCbs.forEach(cb => {
-      if (cb.checked && !cb.disabled) {
-        selectedDatesSet.add(cb.value);
-        if (isSettleAction) {
-          settledSessionsToLock.push(cb.value);
-        }
-      }
-    });
+    const miscCbs = document.querySelectorAll(`.pojai-misc-cb-${classId}:checked`);
+    const selectedMiscIndices = Array.from(miscCbs).map(cb => Number(cb.value));
 
-    const selectedMiscCbs = document.querySelectorAll(`.pojai-misc-cb-${classId}`);
-    const selectedMiscIndices = new Set();
-    const settledMiscToLock = [];
-
-    selectedMiscCbs.forEach(cb => {
-      if (cb.checked && !cb.disabled) {
-        selectedMiscIndices.add(Number(cb.value));
-        if (isSettleAction) {
-          settledMiscToLock.push(Number(cb.value));
-        }
-      }
-    });
-
-    activeTabState[classId] = 'pojai';
+    if (selectedDates.length === 0 && selectedMiscIndices.length === 0) {
+      return alert("請至少選擇一個課堂或雜費項目進行計算！");
+    }
 
     const sessions = classObj.sessions || {};
-    const netMap = {};
+    const memberMap = {};
 
-    Object.keys(sessions).forEach(dateStr => {
-      if (!selectedDatesSet.has(dateStr)) return;
+    selectedDates.forEach(dateStr => {
       const sess = sessions[dateStr];
+      if (!sess) return;
       const students = sess.students || [];
       const feeVal = Number(sess.fee !== undefined ? sess.fee : classObj.price) || 0;
       const rentVal = Number(sess.rent || 0);
@@ -2663,119 +2643,127 @@
       const feePayerName = sess.feePayerName || classObj.leaderName;
       const rentPayerName = sess.rentPayerName || classObj.leaderName;
 
-      if (!netMap[feePayerName]) netMap[feePayerName] = { paid: 0, cost: 0 };
-      if (!netMap[rentPayerName]) netMap[rentPayerName] = { paid: 0, cost: 0 };
-
-      const totalSessionTuition = feeVal * enrolledCount;
-      netMap[feePayerName].paid += totalSessionTuition;
-      netMap[rentPayerName].paid += rentVal;
+      if (!memberMap[feePayerName]) {
+        memberMap[feePayerName] = { totalTuition: 0, totalCourtFee: 0, totalPaid: 0, totalMisc: 0 };
+      }
+      if (!memberMap[rentPayerName]) {
+        memberMap[rentPayerName] = { totalTuition: 0, totalCourtFee: 0, totalPaid: 0, totalMisc: 0 };
+      }
 
       students.forEach(s => {
-        if (!netMap[s.name]) netMap[s.name] = { paid: 0, cost: 0 };
-        netMap[s.name].cost += feeVal;
+        if (!memberMap[s.name]) {
+          memberMap[s.name] = { totalTuition: 0, totalCourtFee: 0, totalPaid: 0, totalMisc: 0 };
+        }
+        memberMap[s.name].totalTuition += feeVal;
         if (enrolledCount > 0) {
-          netMap[s.name].cost += (rentVal / enrolledCount);
+          memberMap[s.name].totalCourtFee += (rentVal / enrolledCount);
         }
       });
+
+      const totalSessionTuition = feeVal * enrolledCount;
+      memberMap[feePayerName].totalPaid += totalSessionTuition;
+      memberMap[rentPayerName].totalPaid += rentVal;
     });
 
     const miscExpenses = classObj.miscExpenses || [];
-    miscExpenses.forEach((item, idx) => {
-      if (!selectedMiscIndices.has(idx)) return;
+    selectedMiscIndices.forEach(idx => {
+      const item = miscExpenses[idx];
+      if (!item) return;
       const amount = Number(item.amount) || 0;
       const payer = item.payer || classObj.leaderName;
       const participants = item.participants || [];
 
-      if (!netMap[payer]) netMap[payer] = { paid: 0, cost: 0 };
-      netMap[payer].paid += amount;
+      if (!memberMap[payer]) {
+        memberMap[payer] = { totalTuition: 0, totalCourtFee: 0, totalPaid: 0, totalMisc: 0 };
+      }
+      memberMap[payer].totalPaid += amount;
 
       const partCount = participants.length;
       if (partCount > 0) {
         const sharePerPerson = amount / partCount;
         participants.forEach(pName => {
-          if (!netMap[pName]) netMap[pName] = { paid: 0, cost: 0 };
-          netMap[pName].cost += sharePerPerson;
+          if (!memberMap[pName]) {
+            memberMap[pName] = { totalTuition: 0, totalCourtFee: 0, totalPaid: 0, totalMisc: 0 };
+          }
+          if (!memberMap[pName].totalMisc) memberMap[pName].totalMisc = 0;
+          memberMap[pName].totalMisc += sharePerPerson;
         });
       }
     });
 
-    const balances = [];
-    Object.keys(netMap).forEach(name => {
-      const diff = netMap[name].paid - netMap[name].cost;
-      balances.push({ name, diff: Math.round(diff * 100) / 100 });
+    let resultText = `<b>📊 結算明細報告：</b><br>`;
+    const netMap = {};
+    Object.keys(memberMap).forEach(name => {
+      const data = memberMap[name];
+      const courtFee = Math.round(data.totalCourtFee * 100) / 100;
+      const miscShare = Math.round((data.totalMisc || 0) * 100) / 100;
+      const payable = data.totalTuition + courtFee + miscShare;
+      const net = data.totalPaid - payable;
+      netMap[name] = Math.round(net * 100) / 100;
+
+      resultText += `• <b>${name}</b>：應付 $${payable} (學費 $${data.totalTuition} + 場租 $${courtFee} + 雜費 $${miscShare}) ｜ 墊付 $${data.totalPaid} ｜ 淨額 <b>${netMap[name] >= 0 ? '+' : ''}$${netMap[name]}</b><br>`;
     });
 
-    const creditors = balances.filter(b => b.diff > 0.01).sort((a, b) => b.diff - a.diff);
-    const debtors = balances.filter(b => b.diff < -0.01).sort((a, b) => a.diff - b.diff);
+    resultText += `<br><b>🤝 轉帳建議 (找換方案)：</b><br>`;
+    
+    const debtors = [];
+    const creditors = [];
+    Object.entries(netMap).forEach(([name, net]) => {
+      if (net < -0.01) debtors.push({ name, amount: -net });
+      else if (net > 0.01) creditors.push({ name, amount: net });
+    });
 
-    const transactions = [];
-    let cIdx = 0;
-    let dIdx = 0;
+    let transferCount = 0;
+    let i = 0, j = 0;
+    while (i < debtors.length && j < creditors.length) {
+      const debtor = debtors[i];
+      const creditor = creditors[j];
+      const giveAmount = Math.min(debtor.amount, creditor.amount);
+      const roundedGive = Math.round(giveAmount * 100) / 100;
 
-    while (cIdx < creditors.length && dIdx < debtors.length) {
-      const creditor = creditors[cIdx];
-      const debtor = debtors[dIdx];
-
-      const amount = Math.min(creditor.diff, -debtor.diff);
-      const roundedAmount = Math.round(amount * 100) / 100;
-
-      if (roundedAmount > 0) {
-        transactions.push(`<b>${debtor.name}</b> ➡️ 支付給 <b>${creditor.name}</b> <b>$${roundedAmount}</b>`);
+      if (roundedGive > 0) {
+        resultText += `👉 <b>${debtor.name}</b> 轉帳 <b>$${roundedGive}</b> 給 <b>${creditor.name}</b><br>`;
+        transferCount++;
       }
 
-      creditor.diff -= amount;
-      debtor.diff += amount;
+      debtor.amount -= giveAmount;
+      creditor.amount -= giveAmount;
 
-      if (creditor.diff <= 0.01) cIdx++;
-      if (debtor.diff >= -0.01) dIdx++;
+      if (debtor.amount < 0.01) i++;
+      if (creditor.amount < 0.01) j++;
     }
 
-    let resultHtml = `<b>📊 ${isSettleAction ? '埋數結果' : '試算結果 (👀睇數)'}：</b><br>`;
-    if (transactions.length === 0) {
-      resultHtml += `<span style="color:#6b7280;">目前各人帳目已平手，無需轉帳。</span>`;
-    } else {
-      resultHtml += transactions.join('<br>');
+    if (transferCount === 0) {
+      resultText += `所有款項已平衡，無需轉帳！`;
+    }
+
+    const resultDiv = document.getElementById(`settlement-result-${classId}`);
+    if (resultDiv) {
+      resultDiv.innerHTML = resultText;
+      resultDiv.classList.remove('hidden');
     }
 
     if (isSettleAction) {
       const existingSettledSessions = classObj.settledSessions || [];
-      const updatedSettledSessions = Array.from(new Set([...existingSettledSessions, ...settledSessionsToLock]));
+      const updatedSettledSessions = Array.from(new Set([...existingSettledSessions, ...selectedDates]));
 
-      const updatedMiscExpenses = miscExpenses.map((item, idx) => {
-        if (settledMiscToLock.includes(idx)) {
-          return { ...item, isLocked: true };
+      miscExpenses.forEach((item, idx) => {
+        if (selectedMiscIndices.includes(idx)) {
+          item.isLocked = true;
         }
-        return item;
       });
 
       try {
         await updateDoc(doc(db, "classes", classId), {
-          settlementResult: resultHtml,
           settledSessions: updatedSettledSessions,
-          miscExpenses: updatedMiscExpenses
+          miscExpenses,
+          settlementResult: resultText
         });
-        alert("【成功】已成功完成埋數並鎖定相關課堂及雜費！");
+        alert("【成功】埋數完成！已剔選的課堂與雜費項目已成功鎖定。");
         loadClasses();
-      } catch (e) {
+      } catch(e) {
         alert("儲存埋數結果失敗: " + e.message);
       }
-    } else {
-      const resultEl = document.getElementById(`settlement-result-${classId}`);
-      if (resultEl) {
-        resultEl.innerHTML = resultHtml;
-        resultEl.classList.remove('hidden');
-      }
-    }
-  };
-
-  window.deleteClass = async (classId) => {
-    if (!confirm("⚠️ 警告：確定要刪除此全課程嗎？此動作將會刪除該課程的所有資料庫記錄！")) return;
-    try {
-      await deleteDoc(doc(db, "classes", classId));
-      alert("【成功】課程已成功刪除！");
-      loadClasses();
-    } catch(e) {
-      alert("【失敗】刪除課程失敗: " + e.message);
     }
   };
 
