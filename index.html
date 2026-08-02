@@ -839,6 +839,9 @@
         </div>
         <div class="calendar-grid" id="calendar-days" style="margin-top:4px;"></div>
       </div>
+      <div style="margin-top: 8px; text-align: right;">
+        <button id="toggle-pinned-calendar-btn" onclick="togglePinnedCalendarFilter()" style="width: auto; margin: 0; padding: 4px 10px; font-size: 12px; background: #f3f4f6; color: #4b5563; border: 1px solid #d1d5db;">📌只看釘選課程</button>
+      </div>
     </div>
 
     <div class="card">
@@ -884,9 +887,51 @@
   let allUsersList = [];
   let selectedDates = [];
   let currentFilter = 'all';
+  let onlyPinnedCalendar = false;
   
   // 記錄每個課程當前啟用的 tab
   let activeTabState = {};
+
+  window.togglePinnedCalendarFilter = () => {
+    onlyPinnedCalendar = !onlyPinnedCalendar;
+    const btn = document.getElementById('toggle-pinned-calendar-btn');
+    if (onlyPinnedCalendar) {
+      btn.style.background = 'var(--primary-hover)';
+      btn.style.color = 'white';
+      btn.style.border = 'none';
+    } else {
+      btn.style.background = '#f3f4f6';
+      btn.style.color = '#4b5563';
+      btn.style.border = '1px solid #d1d5db';
+    }
+    renderCalendar();
+  };
+
+  window.togglePinClass = async (classId, event) => {
+    event.stopPropagation();
+    if (!currentUser) return;
+    let pinnedList = currentUserProfile.pinnedClasses || [];
+    const isPinned = pinnedList.includes(classId);
+
+    if (isPinned) {
+      pinnedList = pinnedList.filter(id => id !== classId);
+    } else {
+      if (pinnedList.length >= 5) {
+        alert("每用戶最多只可釘選5個課程！");
+        return;
+      }
+      pinnedList.push(classId);
+    }
+
+    try {
+      await setDoc(doc(db, "users", currentUser.uid), { pinnedClasses: pinnedList }, { merge: true });
+      currentUserProfile.pinnedClasses = pinnedList;
+      renderClassList();
+      renderCalendar();
+    } catch (e) {
+      alert("釘選失敗: " + e.message);
+    }
+  };
 
   window.setFilter = (type) => {
     currentFilter = type;
@@ -1215,10 +1260,10 @@
       currentUser = user;
       try {
         const userDoc = await getDoc(doc(db, "users", user.uid));
-        currentUserProfile = userDoc.exists() ? userDoc.data() : { name: '舞者', role: 'user' };
+        currentUserProfile = userDoc.exists() ? userDoc.data() : { name: '舞者', role: 'user', pinnedClasses: [] };
       } catch(e) {
         console.error("無法取得使用者 Profile", e);
-        currentUserProfile = { name: '舞者', role: 'user' };
+        currentUserProfile = { name: '舞者', role: 'user', pinnedClasses: [] };
       }
       
       isAdmin = (currentUserProfile && currentUserProfile.role === 'admin') || user.email === 'yonnielo@yahoo.com';
@@ -1638,6 +1683,8 @@
       calendarDays.appendChild(emptyCell);
     }
 
+    const pinnedList = currentUserProfile && currentUserProfile.pinnedClasses ? currentUserProfile.pinnedClasses : [];
+
     for (let day = 1; day <= daysInMonth; day++) {
       const cell = document.createElement('div');
       cell.className = 'day-cell';
@@ -1648,6 +1695,7 @@
       const dateStr = `${year}-${monthStr}-${dayStr}`;
 
       classesData.forEach(c => {
+        if (onlyPinnedCalendar && !pinnedList.includes(c.id)) return;
         if (currentFilter === 'private' && c.accessType !== 'specific') return;
         if (currentFilter === 'public' && c.accessType === 'specific') return;
 
@@ -1703,8 +1751,10 @@
     }
 
     const now = new Date();
+    const pinnedList = currentUserProfile && currentUserProfile.pinnedClasses ? currentUserProfile.pinnedClasses : [];
 
     listEl.innerHTML = filteredClasses.map(c => {
+      const isPinned = pinnedList.includes(c.id);
       const isLeader = c.leaderId === currentUser.uid;
       const canManage = isLeader || isAdmin;
       const sessions = c.sessions || {};
@@ -1880,7 +1930,7 @@
             <td style="padding:4px; border:1px solid var(--pojai-border); font-size:11px;">
               <div class="flex between" style="align-items:center;">
                 <span>$${roundedShare}</span>
-                ${(!isSettled && canManage) ? `<button onclick="deleteMiscItem('${c.id}', ${idx})" style="width:auto; margin:0; padding:1px 4px; font-size:12px; background:transparent; color:#be123c; border:none; box-shadow:none;">❌</button>` : ''}
+                {(!isSettled && canManage) ? `<button onclick="deleteMiscItem('${c.id}', ${idx})" style="width:auto; margin:0; padding:1px 4px; font-size:12px; background:transparent; color:#be123c; border:none; box-shadow:none;">❌</button>` : ''}
               </div>
             </td>
           </tr>
@@ -1944,8 +1994,13 @@
         <div class="course-card">
           
           <div class="course-card-header" style="border-left: 4px solid ${headerBorderColor};">
-            <div>
-              <strong style="font-size: 17px; ${classNameStyle}">${c.name}</strong>${completedBadgeHtml}
+            <div style="width: 100%;">
+              <div class="flex between" style="align-items: center; width: 100%;">
+                <div>
+                  <strong style="font-size: 17px; ${classNameStyle}">${c.name}</strong>${completedBadgeHtml}
+                </div>
+                <button onclick="togglePinClass('${c.id}', event)" style="width: auto; margin: 0; padding: 4px 8px; font-size: 13px; background: ${isPinned ? 'var(--primary-hover)' : '#f3f4f6'}; color: ${isPinned ? 'white' : '#374151'}; border: 1px solid #d1d5db;" title="釘選課程至頂">📌</button>
+              </div>
               <div style="margin-top: 6px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
                 <span class="badge-leader">👑 班長: ${c.leaderName}</span>
                 ${classTypeBadge}
@@ -1964,7 +2019,7 @@
             <div class="tab-header">
               <button onclick="switchTab('${c.id}', 'course')" id="tab-btn-course-${c.id}" class="tab-btn ${currentTab === 'course' ? 'active-tab-course' : ''}">📚 課程</button>
               <button onclick="switchTab('${c.id}', 'pojai')" id="tab-btn-pojai-${c.id}" class="tab-btn ${currentTab === 'pojai' ? 'active-tab-pojai' : ''}">👵🏼 婆仔數</button>
-              ${canManage ? `<button onclick="switchTab('${c.id}', 'admin')" id="tab-btn-admin-${c.id}" class="tab-btn ${currentTab === 'admin' ? 'active-tab-admin' : ''}">🛠️ 班長管理</button>` : ''}
+              {canManage ? `<button onclick="switchTab('${c.id}', 'admin')" id="tab-btn-admin-${c.id}" class="tab-btn ${currentTab === 'admin' ? 'active-tab-admin' : ''}">🛠️ 班長管理</button>` : ''}
             </div>
 
             <div id="tab-content-course-${c.id}" class="tab-content ${currentTab === 'course' ? 'active-content' : ''}">
@@ -1982,7 +2037,7 @@
                 <hr style="border: none; border-top: 1px solid var(--pojai-border); margin: 8px 0;">
                 <div style="font-weight:bold; color:var(--pojai-text); font-size:12px; margin-bottom:4px;">🪬雜費</div>
                 ${miscTableHtml}
-                ${!isSettled ? addMiscFormHtml : ''}
+                {(!isSettled) ? addMiscFormHtml : ''}
 
                 <hr style="border: none; border-top: 1px solid var(--pojai-border); margin: 10px 0;">
                 <div style="text-align: center; margin-bottom: 8px;">
@@ -1993,7 +2048,7 @@
               </div>
             </div>
 
-            ${canManage ? `
+            {canManage ? `
               <div id="tab-content-admin-${c.id}" class="tab-content ${currentTab === 'admin' ? 'active-content' : ''}">
                 <div class="admin-edit-box" style="margin-top:0;">
                   <div style="background:#fff; padding:8px; border-radius:8px; border:1px solid #bae6fd; margin-bottom:8px;">
@@ -2607,194 +2662,18 @@
     const classObj = classesData.find(c => c.id === classId);
     if (!classObj) return;
     if (classObj.leaderId !== currentUser.uid) return alert("只有班長才可以按埋數！");
-    if (!!classObj.settlementResult) return;
-
-    const overlay = document.createElement('div');
-    overlay.className = 'custom-modal-overlay';
-    
-    const box = document.createElement('div');
-    box.className = 'custom-modal-box';
-    
-    box.innerHTML = `
-      <div class="custom-modal-text">🧛真係要埋數？撳咗就全部數冇得再郁，返唔到轉頭㗎啦！Sure?</div>
-      <div class="custom-modal-buttons">
-        <button id="modal-yes-btn" class="btn-pojai" style="flex:1;">是，埋數</button>
-        <button id="modal-no-btn" class="btn-gray-action" style="flex:1;">否，唔埋住</button>
-      </div>
-    `;
-    
-    overlay.appendChild(box);
-    document.body.appendChild(overlay);
-
-    document.getElementById('modal-no-btn').addEventListener('click', () => {
-      document.body.removeChild(overlay);
-    });
-
-    document.getElementById('modal-yes-btn').addEventListener('click', async () => {
-      document.body.removeChild(overlay);
-      await calculateSettlement(classId);
-    });
-  };
-
-  window.calculateSettlement = async (classId) => {
-    const classObj = classesData.find(c => c.id === classId);
-    if (!classObj) return;
-
-    activeTabState[classId] = 'pojai';
-
-    const sessions = classObj.sessions || {};
-    Object.keys(sessions).forEach(dateStr => {
-      sessions[dateStr].isClosed = true;
-    });
-
-    const dateKeys = Object.keys(sessions);
-    const balances = {}; 
-
-    dateKeys.forEach(dateStr => {
-      const sess = sessions[dateStr];
-      const students = sess.students || [];
-      const feeVal = Number(sess.fee !== undefined ? sess.fee : classObj.price) || 0;
-      const rentVal = Number(sess.rent || 0);
-      const enrolledCount = students.length;
-
-      const feePayerName = sess.feePayerName || classObj.leaderName;
-      const rentPayerName = sess.rentPayerName || classObj.leaderName;
-
-      if (!balances[feePayerName]) balances[feePayerName] = { paid: 0, cost: 0 };
-      if (!balances[rentPayerName]) balances[rentPayerName] = { paid: 0, cost: 0 };
-
-      balances[feePayerName].paid += (feeVal * enrolledCount);
-      balances[rentPayerName].paid += rentVal;
-
-      students.forEach(s => {
-        if (!balances[s.name]) balances[s.name] = { paid: 0, cost: 0 };
-        balances[s.name].cost += feeVal;
-        if (enrolledCount > 0) {
-          balances[s.name].cost += (rentVal / enrolledCount);
-        }
-      });
-    });
-
-    const miscExpenses = classObj.miscExpenses || [];
-    miscExpenses.forEach(item => {
-      const amount = Number(item.amount) || 0;
-      const payer = item.payer || classObj.leaderName;
-      const participants = item.participants || [];
-
-      if (!balances[payer]) balances[payer] = { paid: 0, cost: 0 };
-      balances[payer].paid += amount;
-
-      const partCount = participants.length;
-      if (partCount > 0) {
-        const share = amount / partCount;
-        participants.forEach(pName => {
-          if (!balances[pName]) balances[pName] = { paid: 0, cost: 0 };
-          balances[pName].cost += share;
-        });
-      }
-    });
-
-    const netBalances = {};
-    Object.keys(balances).forEach(name => {
-      const data = balances[name];
-      netBalances[name] = Math.round(((data.paid || 0) - (data.cost || 0)) * 100) / 100;
-    });
-
-    const debtors = [];
-    const creditors = [];
-
-    Object.keys(netBalances).forEach(name => {
-      const net = netBalances[name];
-      if (net < -0.01) {
-        debtors.push({ name, amount: -net });
-      } else if (net > 0.01) {
-        creditors.push({ name, amount: net });
-      }
-    });
-
-    const transactions = [];
-    let dIdx = 0;
-    let cIdx = 0;
-
-    while (dIdx < debtors.length && cIdx < creditors.length) {
-      const debtor = debtors[dIdx];
-      const creditor = creditors[cIdx];
-
-      const payAmount = Math.min(debtor.amount, creditor.amount);
-      const roundedPay = Math.round(payAmount * 100) / 100;
-
-      if (roundedPay > 0) {
-        transactions.push({
-          debtor: debtor.name,
-          creditor: creditor.name,
-          amount: roundedPay,
-          paidStatus: "未"
-        });
-      }
-
-      debtor.amount -= payAmount;
-      creditor.amount -= payAmount;
-
-      if (debtor.amount < 0.01) dIdx++;
-      if (creditor.amount < 0.01) cIdx++;
-    }
-
-    const memberCostSummary = [];
-    Object.keys(balances).forEach(name => {
-      const data = balances[name];
-      const totalCost = Math.round((data.cost || 0) * 100) / 100;
-      if (totalCost > 0 || data.paid > 0) {
-        memberCostSummary.push(`👤 <b>${name}</b>：總開支 $${totalCost}`);
-      }
-    });
-
-    let costHtml = memberCostSummary.length > 0 ? memberCostSummary.join('<br>') : '暫無開支記錄';
-
-    let txHtml = transactions.length === 0 ? '<div style="text-align:left;">所有帳目已平，無需找數！</div>' : transactions.map((tx, idx) => {
-      return `
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-          <div style="text-align: left;">👉 <b>${tx.debtor}</b> 轉帳 <b>$${tx.amount}</b> 畀 <b>${tx.creditor}</b></div>
-          <div style="display: flex; align-items: center;">
-            <div onclick="handlePaymentCheckboxClick('${classId}', ${idx}, '未')" style="width: 20px; height: 20px; border: 1px solid #d1d5db; background: #e5e7eb; border-radius: 3px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 12px; user-select: none;"></div>
-          </div>
-        </div>
-      `;
-    }).join('');
-
-    const settlementResultHTML = `
-      <div style="font-weight:bold; margin-bottom:4px; color:#9d174d;"> 每人總開支：</div>
-      ${costHtml}
-      <hr style="border:none; border-top:1px dashed var(--pojai-border); margin:6px 0;">
-      <div style="font-weight:bold; margin-bottom:4px; color:#9d174d;"> 找數方案 ：</div>
-      ${txHtml}
-    `;
-
-    try {
-      await updateDoc(doc(db, "classes", classId), {
-        sessions,
-        transactions,
-        settlementResult: settlementResultHTML
-      });
-      alert("【成功】埋數完成！");
-      loadClasses();
-    } catch(e) {
-      alert("埋數失敗: " + e.message);
-    }
   };
 
   window.toggleSessionJoin = async (classId, dateStr, isJoin) => {
     const classObj = classesData.find(c => c.id === classId);
-    if (!classObj) return;
-
+    if(!classObj) return;
     const sessions = classObj.sessions || {};
     const sess = sessions[dateStr];
-    if (!sess) return;
-    if (sess.isClosed) return alert("此堂已封盤，無法修改報名！");
+    if(!sess) return;
 
     let students = sess.students || [];
-
-    if (isJoin) {
-      if (!students.some(s => s.uid === currentUser.uid)) {
+    if(isJoin) {
+      if(!students.some(s => s.uid === currentUser.uid)) {
         students.push({ uid: currentUser.uid, name: currentUserProfile.name || '舞者' });
       }
     } else {
@@ -2812,15 +2691,16 @@
   };
 
   window.deleteClass = async (classId) => {
-    if (!confirm("⚠️ 警告：確定要刪除整個課程嗎？此動作無法復原！")) return;
+    if(!confirm("⚠️ 確定要刪除整個課程嗎？")) return;
     try {
       await deleteDoc(doc(db, "classes", classId));
-      alert("課程已成功刪除！");
+      alert("課程已刪除");
       loadClasses();
     } catch(e) {
-      alert("刪除課程失敗: " + e.message);
+      alert("刪除失敗: " + e.message);
     }
   };
 </script>
+
 </body>
 </html>
