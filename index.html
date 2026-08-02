@@ -2537,6 +2537,108 @@
     }
   };
 
+  window.promptSettlement = async (classId) => {
+    const classObj = classesData.find(c => c.id === classId);
+    if (!classObj) return;
+    if (classObj.leaderId !== currentUser.uid && !isAdmin) {
+      return alert("只有班長或管理員才可以進行埋數！");
+    }
+
+    activeTabState[classId] = 'pojai';
+    
+    const sessions = classObj.sessions || {};
+    const dateKeys = Object.keys(sessions).sort();
+    
+    const memberMap = {};
+    
+    dateKeys.forEach(dateStr => {
+      const sess = sessions[dateStr];
+      const students = sess.students || [];
+      const feeVal = Number(sess.fee !== undefined ? sess.fee : classObj.price) || 0;
+      const rentVal = Number(sess.rent || 0);
+      const enrolledCount = students.length;
+
+      const feePayerName = sess.feePayerName || classObj.leaderName;
+      const rentPayerName = sess.rentPayerName || classObj.leaderName;
+
+      if (!memberMap[feePayerName]) {
+        memberMap[feePayerName] = { totalTuition: 0, totalCourtFee: 0, totalPaid: 0 };
+      }
+      if (!memberMap[rentPayerName]) {
+        memberMap[rentPayerName] = { totalTuition: 0, totalCourtFee: 0, totalPaid: 0 };
+      }
+
+      students.forEach(s => {
+        if (!memberMap[s.name]) {
+          memberMap[s.name] = { totalTuition: 0, totalCourtFee: 0, totalPaid: 0 };
+        }
+        memberMap[s.name].totalTuition += feeVal;
+
+        if (enrolledCount > 0) {
+          memberMap[s.name].totalCourtFee += (rentVal / enrolledCount);
+        }
+      });
+
+      const totalSessionTuition = feeVal * enrolledCount;
+      memberMap[feePayerName].totalPaid += totalSessionTuition;
+      memberMap[rentPayerName].totalPaid += rentVal;
+    });
+
+    const miscExpenses = classObj.miscExpenses || [];
+    miscExpenses.forEach(item => {
+      const amount = Number(item.amount) || 0;
+      const payer = item.payer || classObj.leaderName;
+      const participants = item.participants || [];
+
+      if (!memberMap[payer]) {
+        memberMap[payer] = { totalTuition: 0, totalCourtFee: 0, totalPaid: 0 };
+      }
+      memberMap[payer].totalPaid += amount;
+
+      const partCount = participants.length;
+      if (partCount > 0) {
+        const sharePerPerson = amount / partCount;
+        participants.forEach(pName => {
+          if (!memberMap[pName]) {
+            memberMap[pName] = { totalTuition: 0, totalCourtFee: 0, totalPaid: 0 };
+          }
+          if (!memberMap[pName].totalMisc) memberMap[pName].totalMisc = 0;
+          memberMap[pName].totalMisc += sharePerPerson;
+        });
+      }
+    });
+
+    let htmlResult = "<b>📊 埋數結果結算：</b><br>";
+    Object.entries(memberMap).forEach(([name, data]) => {
+      const courtFee = data.totalCourtFee || 0;
+      const miscFee = data.totalMisc || 0;
+      const shouldPay = data.totalTuition + courtFee + miscFee;
+      const paid = data.totalPaid || 0;
+      const balance = paid - shouldPay; // 正數代表應收回(多付)，負數代表應付給人(欠款)
+
+      let balanceText = "";
+      if (Math.abs(balance) < 0.01) {
+        balanceText = "找平 (0)";
+      } else if (balance > 0) {
+        balanceText = `實收回 $${Math.round(balance * 100) / 100}`;
+      } else {
+        balanceText = `需支付 $${Math.round(Math.abs(balance) * 100) / 100}`;
+      }
+
+      htmlResult += `• <b>${name}</b>：應付 $${Math.round(shouldPay * 100) / 100} ｜ 已墊付 $${paid} ➔ <b>${balanceText}</b><br>`;
+    });
+
+    try {
+      await updateDoc(doc(db, "classes", classId), {
+        settlementResult: htmlResult
+      });
+      alert("埋數成功！");
+      loadClasses();
+    } catch(e) {
+      alert("埋數失敗: " + e.message);
+    }
+  };
+
   window.addMiscItem = async (classId) => {
     const classObj = classesData.find(c => c.id === classId);
     if (!classObj) return;
