@@ -285,6 +285,29 @@
       align-items: center;
     }
 
+    .pin-btn {
+      background: transparent;
+      border: 1px solid #f472b6;
+      border-radius: 4px;
+      width: 28px;
+      height: 28px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 14px;
+      padding: 0;
+      margin-left: 8px;
+      transition: background 0.2s;
+    }
+    .pin-btn:hover {
+      background: #fce7f3;
+    }
+    .pin-btn.pinned {
+      background: #fce7f3;
+      border-color: #db2777;
+    }
+
     .collapse-toggle-btn {
       width: 26px;
       height: 26px;
@@ -839,9 +862,6 @@
         </div>
         <div class="calendar-grid" id="calendar-days" style="margin-top:4px;"></div>
       </div>
-      <div style="margin-top: 8px; text-align: right;">
-        <button id="toggle-pinned-calendar-btn" onclick="togglePinnedCalendarFilter()" style="width: auto; margin: 0; padding: 4px 10px; font-size: 12px; background: #f3f4f6; color: #4b5563; border: 1px solid #d1d5db;">📌只看釘選課程</button>
-      </div>
     </div>
 
     <div class="card">
@@ -887,51 +907,9 @@
   let allUsersList = [];
   let selectedDates = [];
   let currentFilter = 'all';
-  let onlyPinnedCalendar = false;
   
   // 記錄每個課程當前啟用的 tab
   let activeTabState = {};
-
-  window.togglePinnedCalendarFilter = () => {
-    onlyPinnedCalendar = !onlyPinnedCalendar;
-    const btn = document.getElementById('toggle-pinned-calendar-btn');
-    if (onlyPinnedCalendar) {
-      btn.style.background = 'var(--primary-hover)';
-      btn.style.color = 'white';
-      btn.style.border = 'none';
-    } else {
-      btn.style.background = '#f3f4f6';
-      btn.style.color = '#4b5563';
-      btn.style.border = '1px solid #d1d5db';
-    }
-    renderCalendar();
-  };
-
-  window.togglePinClass = async (classId, event) => {
-    event.stopPropagation();
-    if (!currentUser) return;
-    let pinnedList = currentUserProfile.pinnedClasses || [];
-    const isPinned = pinnedList.includes(classId);
-
-    if (isPinned) {
-      pinnedList = pinnedList.filter(id => id !== classId);
-    } else {
-      if (pinnedList.length >= 5) {
-        alert("每用戶最多只可釘選5個課程！");
-        return;
-      }
-      pinnedList.push(classId);
-    }
-
-    try {
-      await setDoc(doc(db, "users", currentUser.uid), { pinnedClasses: pinnedList }, { merge: true });
-      currentUserProfile.pinnedClasses = pinnedList;
-      renderClassList();
-      renderCalendar();
-    } catch (e) {
-      alert("釘選失敗: " + e.message);
-    }
-  };
 
   window.setFilter = (type) => {
     currentFilter = type;
@@ -1260,10 +1238,10 @@
       currentUser = user;
       try {
         const userDoc = await getDoc(doc(db, "users", user.uid));
-        currentUserProfile = userDoc.exists() ? userDoc.data() : { name: '舞者', role: 'user', pinnedClasses: [] };
+        currentUserProfile = userDoc.exists() ? userDoc.data() : { name: '舞者', role: 'user', pinnedCourses: [] };
       } catch(e) {
         console.error("無法取得使用者 Profile", e);
-        currentUserProfile = { name: '舞者', role: 'user', pinnedClasses: [] };
+        currentUserProfile = { name: '舞者', role: 'user', pinnedCourses: [] };
       }
       
       isAdmin = (currentUserProfile && currentUserProfile.role === 'admin') || user.email === 'yonnielo@yahoo.com';
@@ -1617,6 +1595,12 @@
       }
 
       classesData.sort((a, b) => {
+        const pinnedList = (currentUserProfile && currentUserProfile.pinnedCourses) || [];
+        const aPinned = pinnedList.includes(a.id);
+        const bPinned = pinnedList.includes(b.id);
+        if (aPinned && !bPinned) return -1;
+        if (!aPinned && bPinned) return 1;
+
         const aDates = Object.keys(a.sessions || {}).sort();
         const bDates = Object.keys(b.sessions || {}).sort();
         const aLast = aDates.length > 0 ? new Date(aDates[aDates.length - 1]) : new Date(0);
@@ -1683,8 +1667,6 @@
       calendarDays.appendChild(emptyCell);
     }
 
-    const pinnedList = currentUserProfile && currentUserProfile.pinnedClasses ? currentUserProfile.pinnedClasses : [];
-
     for (let day = 1; day <= daysInMonth; day++) {
       const cell = document.createElement('div');
       cell.className = 'day-cell';
@@ -1695,7 +1677,6 @@
       const dateStr = `${year}-${monthStr}-${dayStr}`;
 
       classesData.forEach(c => {
-        if (onlyPinnedCalendar && !pinnedList.includes(c.id)) return;
         if (currentFilter === 'private' && c.accessType !== 'specific') return;
         if (currentFilter === 'public' && c.accessType === 'specific') return;
 
@@ -1728,6 +1709,29 @@
     renderCalendar();
   });
 
+  window.togglePinCourse = async (classId) => {
+    if (!currentUserProfile) return;
+    let pinnedList = currentUserProfile.pinnedCourses || [];
+    const isPinned = pinnedList.includes(classId);
+
+    if (isPinned) {
+      pinnedList = pinnedList.filter(id => id !== classId);
+    } else {
+      if (pinnedList.length >= 5) {
+        return alert("每用戶最多只可釘選5個課程！");
+      }
+      pinnedList.push(classId);
+    }
+
+    try {
+      await setDoc(doc(db, "users", currentUser.uid), { pinnedCourses: pinnedList }, { merge: true });
+      currentUserProfile.pinnedCourses = pinnedList;
+      loadClasses();
+    } catch (e) {
+      alert("釘選失敗: " + e.message);
+    }
+  };
+
   function renderClassList() {
     const expandedIds = [];
     document.querySelectorAll('[id^="course-body-"]').forEach(el => {
@@ -1751,15 +1755,16 @@
     }
 
     const now = new Date();
-    const pinnedList = currentUserProfile && currentUserProfile.pinnedClasses ? currentUserProfile.pinnedClasses : [];
 
     listEl.innerHTML = filteredClasses.map(c => {
-      const isPinned = pinnedList.includes(c.id);
       const isLeader = c.leaderId === currentUser.uid;
       const canManage = isLeader || isAdmin;
       const sessions = c.sessions || {};
       const dateKeys = Object.keys(sessions).sort();
       const isSettled = !!c.settlementResult;
+
+      const pinnedList = (currentUserProfile && currentUserProfile.pinnedCourses) || [];
+      const isPinned = pinnedList.includes(c.id);
 
       let isCompleted = false;
       if (dateKeys.length > 0) {
@@ -1930,7 +1935,7 @@
             <td style="padding:4px; border:1px solid var(--pojai-border); font-size:11px;">
               <div class="flex between" style="align-items:center;">
                 <span>$${roundedShare}</span>
-                {(!isSettled && canManage) ? `<button onclick="deleteMiscItem('${c.id}', ${idx})" style="width:auto; margin:0; padding:1px 4px; font-size:12px; background:transparent; color:#be123c; border:none; box-shadow:none;">❌</button>` : ''}
+                ${(!isSettled && canManage) ? `<button onclick="deleteMiscItem('${c.id}', ${idx})" style="width:auto; margin:0; padding:1px 4px; font-size:12px; background:transparent; color:#be123c; border:none; box-shadow:none;">❌</button>` : ''}
               </div>
             </td>
           </tr>
@@ -1994,13 +1999,8 @@
         <div class="course-card">
           
           <div class="course-card-header" style="border-left: 4px solid ${headerBorderColor};">
-            <div style="width: 100%;">
-              <div class="flex between" style="align-items: center; width: 100%;">
-                <div>
-                  <strong style="font-size: 17px; ${classNameStyle}">${c.name}</strong>${completedBadgeHtml}
-                </div>
-                <button onclick="togglePinClass('${c.id}', event)" style="width: auto; margin: 0; padding: 4px 8px; font-size: 13px; background: ${isPinned ? 'var(--primary-hover)' : '#f3f4f6'}; color: ${isPinned ? 'white' : '#374151'}; border: 1px solid #d1d5db;" title="釘選課程至頂">📌</button>
-              </div>
+            <div style="flex: 1;">
+              <strong style="font-size: 17px; ${classNameStyle}">${c.name}</strong>${completedBadgeHtml}
               <div style="margin-top: 6px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
                 <span class="badge-leader">👑 班長: ${c.leaderName}</span>
                 ${classTypeBadge}
@@ -2009,9 +2009,12 @@
                 ${leaderNoteHtml}
               </div>
             </div>
-            <button onclick="toggleCourseBody('${c.id}')" id="collapse-btn-${c.id}" class="collapse-toggle-btn" title="展開/收藏課程資料">
-              <div class="collapse-arrow"></div>
-            </button>
+            <div style="display: flex; align-items: center; gap: 4px;">
+              <button onclick="togglePinCourse('${c.id}')" class="pin-btn ${isPinned ? 'pinned' : ''}" title="${isPinned ? '取消釘選' : '釘選至頂'}">📌</button>
+              <button onclick="toggleCourseBody('${c.id}')" id="collapse-btn-${c.id}" class="collapse-toggle-btn" title="展開/收藏課程資料">
+                <div class="collapse-arrow"></div>
+              </button>
+            </div>
           </div>
 
           <div id="course-body-${c.id}" class="hidden">
@@ -2019,7 +2022,7 @@
             <div class="tab-header">
               <button onclick="switchTab('${c.id}', 'course')" id="tab-btn-course-${c.id}" class="tab-btn ${currentTab === 'course' ? 'active-tab-course' : ''}">📚 課程</button>
               <button onclick="switchTab('${c.id}', 'pojai')" id="tab-btn-pojai-${c.id}" class="tab-btn ${currentTab === 'pojai' ? 'active-tab-pojai' : ''}">👵🏼 婆仔數</button>
-              {canManage ? `<button onclick="switchTab('${c.id}', 'admin')" id="tab-btn-admin-${c.id}" class="tab-btn ${currentTab === 'admin' ? 'active-tab-admin' : ''}">🛠️ 班長管理</button>` : ''}
+              ${canManage ? `<button onclick="switchTab('${c.id}', 'admin')" id="tab-btn-admin-${c.id}" class="tab-btn ${currentTab === 'admin' ? 'active-tab-admin' : ''}">🛠️ 班長管理</button>` : ''}
             </div>
 
             <div id="tab-content-course-${c.id}" class="tab-content ${currentTab === 'course' ? 'active-content' : ''}">
@@ -2037,7 +2040,7 @@
                 <hr style="border: none; border-top: 1px solid var(--pojai-border); margin: 8px 0;">
                 <div style="font-weight:bold; color:var(--pojai-text); font-size:12px; margin-bottom:4px;">🪬雜費</div>
                 ${miscTableHtml}
-                {(!isSettled) ? addMiscFormHtml : ''}
+                ${!isSettled ? addMiscFormHtml : ''}
 
                 <hr style="border: none; border-top: 1px solid var(--pojai-border); margin: 10px 0;">
                 <div style="text-align: center; margin-bottom: 8px;">
@@ -2048,7 +2051,7 @@
               </div>
             </div>
 
-            {canManage ? `
+            ${canManage ? `
               <div id="tab-content-admin-${c.id}" class="tab-content ${currentTab === 'admin' ? 'active-content' : ''}">
                 <div class="admin-edit-box" style="margin-top:0;">
                   <div style="background:#fff; padding:8px; border-radius:8px; border:1px solid #bae6fd; margin-bottom:8px;">
@@ -2661,46 +2664,7 @@
   window.promptSettlement = (classId) => {
     const classObj = classesData.find(c => c.id === classId);
     if (!classObj) return;
-    if (classObj.leaderId !== currentUser.uid) return alert("只有班長才可以按埋數！");
-  };
-
-  window.toggleSessionJoin = async (classId, dateStr, isJoin) => {
-    const classObj = classesData.find(c => c.id === classId);
-    if(!classObj) return;
-    const sessions = classObj.sessions || {};
-    const sess = sessions[dateStr];
-    if(!sess) return;
-
-    let students = sess.students || [];
-    if(isJoin) {
-      if(!students.some(s => s.uid === currentUser.uid)) {
-        students.push({ uid: currentUser.uid, name: currentUserProfile.name || '舞者' });
-      }
-    } else {
-      students = students.filter(s => s.uid !== currentUser.uid);
-    }
-
-    sess.students = students;
-
-    try {
-      await updateDoc(doc(db, "classes", classId), { sessions });
-      loadClasses();
-    } catch(e) {
-      alert("報名操作失敗: " + e.message);
-    }
-  };
-
-  window.deleteClass = async (classId) => {
-    if(!confirm("⚠️ 確定要刪除整個課程嗎？")) return;
-    try {
-      await deleteDoc(doc(db, "classes", classId));
-      alert("課程已刪除");
-      loadClasses();
-    } catch(e) {
-      alert("刪除失敗: " + e.message);
-    }
-  };
+  }
 </script>
-
 </body>
 </html>
