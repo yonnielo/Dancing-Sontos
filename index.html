@@ -426,7 +426,7 @@
     }
     .tab-btn.active-tab-admin {
       background: var(--admin-box-bg);
-      color: var(--admin-header-text);
+      color: var(--admin-box-border);
       border-color: var(--admin-box-border);
       border-bottom: 2px solid var(--admin-box-bg);
       margin-bottom: -2px;
@@ -2280,7 +2280,7 @@
     } else if (tabName === 'admin') {
       courseBtn.className = "tab-btn";
       pojaiBtn.className = "tab-btn";
-      if (adminBtn) adminBtn.className = "tab-btn";
+      if (adminBtn) adminBtn.className = "tab-btn active-tab-admin";
 
       courseContent.className = "tab-content";
       pojaiContent.className = "tab-content";
@@ -2616,8 +2616,6 @@
     const classObj = classesData.find(c => c.id === classId);
     if (!classObj) return;
 
-    if (!confirm("確定要刪除此雜費項目嗎？")) return;
-
     const miscExpenses = classObj.miscExpenses || [];
     miscExpenses.splice(index, 1);
 
@@ -2629,36 +2627,26 @@
     }
   };
 
-  window.runCalculate = async (classId, isSettleAction) => {
+  window.runCalculate = async (classId, isCommit) => {
+    activeTabState[classId] = 'pojai';
     const classObj = classesData.find(c => c.id === classId);
     if (!classObj) return;
 
-    activeTabState[classId] = 'pojai';
-
-    const isLeader = classObj.leaderId === currentUser.uid;
-    const canManage = isLeader || isAdmin;
-
-    if (isSettleAction && !canManage) {
-      return alert("只有班長或管理員才可以進行埋數！");
-    }
-
     const sessionCbs = document.querySelectorAll(`.pojai-session-cb-${classId}:checked:not(:disabled)`);
-    const selectedDatesSet = new Set(Array.from(sessionCbs).map(cb => cb.value));
+    const selectedDates = Array.from(sessionCbs).map(cb => cb.value);
 
-    const misc_cbs = document.querySelectorAll(`.pojai-misc-cb-${classId}:checked:not(:disabled)`);
-    const selectedMiscIndicesSet = new Set(Array.from(misc_cbs).map(cb => Number(cb.value)));
+    const miscIsLockedIndices = classObj.settledMiscIndices || [];
+    const miscCheckboxes = document.querySelectorAll(`.pojai-misc-cb-${classId}:checked:not(:disabled)`);
+    const selectedMiscIndices = Array.from(miscCheckboxes).map(cb => Number(cb.value));
+
+    if (selectedDates.length === 0 && selectedMiscIndices.length === 0) {
+      return alert("請至少勾選一個未埋數的課堂或雜費項目進行計算！");
+    }
 
     const sessions = classObj.sessions || {};
-    const miscExpenses = classObj.miscExpenses || [];
+    const memberMap = {};
 
-    const netBalances = {};
-
-    function addBalance(person, amount) {
-      if (!netBalances[person]) netBalances[person] = 0;
-      netBalances[person] += amount;
-    }
-
-    selectedDatesSet.forEach(dateStr => {
+    selectedDates.forEach(dateStr => {
       const sess = sessions[dateStr];
       if (!sess) return;
       const students = sess.students || [];
@@ -2666,147 +2654,115 @@
       const rentVal = Number(sess.rent || 0);
       const enrolledCount = students.length;
 
-      const feePayer = sess.feePayerName || classObj.leaderName;
-      const rentPayer = sess.rentPayerName || classObj.leaderName;
+      const feePayerName = sess.feePayerName || classObj.leaderName;
+      const rentPayerName = sess.rentPayerName || classObj.leaderName;
 
-      const totalSessionTuition = feeVal * enrolledCount;
-      addBalance(feePayer, totalSessionTuition);
+      if (!memberMap[feePayerName]) {
+        memberMap[feePayerName] = { totalTuition: 0, totalCourtFee: 0, totalPaid: 0, totalMisc: 0 };
+      }
+      if (!memberMap[rentPayerName]) {
+        memberMap[rentPayerName] = { totalTuition: 0, totalCourtFee: 0, totalPaid: 0, totalMisc: 0 };
+      }
 
       students.forEach(s => {
-        addBalance(s.name, -feeVal);
+        if (!memberMap[s.name]) {
+          memberMap[s.name] = { totalTuition: 0, totalCourtFee: 0, totalPaid: 0, totalMisc: 0 };
+        }
+        memberMap[s.name].totalTuition += feeVal;
+
         if (enrolledCount > 0) {
-          addBalance(s.name, -(rentVal / enrolledCount));
+          memberMap[s.name].totalCourtFee += (rentVal / enrolledCount);
         }
       });
 
-      addBalance(rentPayer, rentVal);
+      const totalSessionTuition = feeVal * enrolledCount;
+      memberMap[feePayerName].totalPaid += totalSessionTuition;
+
       if (enrolledCount === 0) {
-        addBalance(rentPayer, -rentVal);
+        memberMap[rentPayerName].totalCourtFee += rentVal;
       }
+      memberMap[rentPayerName].totalPaid += rentVal;
     });
 
-    selectedMiscIndicesSet.forEach(idx => {
+    const miscExpenses = classObj.miscExpenses || [];
+    selectedMiscIndices.forEach(idx => {
       const item = miscExpenses[idx];
       if (!item) return;
       const amount = Number(item.amount) || 0;
       const payer = item.payer || classObj.leaderName;
       const participants = item.participants || [];
 
-      addBalance(payer, amount);
+      if (!memberMap[payer]) {
+        memberMap[payer] = { totalTuition: 0, totalCourtFee: 0, totalPaid: 0, totalMisc: 0 };
+      }
+      memberMap[payer].totalPaid += amount;
 
       const partCount = participants.length;
       if (partCount > 0) {
-        const share = amount / partCount;
+        const sharePerPerson = amount / partCount;
         participants.forEach(pName => {
-          addBalance(pName, -share);
+          if (!memberMap[pName]) {
+            memberMap[pName] = { totalTuition: 0, totalCourtFee: 0, totalPaid: 0, totalMisc: 0 };
+          }
+          memberMap[pName].totalMisc += sharePerPerson;
         });
       }
     });
 
-    // 互相之間最少transaction的找數方案計算
-    const debtors = [];
-    const creditors = [];
+    let resultLines = [];
+    const balances = {};
 
-    Object.entries(netBalances).forEach(([person, balance]) => {
-      const rounded = Math.round(balance * 100) / 100;
-      if (rounded < -0.01) {
-        debtors.push({ name: person, amount: -rounded });
-      } else if (rounded > 0.01) {
-        creditors.push({ name: person, amount: rounded });
+    Object.keys(memberMap).forEach(name => {
+      const d = memberMap[name];
+      const courtFeeRounded = Math.round(d.totalCourtFee * 100) / 100;
+      const miscRounded = Math.round((d.totalMisc || 0) * 100) / 100;
+      const totalCost = d.totalTuition + courtFeeRounded + miscRounded;
+      const totalPaid = d.totalPaid;
+      const balance = Math.round((totalPaid - totalCost) * 100) / 100;
+
+      balances[name] = balance;
+      resultLines.push(`• <b>${name}</b>：總洗費 $${totalCost} (學費$${d.totalTuition} + 場租$${courtFeeRounded} + 雜費$${miscRounded}) ｜ 已墊付 $${totalPaid} ｜ <b>${balance >= 0 ? `找返 $${balance}` : `需付 $${Math.abs(balance)}`}</b>`);
+    });
+
+    const resultHtml = resultLines.join('<br>');
+
+    if (!isCommit) {
+      const previewEl = document.getElementById(`preview-result-${classId}`);
+      if (previewEl) {
+        previewEl.classList.remove('hidden');
+        previewEl.innerHTML = `<b>👀 睇數結果預覽：</b><br>${resultHtml}`;
+      }
+      return;
+    }
+
+    if (!confirm("⚠️ 確定要執行「埋數」嗎？這將會鎖定已選擇的課堂與雜費記錄，並記錄結算結果！")) return;
+
+    const nowStr = new Date().toLocaleString();
+    const newSettledSessions = [...(classObj.settledSessions || []), ...selectedDates];
+    const newSettledMiscIndices = [...(classObj.settledMiscIndices || []), ...selectedMiscIndices];
+    
+    // 【修改需求 1】將已埋數課堂在課程tab內的 status 變成 on（即封盤 isClosed = true）
+    selectedDates.forEach(dateStr => {
+      if (sessions[dateStr]) {
+        sessions[dateStr].isClosed = true;
       }
     });
 
-    debtors.sort((a, b) => b.amount - a.amount);
-    creditors.sort((a, b) => b.amount - a.amount);
+    const historyItem = { timestamp: nowStr, resultText: resultHtml };
+    const settlementHistory = classObj.settlementHistory || [];
+    settlementHistory.unshift(historyItem);
 
-    const transactions = [];
-    let dIdx = 0;
-    let cIdx = 0;
-
-    while (dIdx < debtors.length && cIdx < creditors.length) {
-      const debtor = debtors[dIdx];
-      const creditor = creditors[cIdx];
-
-      const payAmount = Math.min(debtor.amount, creditor.amount);
-      const roundedPay = Math.round(payAmount * 100) / 100;
-
-      if (roundedPay > 0) {
-        transactions.push(`➡️ <b>${debtor.name}</b> 轉帳 <b>$${roundedPay}</b> 比 <b>${creditor.name}</b>`);
-      }
-
-      debtor.amount -= payAmount;
-      creditor.amount -= payAmount;
-
-      if (debtor.amount < 0.01) dIdx++;
-      if (creditor.amount < 0.01) cIdx++;
-    }
-
-    let summaryText = `<b>📊 結算明細：</b><br>`;
-    const entries = Object.entries(netBalances);
-    if (entries.length === 0) {
-      summaryText += `無任何收支記錄。<br>`;
-    } else {
-      entries.forEach(([person, bal]) => {
-        const rounded = Math.round(bal * 100) / 100;
-        if (rounded > 0.01) {
-          summaryText += `👤 ${person}：應收 <span style="color:green;">+$${rounded}</span><br>`;
-        } else if (rounded < -0.01) {
-          summaryText += `👤 ${person}：應付 <span style="color:red;">-$${-rounded}</span><br>`;
-        } else {
-          summaryText += `👤 ${person}：結清 <span style="color:gray;">$0</span><br>`;
-        }
+    try {
+      await updateDoc(doc(db, "classes", classId), {
+        sessions,
+        settledSessions: newSettledSessions,
+        settledMiscIndices: newSettledMiscIndices,
+        settlementHistory
       });
-    }
-
-    summaryText += `<br><b>🤝 最少交易找數方案：</b><br>`;
-    if (transactions.length === 0) {
-      summaryText += `無需找數 / 帳目已平。<br>`;
-    } else {
-      transactions.forEach(t => {
-        summaryText += `${t}<br>`;
-      });
-    }
-
-    if (!isSettleAction) {
-      const previewDiv = document.getElementById(`preview-result-${classId}`);
-      previewDiv.innerHTML = summaryText;
-      previewDiv.classList.remove('hidden');
-    } else {
-      const confirmSettle = confirm("⚠️ 確定要進行埋數嗎？這會將所選的課堂與雜費標記為已埋數並封存記錄！");
-      if (!confirmSettle) return;
-
-      const settledSessions = classObj.settledSessions || [];
-      selectedDatesSet.forEach(d => {
-        if (!settledSessions.includes(d)) settledSessions.push(d);
-      });
-
-      const settledMiscIndices = classObj.settledMiscIndices || [];
-      selectedMiscIndicesSet.forEach(idx => {
-        if (!settledMiscIndices.includes(idx)) settledMiscIndices.push(idx);
-      });
-
-      miscExpenses.forEach((item, idx) => {
-        if (selectedMiscIndicesSet.has(idx)) {
-          item.isLocked = true;
-        }
-      });
-
-      const settlementHistory = classObj.settlementHistory || [];
-      const timestamp = new Date().toLocaleString();
-      settlementHistory.push({ timestamp, resultText: summaryText });
-
-      try {
-        await updateDoc(doc(db, "classes", classId), {
-          settledSessions,
-          settledMiscIndices,
-          miscExpenses,
-          settlementHistory
-        });
-        alert("【成功】埋數完成！");
-        loadClasses();
-      } catch(e) {
-        alert("埋數失敗: " + e.message);
-      }
+      alert("【成功】埋數完成，相關已埋數課堂已成功封盤！");
+      loadClasses();
+    } catch(e) {
+      alert("埋數儲存失敗: " + e.message);
     }
   };
 
@@ -2820,7 +2776,7 @@
       alert("刪除失敗: " + e.message);
     }
   };
-
 </script>
+
 </body>
 </html>
