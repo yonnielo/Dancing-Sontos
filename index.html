@@ -2600,21 +2600,21 @@
         allowedUsers,
         sessions: newSessions
       });
-      alert("【成功】課程資訊與堂數封盤狀態已更新！");
+      alert("儲存成功！");
       loadClasses();
     } catch(e) {
-      alert("儲存變更失敗: " + e.message);
+      alert("儲存失敗: " + e.message);
     }
   };
 
   window.deleteClass = async (classId) => {
-    if(!confirm("⚠️ 確定要刪除整個課程嗎？此動作無法復原！")) return;
+    if(!confirm("⚠️ 警告：確定要刪除整個課程嗎？此動作無法復原！")) return;
     try {
       await deleteDoc(doc(db, "classes", classId));
-      alert("課程已成功刪除！");
+      alert("課程已刪除。");
       loadClasses();
     } catch(e) {
-      alert("刪除課程失敗: " + e.message);
+      alert("刪除失敗: " + e.message);
     }
   };
 
@@ -2625,16 +2625,17 @@
     const nameInput = document.getElementById(`misc-name-${classId}`);
     const amountInput = document.getElementById(`misc-amount-${classId}`);
     const payerSelect = document.getElementById(`misc-payer-${classId}`);
-    const partCbs = document.querySelectorAll(`.misc-part-cb-${classId}:checked`);
 
     const name = nameInput.value.trim();
     const amount = Number(amountInput.value);
     const payer = payerSelect.value;
-    const participants = Array.from(partCbs).map(cb => cb.value);
+
+    const partCheckboxes = document.querySelectorAll(`.misc-part-cb-${classId}:checked`);
+    const participants = Array.from(partCheckboxes).map(cb => cb.value);
 
     if (!name) return alert("請輸入雜費項目名稱！");
-    if (isNaN(amount) || amount <= 0) return alert("請輸入有效的總金額！");
-    if (participants.length === 0) return alert("請至少選擇一個有份參與的成員！");
+    if (!amount || amount <= 0) return alert("請輸入有效的總金額！");
+    if (participants.length === 0) return alert("請至少勾選一位參與分配的成員！");
 
     const miscExpenses = classObj.miscExpenses || [];
     miscExpenses.push({
@@ -2653,12 +2654,12 @@
     }
   };
 
-  window.deleteMiscItem = async (classId, index) => {
+  window.deleteMiscItem = async (classId, idx) => {
     const classObj = classesData.find(c => c.id === classId);
     if (!classObj) return;
 
-    const miscExpenses = classObj.miscExpenses || [];
-    miscExpenses.splice(index, 1);
+    let miscExpenses = classObj.miscExpenses || [];
+    miscExpenses.splice(idx, 1);
 
     try {
       await updateDoc(doc(db, "classes", classId), { miscExpenses });
@@ -2672,10 +2673,10 @@
     const classObj = classesData.find(c => c.id === classId);
     if (!classObj) return;
 
-    const sessionCbs = document.querySelectorAll(`.pojai-session-cb-${classId}:not(:disabled):checked`);
-    const miscCheckboxes = document.querySelectorAll(`.pojai-misc-cb-${classId}:not(:disabled):checked`);
+    const sessionCheckboxes = document.querySelectorAll(`.pojai-session-cb-${classId}:checked:not(:disabled)`);
+    const selectedDates = Array.from(sessionCheckboxes).map(cb => cb.value);
 
-    const selectedDates = Array.from(sessionCbs).map(cb => cb.value);
+    const miscCheckboxes = document.querySelectorAll(`.pojai-misc-cb-${classId}:checked:not(:disabled)`);
     const selectedMiscIndices = Array.from(miscCheckboxes).map(cb => Number(cb.value));
 
     if (selectedDates.length === 0 && selectedMiscIndices.length === 0) {
@@ -2683,22 +2684,11 @@
     }
 
     const sessions = classObj.sessions || {};
-    const miscExpenses = classObj.miscExpenses || [];
-
-    const memberTotalExpense = {};
-    const memberPaid = {};
-
-    const ensureMember = (name) => {
-      if (!memberTotalExpense[name]) memberTotalExpense[name] = 0;
-      if (!memberPaid[name]) memberPaid[name] = 0;
-    };
-
-    ensureMember(classObj.leaderName);
+    const memberSummary = {};
 
     selectedDates.forEach(dateStr => {
       const sess = sessions[dateStr];
       if (!sess) return;
-
       const students = sess.students || [];
       const feeVal = Number(sess.fee !== undefined ? sess.fee : classObj.price) || 0;
       const rentVal = Number(sess.rent || 0);
@@ -2707,73 +2697,81 @@
       const feePayerName = sess.feePayerName || classObj.leaderName;
       const rentPayerName = sess.rentPayerName || classObj.leaderName;
 
-      ensureMember(feePayerName);
-      ensureMember(rentPayerName);
+      if (!memberSummary[feePayerName]) {
+        memberSummary[feePayerName] = { totalExpense: 0, totalPaid: 0 };
+      }
+      if (!memberSummary[rentPayerName]) {
+        memberSummary[rentPayerName] = { totalExpense: 0, totalPaid: 0 };
+      }
 
       students.forEach(s => {
-        ensureMember(s.name);
-        memberTotalExpense[s.name] += feeVal;
+        if (!memberSummary[s.name]) {
+          memberSummary[s.name] = { totalExpense: 0, totalPaid: 0 };
+        }
+        memberSummary[s.name].totalExpense += feeVal;
         if (enrolledCount > 0) {
-          memberTotalExpense[s.name] += (rentVal / enrolledCount);
+          memberSummary[s.name].totalExpense += (rentVal / enrolledCount);
         }
       });
 
       const totalSessionTuition = feeVal * enrolledCount;
-      memberPaid[feePayerName] += totalSessionTuition;
+      memberSummary[feePayerName].totalPaid += totalSessionTuition;
 
       if (enrolledCount === 0) {
-        ensureMember(rentPayerName);
-        memberTotalExpense[rentPayerName] += rentVal;
+        if (!memberSummary[rentPayerName]) {
+          memberSummary[rentPayerName] = { totalExpense: 0, totalPaid: 0 };
+        }
+        memberSummary[rentPayerName].totalExpense += rentVal;
       }
-      memberPaid[rentPayerName] += rentVal;
+      memberSummary[rentPayerName].totalPaid += rentVal;
     });
 
+    const miscExpenses = classObj.miscExpenses || [];
     selectedMiscIndices.forEach(idx => {
       const item = miscExpenses[idx];
       if (!item) return;
-
       const amount = Number(item.amount) || 0;
       const payer = item.payer || classObj.leaderName;
       const participants = item.participants || [];
 
-      ensureMember(payer);
-      memberPaid[payer] += amount;
+      if (!memberSummary[payer]) {
+        memberSummary[payer] = { totalExpense: 0, totalPaid: 0 };
+      }
+      memberSummary[payer].totalPaid += amount;
 
       const partCount = participants.length;
       if (partCount > 0) {
         const sharePerPerson = amount / partCount;
         participants.forEach(pName => {
-          ensureMember(pName);
-          memberTotalExpense[pName] += sharePerPerson;
+          if (!memberSummary[pName]) {
+            memberSummary[pName] = { totalExpense: 0, totalPaid: 0 };
+          }
+          memberSummary[pName].totalExpense += sharePerPerson;
         });
       }
     });
 
-    const netBalances = {};
-    const allNames = new Set([...Object.keys(memberTotalExpense), ...Object.keys(memberPaid)]);
-    
-    allNames.forEach(name => {
-      const expense = memberTotalExpense[name] || 0;
-      const paid = memberPaid[name] || 0;
-      netBalances[name] = paid - expense;
-    });
+    let resultText = `<b>【每人總支出】</b><br>`;
+    const netMap = {};
 
-    let resultText = "📊 各人總支出與墊付統計：\n";
-    allNames.forEach(name => {
-      const expense = Math.round((memberTotalExpense[name] || 0) * 100) / 100;
-      const paid = Math.round((memberPaid[name] || 0) * 100) / 100;
-      resultText += `• ${name}：總支出 $${expense} ｜ 墊付 $${paid}\n`;
+    Object.keys(memberSummary).forEach(name => {
+      const data = memberSummary[name];
+      const totalExpense = Math.round(data.totalExpense * 100) / 100;
+      const totalPaid = Math.round(data.totalPaid * 100) / 100;
+      const net = totalPaid - totalExpense;
+      netMap[name] = net;
+      resultText += `👤 <b>${name}</b>：總支出 $${totalExpense} (已墊付 $${totalPaid})<br>`;
     });
 
     const debtors = [];
     const creditors = [];
 
-    allNames.forEach(name => {
-      const bal = Math.round((netBalances[name] || 0) * 100) / 100;
-      if (bal < -0.01) {
-        debtors.push({ name, amount: -bal });
-      } else if (bal > 0.01) {
-        creditors.push({ name, amount: bal });
+    Object.keys(netMap).forEach(name => {
+      const val = Math.round(netMap[name] * 100) / 100;
+      if (val < -0.01) {
+        debtors.push({ name, amount: -val });
+      } else if (val > 0.01) {
+        creditors.push({ name, amount: val });
       }
     });
 
@@ -2787,67 +2785,54 @@
     while (dIdx < debtors.length && cIdx < creditors.length) {
       const debtor = debtors[dIdx];
       const creditor = creditors[cIdx];
+      const payAmount = Math.min(debtor.amount, creditor.amount);
+      const roundedPay = Math.round(payAmount * 100) / 100;
 
-      const transferAmount = Math.min(debtor.amount, creditor.amount);
-      const roundedTransfer = Math.round(transferAmount * 100) / 100;
-
-      if (roundedTransfer > 0) {
+      if (roundedPay > 0) {
         transactions.push({
           from: debtor.name,
           to: creditor.name,
-          amount: roundedTransfer
+          amount: roundedPay
         });
       }
 
-      debtor.amount -= transferAmount;
-      creditor.amount -= transferAmount;
+      debtor.amount -= payAmount;
+      creditor.amount -= payAmount;
 
       if (debtor.amount < 0.01) dIdx++;
       if (creditor.amount < 0.01) cIdx++;
     }
 
     if (!isCommit) {
-      const previewBox = document.getElementById(`preview-result-${classId}`);
-      previewBox.classList.remove('hidden');
-      
-      let txHtml = '';
-      if (transactions.length > 0) {
-        txHtml = `<div style="margin-top:6px; font-weight:bold;">互相之間的最少transaction找數方案：</div>` + 
-          transactions.map(tx => `<div style="margin-top:4px; padding:4px 6px; background:#fffdf4; border:1px solid var(--pojai-border); border-radius:4px;">${tx.from} ➔ ${tx.to} : $${tx.amount}</div>`).join('');
-      } else {
-        txHtml = `<div style="margin-top:6px; font-weight:bold; color:#15803d;">✅ 所有人帳目已平衡，無需找數！</div>`;
+      const previewEl = document.getElementById(`preview-result-${classId}`);
+      if (previewEl) {
+        previewEl.classList.remove('hidden');
+        let txHtml = transactions.map(t => `${t.from} ➔ ${t.to} : $${t.amount}`).join('<br>');
+        previewEl.innerHTML = `${resultText}<br><b>互相之間的最少transaction找數方案：</b><br>${txHtml || '無需找數'}`;
       }
+    } else {
+      if (!confirm("⚠️ 確定要執行「埋數」嗎？這會將所選的課堂和雜費標記為已埋數鎖定，並將該課程的所有課堂「封盤」(status變成on)，同時記錄結算歷史！")) return;
 
-      previewBox.innerHTML = `<b>👀 睇數結果預覽：</b><br><div style="white-space:pre-line; margin-top:4px;">${resultText}</div>${txHtml}`;
-      return;
-    }
+      const currentSettledSessions = classObj.settledSessions || [];
+      const newSettledSessions = Array.from(new Set([...currentSettledSessions, ...selectedDates]));
 
-    if (isCommit) {
-      if (!confirm("⚠️ 確定要執行「埋數」嗎？\n執行後被剔選的課堂將會被封盤（課程tab內不能再報名/取消報名），並記錄此次結算！")) {
-        return;
-      }
+      const currentSettledMisc = classObj.settledMiscIndices || [];
+      const newSettledMisc = Array.from(new Set([...currentSettledMisc, ...selectedMiscIndices]));
 
-      const existingSettledSessions = classObj.settledSessions || [];
-      const updatedSettledSessions = [...new Set([...existingSettledSessions, ...selectedDates])];
-
-      const existingSettledMisc = classObj.settledMiscIndices || [];
-      const updatedSettledMisc = [...new Set([...existingSettledMisc, ...selectedMiscIndices])];
-
-      miscExpenses.forEach((item, idx) => {
-        if (selectedMiscIndices.includes(idx)) {
-          item.isLocked = true;
+      selectedMiscIndices.forEach(idx => {
+        if (miscExpenses[idx]) {
+          miscExpenses[idx].isLocked = true;
         }
       });
 
-      // 每次執行埋數後，除咗將被剔選的課堂剔號disable外，還要將該課堂「封盆」，在課程tab內不能再報名/取消報名
-      selectedDates.forEach(dateStr => {
-        if (sessions[dateStr]) {
-          sessions[dateStr].isClosed = true;
-        }
+      // 指示 2：將該課程內所有課堂的 isClosed 變成 true（封盆 status 變成 on）
+      const updatedSessions = { ...sessions };
+      Object.keys(updatedSessions).forEach(dateKey => {
+        updatedSessions[dateKey].isClosed = true;
       });
 
+      const nowStr = new Date().toLocaleString('zh-TW', { hour12: false });
       const settlementHistory = classObj.settlementHistory || [];
-      const nowStr = new Date().toISOString().replace('T', ' ').substring(0, 16);
       
       const paidStatus = transactions.map(() => ({ isPaid: false, paidBy: '' }));
 
@@ -2860,48 +2845,43 @@
 
       try {
         await updateDoc(doc(db, "classes", classId), {
-          sessions,
+          settledSessions: newSettledSessions,
+          settledMiscIndices: newSettledMisc,
           miscExpenses,
-          settledSessions: updatedSettledSessions,
-          settledMiscIndices: updatedSettledMisc,
+          sessions: updatedSessions,
           settlementHistory
         });
-
-        alert("【成功】埋數完成！被剔選的課堂已封盤，並已產生最新結算記錄。");
+        alert("埋數成功！所選課堂及雜費已鎖定，且所有課堂已封盤。");
         loadClasses();
       } catch(e) {
-        alert("埋數失敗: " + e.message);
+        alert("埋數儲存失敗: " + e.message);
       }
     }
   };
 
-  window.handlePayTransaction = async (classId, histIdx, txIdx) => {
+  window.handlePayTransaction = async (classId, hIdx, tIdx) => {
     const classObj = classesData.find(c => c.id === classId);
-    if (!classObj || !classObj.settlementHistory || !classObj.settlementHistory[histIdx]) return;
+    if (!classObj) return;
 
-    const hist = classObj.settlementHistory[histIdx];
+    const settlementHistory = classObj.settlementHistory || [];
+    if (!settlementHistory[hIdx]) return;
+
+    const hist = settlementHistory[hIdx];
     if (!hist.paidStatus) hist.paidStatus = {};
-    
-    if (hist.paidStatus[txIdx] && hist.paidStatus[txIdx].isPaid) return;
 
-    const currentUserName = currentUserProfile ? currentUserProfile.name : '成員';
-    if (!confirm(`確認 ${currentUserName} 已經收到/支付這筆款項？`)) return;
-
-    hist.paidStatus[txIdx] = {
+    hist.paidStatus[tIdx] = {
       isPaid: true,
-      paidBy: currentUserName
+      paidBy: currentUserProfile ? currentUserProfile.name : '成員'
     };
 
     try {
-      await updateDoc(doc(db, "classes", classId), {
-        settlementHistory: classObj.settlementHistory
-      });
+      await updateDoc(doc(db, "classes", classId), { settlementHistory });
       loadClasses();
     } catch(e) {
       alert("更新找數狀態失敗: " + e.message);
     }
   };
-
 </script>
+
 </body>
 </html>
