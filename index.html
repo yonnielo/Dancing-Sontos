@@ -2833,7 +2833,16 @@
     }
   };
 
-  window.handlePayTransaction = async (classId, histIdx, txIdx) => {
+  window.handlePayTransaction = async (classId, histIdx, txIdx, checkboxEl) => {
+    if (!confirm("⚠️ 警告：您確定要將此項目標記為已找數嗎？")) {
+      checkboxEl.checked = false;
+      return;
+    }
+    if (!confirm("⚠️ 最後確認：此操作一旦確認即「不可逆轉」，確定要繼續嗎？")) {
+      checkboxEl.checked = false;
+      return;
+    }
+
     const classObj = classesData.find(c => c.id === classId);
     if (!classObj || !classObj.settlementHistory || !classObj.settlementHistory[histIdx]) return;
 
@@ -2841,7 +2850,10 @@
     if (!hist.paidStatus) hist.paidStatus = {};
     if (!hist.paidStatus[txIdx]) hist.paidStatus[txIdx] = { isPaid: false, paidBy: '' };
 
-    if (hist.paidStatus[txIdx].isPaid) return;
+    if (hist.paidStatus[txIdx].isPaid) {
+      checkboxEl.checked = true;
+      return;
+    }
 
     const payerName = currentUserProfile ? currentUserProfile.name || '舞者' : '舞者';
     hist.paidStatus[txIdx] = {
@@ -2856,6 +2868,7 @@
       loadClasses();
     } catch(e) {
       alert("更新找數狀態失敗: " + e.message);
+      checkboxEl.checked = false;
     }
   };
 </script>
