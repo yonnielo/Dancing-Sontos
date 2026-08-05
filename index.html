@@ -2616,17 +2616,16 @@
     const nameInput = document.getElementById(`misc-name-${classId}`);
     const amountInput = document.getElementById(`misc-amount-${classId}`);
     const payerSelect = document.getElementById(`misc-payer-${classId}`);
+    const partCbs = document.querySelectorAll(`.misc-part-cb-${classId}:checked`);
 
     const name = nameInput.value.trim();
     const amount = Number(amountInput.value);
     const payer = payerSelect.value;
+    const participants = Array.from(partCbs).map(cb => cb.value);
 
-    const partCheckboxes = document.querySelectorAll(`.misc-part-cb-${classId}:checked`);
-    const participants = Array.from(partCheckboxes).map(cb => cb.value);
-
-    if (!name) return alert("請輸入雜費項目名稱！");
-    if (!amount || amount <= 0) return alert("請輸入有效的雜費總金額！");
-    if (participants.length === 0) return alert("請至少選擇一個有份參與的成員！");
+    if(!name) return alert("請輸入雜費項目名稱！");
+    if(isNaN(amount) || amount <= 0) return alert("請輸入有效的總金額！");
+    if(participants.length === 0) return alert("請至少選擇一位「邊個有份」的成員！");
 
     const classObj = classesData.find(c => c.id === classId);
     if (!classObj) return;
@@ -2642,12 +2641,13 @@
     }
   };
 
-  window.deleteMiscItem = async (classId, index) => {
+  window.deleteMiscItem = async (classId, idx) => {
+    if(!confirm("確定要刪除此雜費項目嗎？")) return;
     const classObj = classesData.find(c => c.id === classId);
     if (!classObj) return;
 
-    const miscExpenses = [...(classObj.miscExpenses || [])];
-    miscExpenses.splice(index, 1);
+    let miscExpenses = classObj.miscExpenses || [];
+    miscExpenses.splice(idx, 1);
 
     try {
       await updateDoc(doc(db, "classes", classId), { miscExpenses });
@@ -2661,35 +2661,20 @@
     const classObj = classesData.find(c => c.id === classId);
     if (!classObj) return;
 
-    const sessionCheckboxes = document.querySelectorAll(`.pojai-session-cb-${classId}:checked`);
-    const selectedDates = Array.from(sessionCheckboxes).map(cb => cb.value);
+    const sessionCbs = document.querySelectorAll(`.pojai-session-cb-${classId}:checked:not(:disabled)`);
+    const selectedDates = Array.from(sessionCbs).map(cb => cb.value);
 
-    const miscCheckboxes = document.querySelectorAll(`.pojai-misc-cb-${classId}:checked`);
+    const miscCheckboxes = document.querySelectorAll(`.pojai-misc-cb-${classId}:checked:not(:disabled)`);
     const selectedMiscIndices = Array.from(miscCheckboxes).map(cb => Number(cb.value));
 
-    const settledSessions = classObj.settledSessions || [];
-    const settledMiscIndices = classObj.settledMiscIndices || [];
-
-    const activeDates = selectedDates.filter(d => !settledSessions.includes(d));
-    const activeMiscIndices = selectedMiscIndices.filter(idx => !settledMiscIndices.includes(idx));
-
-    if (activeDates.length === 0 && activeMiscIndices.length === 0) {
-      alert("請至少選擇一個未埋數的課堂或雜費項目進行計算！");
-      return;
+    if (selectedDates.length === 0 && selectedMiscIndices.length === 0) {
+      return alert("請至少勾選一個未埋數的課堂或雜費項目來計算！");
     }
 
-    const memberPaid = {};
-    const memberShouldPay = {};
-
-    const ensureUser = (name) => {
-      if (!memberPaid[name]) memberPaid[name] = 0;
-      if (!memberShouldPay[name]) memberShouldPay[name] = 0;
-    };
-
-    ensureUser(classObj.leaderName);
-
     const sessions = classObj.sessions || {};
-    activeDates.forEach(dateStr => {
+    const memberSummary = {};
+
+    selectedDates.forEach(dateStr => {
       const sess = sessions[dateStr];
       if (!sess) return;
       const students = sess.students || [];
@@ -2697,67 +2682,62 @@
       const rentVal = Number(sess.rent || 0);
       const enrolledCount = students.length;
 
-      const feePayer = sess.feePayerName || classObj.leaderName;
-      const rentPayer = sess.rentPayerName || classObj.leaderName;
+      const feePayerName = sess.feePayerName || classObj.leaderName;
+      const rentPayerName = sess.rentPayerName || classObj.leaderName;
 
-      ensureUser(feePayer);
-      ensureUser(rentPayer);
-
-      const totalSessionTuition = feeVal * enrolledCount;
-      memberPaid[feePayer] += totalSessionTuition;
-
-      if (enrolledCount === 0) {
-        memberPaid[rentPayer] += rentVal;
-      } else {
-        memberPaid[rentPayer] += rentVal;
-      }
+      if (!memberSummary[feePayerName]) memberSummary[feePayerName] = { totalExpense: 0, paid: 0 };
+      if (!memberSummary[rentPayerName]) memberSummary[rentPayerName] = { totalExpense: 0, paid: 0 };
 
       students.forEach(s => {
-        ensureUser(s.name);
-        memberShouldPay[s.name] += feeVal;
+        if (!memberSummary[s.name]) memberSummary[s.name] = { totalExpense: 0, paid: 0 };
+        memberSummary[s.name].totalExpense += feeVal;
         if (enrolledCount > 0) {
-          memberShouldPay[s.name] += (rentVal / enrolledCount);
+          memberSummary[s.name].totalExpense += (rentVal / enrolledCount);
         }
       });
+
+      memberSummary[feePayerName].paid += (feeVal * enrolledCount);
+      if (enrolledCount === 0) {
+        memberSummary[rentPayerName].totalExpense += rentVal;
+      }
+      memberSummary[rentPayerName].paid += rentVal;
     });
 
     const miscExpenses = classObj.miscExpenses || [];
-    activeMiscIndices.forEach(idx => {
+    selectedMiscIndices.forEach(idx => {
       const item = miscExpenses[idx];
       if (!item) return;
       const amount = Number(item.amount) || 0;
       const payer = item.payer || classObj.leaderName;
       const participants = item.participants || [];
 
-      ensureUser(payer);
-      memberPaid[payer] += amount;
+      if (!memberSummary[payer]) memberSummary[payer] = { totalExpense: 0, paid: 0 };
+      memberSummary[payer].paid += amount;
 
       const partCount = participants.length;
       if (partCount > 0) {
         const sharePerPerson = amount / partCount;
         participants.forEach(pName => {
-          ensureUser(pName);
-          memberShouldPay[pName] += sharePerPerson;
+          if (!memberSummary[pName]) memberSummary[pName] = { totalExpense: 0, paid: 0 };
+          memberSummary[pName].totalExpense += sharePerPerson;
         });
       }
     });
 
-    const netBalance = {};
-    const allNames = new Set([...Object.keys(memberPaid), ...Object.keys(memberShouldPay)]);
-    allNames.forEach(name => {
-      const paid = memberPaid[name] || 0;
-      const should = memberShouldPay[name] || 0;
-      netBalance[name] = Math.round((paid - should) * 100) / 100;
+    const balances = {};
+    Object.keys(memberSummary).forEach(name => {
+      const data = memberSummary[name];
+      balances[name] = Math.round((data.paid - data.totalExpense) * 100) / 100;
     });
 
     const debtors = [];
     const creditors = [];
 
-    Object.entries(netBalance).forEach(([name, balance]) => {
-      if (balance < -0.01) {
-        debtors.push({ name, amount: -balance });
-      } else if (balance > 0.01) {
-        creditors.push({ name, amount: balance });
+    Object.entries(balances).forEach(([name, bal]) => {
+      if (bal < -0.01) {
+        debtors.push({ name, amount: -bal });
+      } else if (bal > 0.01) {
+        creditors.push({ name, amount: bal });
       }
     });
 
@@ -2771,82 +2751,81 @@
     while (dIdx < debtors.length && cIdx < creditors.length) {
       const debtor = debtors[dIdx];
       const creditor = creditors[cIdx];
+      const transferAmount = Math.min(debtor.amount, creditor.amount);
+      const roundedAmount = Math.round(transferAmount * 100) / 100;
 
-      const payAmount = Math.min(debtor.amount, creditor.amount);
-      const roundedPay = Math.round(payAmount * 100) / 100;
-
-      if (roundedPay > 0) {
+      if (roundedAmount > 0) {
         transactions.push({
           from: debtor.name,
           to: creditor.name,
-          amount: roundedPay
+          amount: roundedAmount
         });
       }
 
-      debtor.amount -= payAmount;
-      creditor.amount -= payAmount;
+      debtor.amount -= transferAmount;
+      creditor.amount -= transferAmount;
 
       if (debtor.amount < 0.01) dIdx++;
       if (creditor.amount < 0.01) cIdx++;
     }
 
-    let resultText = "<b>📊 結算明細：</b><br>";
-    allNames.forEach(name => {
-      const paid = Math.round((memberPaid[name] || 0) * 100) / 100;
-      const should = Math.round((memberShouldPay[name] || 0) * 100) / 100;
-      const net = netBalance[name];
-      resultText += `• <b>${name}</b>：已付 $${paid} ｜ 應付 $${should} ｜ 淨差額 <b>${net >= 0 ? '+' : ''}$${net}</b><br>`;
-    });
+    let resultTextHtml = Object.entries(memberSummary).map(([name, data]) => {
+      const totalExpenseRounded = Math.round(data.totalExpense * 100) / 100;
+      return `👤 <b>${name}</b> 總支出：$${totalExpenseRounded}`;
+    }).join('<br>');
 
     if (transactions.length > 0) {
-      resultText += "<br><b>💸 建議找數方案（邊個畀邊個）：</b><br>";
-      transactions.forEach(tx => {
-        resultText += `👉 <b>${tx.from}</b> 支付 <b>$${tx.amount}</b> 給 <b>${tx.to}</b><br>`;
-      });
+      resultTextHtml += `<br><br><b>找數方案 (誰付給誰)：</b><br>` + transactions.map(t => `${t.from} ➔ ${t.to} : $${t.amount}`).join('<br>');
     } else {
-      resultText += "<br>✨ 目前條數已經完全平衡，無需找數！";
+      resultTextHtml += `<br><br>所有成員找數已平衡，無需額外轉帳！`;
     }
 
     if (!isCommit) {
       const previewEl = document.getElementById(`preview-result-${classId}`);
-      if (previewEl) {
-        previewEl.innerHTML = resultText;
-        previewEl.classList.remove('hidden');
-      }
+      previewEl.classList.remove('hidden');
+      previewEl.innerHTML = `<b>👀 睇數結果預覽：</b><br>${resultTextHtml}`;
     } else {
-      const confirmCommit = confirm("⚠️ 確定要進行埋數嗎？這將會鎖定已選的課堂與雜費，並生成正式的找數記錄！");
-      if (!confirmCommit) return;
+      if (!confirm("確定要進行「埋數」嗎？埋數後被剔選的課堂將會封盤並鎖定，無法再更改！")) return;
 
-      const newSettledSessions = [...settledSessions, ...activeDates];
-      const newSettledMiscIndices = [...settledMiscIndices, ...activeMiscIndices];
-
-      const updatedMiscExpenses = miscExpenses.map((item, idx) => {
-        if (activeMiscIndices.includes(idx)) {
-          return { ...item, isLocked: true };
+      selectedDates.forEach(dateStr => {
+        if (sessions[dateStr]) {
+          sessions[dateStr].isClosed = true;
         }
-        return item;
       });
 
-      const nowStr = new Date().toLocaleString('zh-TW', { hour12: false });
+      const alreadySettledSessions = classObj.settledSessions || [];
+      const newSettledSessions = Array.from(new Set([...alreadySettledSessions, ...selectedDates]));
+
+      const alreadySettledMisc = classObj.settledMiscIndices || [];
+      const newSettledMisc = Array.from(new Set([...alreadySettledMisc, ...selectedMiscIndices]));
+
+      miscExpenses.forEach((item, idx) => {
+        if (selectedMiscIndices.includes(idx)) {
+          item.isLocked = true;
+        }
+      });
+
+      const settlementHistory = classObj.settlementHistory || [];
+      const timestamp = new Date().toLocaleString('zh-TW', { hour12: false });
+      
       const paidStatus = transactions.map(() => ({ isPaid: false, paidBy: '' }));
 
-      const newHistoryItem = {
-        timestamp: nowStr,
-        resultText,
+      settlementHistory.push({
+        timestamp,
+        resultText: resultTextHtml,
         transactions,
         paidStatus
-      };
-
-      const settlementHistory = [...(classObj.settlementHistory || []), newHistoryItem];
+      });
 
       try {
         await updateDoc(doc(db, "classes", classId), {
+          sessions,
+          miscExpenses,
           settledSessions: newSettledSessions,
-          settledMiscIndices: newSettledMiscIndices,
-          miscExpenses: updatedMiscExpenses,
+          settledMiscIndices: newSettledMisc,
           settlementHistory
         });
-        alert("【成功】埋數記錄已順利建立！");
+        alert("埋數成功！相關課堂已封盤並已儲存至埋數歷史。");
         loadClasses();
       } catch(e) {
         alert("埋數失敗: " + e.message);
@@ -2854,31 +2833,26 @@
     }
   };
 
-  window.handlePayTransaction = async (classId, historyIndex, txIndex) => {
+  window.handlePayTransaction = async (classId, histIdx, txIdx) => {
     const classObj = classesData.find(c => c.id === classId);
-    if (!classObj) return;
+    if (!classObj || !classObj.settlementHistory || !classObj.settlementHistory[histIdx]) return;
 
-    const settlementHistory = [...(classObj.settlementHistory || [])];
-    const hist = settlementHistory[historyIndex];
-    if (!hist) return;
+    const hist = classObj.settlementHistory[histIdx];
+    if (!hist.paidStatus) hist.paidStatus = {};
+    if (!hist.paidStatus[txIdx]) hist.paidStatus[txIdx] = { isPaid: false, paidBy: '' };
 
-    const paidStatus = [...(hist.paidStatus || [])];
-    const currentStatus = paidStatus[txIndex] || {};
+    if (hist.paidStatus[txIdx].isPaid) return;
 
-    if (currentStatus.isPaid) return;
-
-    const payerName = currentUserProfile ? currentUserProfile.name : '匿名';
-    const tx = hist.transactions[txIndex];
-
-    paidStatus[txIndex] = {
+    const payerName = currentUserProfile ? currentUserProfile.name || '舞者' : '舞者';
+    hist.paidStatus[txIdx] = {
       isPaid: true,
       paidBy: payerName
     };
 
-    hist.paidStatus = paidStatus;
-
     try {
-      await updateDoc(doc(db, "classes", classId), { settlementHistory });
+      await updateDoc(doc(db, "classes", classId), {
+        settlementHistory: classObj.settlementHistory
+      });
       loadClasses();
     } catch(e) {
       alert("更新找數狀態失敗: " + e.message);
